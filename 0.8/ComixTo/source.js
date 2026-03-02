@@ -757,15 +757,36 @@ var _Sources = (() => {
       });
     }
     async parseChapters(data, stateManager) {
-      const chapters = [];
       const showVolume = await stateManager.retrieve('show_volume_number') ?? false;
       const showTitle = await stateManager.retrieve('show_title') ?? false;
       const showUploader = await stateManager.retrieve('show_uploader') ?? false;
+
+      // Group chapters by chapter number
+      const chapterGroups = new Map();
       for (const chap of data) {
+        if (!chapterGroups.has(chap.number)) {
+          chapterGroups.set(chap.number, []);
+        }
+        chapterGroups.get(chap.number).push(chap);
+      }
+
+      // Select the chapter with highest like count (or views) for each group
+      const chapters = [];
+      for (const [number, group] of chapterGroups.entries()) {
+        // Sort by likes descending, fallback to views, fallback to 0
+        group.sort((a, b) => {
+          const votesA = Number(a.upvotes_count || a.likes_count || a.views || 0);
+          const votesB = Number(b.upvotes_count || b.likes_count || b.views || 0);
+          return votesB - votesA;
+        });
+
+        const chap = group[0]; // Take the highest voted one
+
         let finalName = chap.name ? chap.name : `Chapter ${chap.number}`;
         if (!showTitle) {
           finalName = `Chapter ${chap.number}`;
         }
+
         chapters.push(
           App.createChapter({
             id: chap.chapter_id.toString(),
