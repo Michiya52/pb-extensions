@@ -838,12 +838,12 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.0.0",
+    version: "1.0.1",
     name: "ComixTo",
     icon: "icon.png",
-    author: "AthK",
-    authorWebsite: "https://pb.athk.eu.org",
-    description: "Comix.to Extension with advanced filters",
+    author: "acepilot147",
+    authorWebsite: "https://acepilot147.github.io/pb-extensions/0.8",
+    description: "Comix.to Extension with advanced filters. Fork of AthK extensions for Paperback 0.8 (edited by acepilot147)",
     contentRating: import_types.ContentRating.EVERYONE,
     websiteBaseURL: DOMAIN,
     sourceTags: [
@@ -866,8 +866,7 @@ var _Sources = (() => {
           interceptRequest: async (request) => {
             request.headers = {
               ...request.headers ?? {},
-              Referer: `${DOMAIN}/`,
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+              Referer: `${DOMAIN}/`
             };
             return request;
           },
@@ -1168,8 +1167,7 @@ var _Sources = (() => {
         url: DOMAIN,
         method: "GET",
         headers: {
-          Referer: `${DOMAIN}/`,
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+          Referer: `${DOMAIN}/`
         }
       });
     }
