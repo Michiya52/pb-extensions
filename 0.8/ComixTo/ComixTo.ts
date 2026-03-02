@@ -26,6 +26,7 @@ import {
 } from "paperback-extensions-common";
 
 import { parseMangaDetails, parseChapterList, parsePageList, parseMangaList } from "./ComixToParser";
+import { chapterSettings, getShowChapterVolume, getShowChapterTitle, getShowUploader } from "./ComixToSettings";
 
 const COMIXTO_DOMAIN = "https://comix.to";
 
@@ -69,6 +70,7 @@ export class ComixTo extends Source {
             header: "Source Settings",
             isHidden: false,
             rows: async () => [
+                chapterSettings(this.stateManager),
                 createDUINavigationButton({
                     id: "settings",
                     label: "Comix.to Settings",
@@ -84,7 +86,7 @@ export class ComixTo extends Source {
                                         label: "Sort Chapters by Highest Upvoted",
                                         value: createDUIBinding({
                                             get: async () => await this.stateManager.retrieve("sort_upvotes") ?? false,
-                                            set: async (newValue) => await this.stateManager.store("sort_upvotes", newValue)
+                                            set: async (newValue: any) => await this.stateManager.store("sort_upvotes", newValue)
                                         })
                                     }),
                                     createDUISelect({
@@ -93,9 +95,9 @@ export class ComixTo extends Source {
                                         options: ["", "sort.follow", "sort.view", "sort.rating", "sort.uploaded"],
                                         value: createDUIBinding({
                                             get: async () => await this.stateManager.retrieve("manga_sorting") ?? "",
-                                            set: async (newValue) => await this.stateManager.store("manga_sorting", newValue)
+                                            set: async (newValue: any) => await this.stateManager.store("manga_sorting", newValue)
                                         }),
-                                        displayLabel: (option) => {
+                                        displayLabel: (option: any) => {
                                             switch (option) {
                                                 case "sort.follow": return "Most follows";
                                                 case "sort.view": return "Most views";
@@ -172,7 +174,11 @@ export class ComixTo extends Source {
         // Retrieve setting
         const sortVotes = await this.stateManager.retrieve("sort_upvotes") ?? false;
 
-        return parseChapterList($, mangaId, sortVotes);
+        const showVolume = await getShowChapterVolume(this.stateManager);
+        const showTitle = await getShowChapterTitle(this.stateManager);
+        const showUploader = await getShowUploader(this.stateManager);
+
+        return parseChapterList($, mangaId, sortVotes, { showVolume, showTitle, showUploader });
     }
 
     async getChapterDetails(mangaId: string, chapterId: string): Promise<ChapterDetails> {

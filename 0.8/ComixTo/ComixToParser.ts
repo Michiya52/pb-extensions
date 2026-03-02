@@ -72,7 +72,7 @@ export const parseMangaDetails = ($: any, mangaId: string): Manga => {
     });
 }
 
-export const parseChapterList = ($: any, mangaId: string, sortVotes: boolean = false): Chapter[] => {
+export const parseChapterList = ($: any, mangaId: string, sortVotes: boolean = false, chapSettings?: { showVolume: boolean, showTitle: boolean, showUploader: boolean }): Chapter[] => {
     const chapters: any[] = [];
 
     // Generic selector for chapter lists
@@ -81,6 +81,28 @@ export const parseChapterList = ($: any, mangaId: string, sortVotes: boolean = f
         const name = $('a', element).text().trim();
         const time = $('.chapter-release-date, .date', element).text().trim();
         const chapNum = Number(name.match(/Chapter\s*(\d+(\.\d+)?)/i)?.[1] ?? 0);
+
+        let finalName = name;
+        let volumeNumber: number | undefined = undefined;
+        let groupName: string | undefined = undefined;
+
+        if (chapSettings?.showVolume) {
+            const volMatch = name.match(/Vol\.?\s*(\d+(\.\d+)?)/i);
+            if (volMatch) {
+                volumeNumber = Number(volMatch[1]);
+            }
+        }
+
+        if (chapSettings && !chapSettings.showTitle) {
+            finalName = `Chapter ${chapNum}`;
+        }
+
+        if (chapSettings?.showUploader) {
+            const uploader = $('.scanlator, .chapter-uploader, .group, .group-name', element).text().trim();
+            if (uploader) {
+                groupName = uploader;
+            }
+        }
 
         // Attempt to find metadata for sorting
         // Assumption: Generic upvote selectors
@@ -92,11 +114,13 @@ export const parseChapterList = ($: any, mangaId: string, sortVotes: boolean = f
         chapters.push({
             id: id,
             mangaId: mangaId,
-            name: name,
+            name: finalName,
             langCode: 'en', // Assuming English
             chapNum: chapNum,
+            volume: volumeNumber,
             time: new Date(time), // Basic date parsing
-            votes: votes
+            votes: votes,
+            group: groupName
         });
     });
 
@@ -111,7 +135,9 @@ export const parseChapterList = ($: any, mangaId: string, sortVotes: boolean = f
         name: chap.name,
         langCode: chap.langCode,
         chapNum: chap.chapNum,
-        time: chap.time
+        time: chap.time,
+        volume: chap.volume,
+        group: chap.group
     }));
 }
 
