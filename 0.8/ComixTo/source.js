@@ -866,7 +866,8 @@ var _Sources = (() => {
           interceptRequest: async (request) => {
             request.headers = {
               ...request.headers ?? {},
-              Referer: `${DOMAIN}/`
+              "Referer": `${DOMAIN}/`,
+              "User-Agent": await this.requestManager.getDefaultUserAgent()
             };
             return request;
           },
@@ -1162,12 +1163,13 @@ var _Sources = (() => {
         metadata: nextPage
       });
     }
-    getCloudflareBypassRequest() {
+    async getCloudflareBypassRequestAsync() {
       return App.createRequest({
         url: DOMAIN,
         method: "GET",
         headers: {
-          Referer: `${DOMAIN}/`
+          "Referer": `${DOMAIN}/`,
+          "User-Agent": await this.requestManager.getDefaultUserAgent()
         }
       });
     }
