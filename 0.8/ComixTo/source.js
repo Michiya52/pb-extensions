@@ -773,7 +773,7 @@ var _Sources = (() => {
       // Select the chapter with highest like count (or views) for each group
       const chapters = [];
       for (const [number, group] of chapterGroups.entries()) {
-        // Sort by likes descending, fallback to views, fallback to 0
+        // Sort internally by likes descending, fallback to views, fallback to 0
         group.sort((a, b) => {
           const votesA = Number(a.upvotes_count || a.likes_count || a.views || 0);
           const votesB = Number(b.upvotes_count || b.likes_count || b.views || 0);
@@ -800,6 +800,10 @@ var _Sources = (() => {
           })
         );
       }
+
+      // Explicitly sort the final chapter list descending by chapNum
+      chapters.sort((a, b) => b.chapNum - a.chapNum);
+
       return chapters;
     }
     parseChapterDetails(data, mangaId, chapterId) {
