@@ -931,10 +931,6 @@ var _Sources = (() => {
     });
   };
   var groupSettings = (stateManager) => {
-    const uploaderInputBinding = App.createDUIBinding({
-      get: async () => await getUploaderInput(stateManager),
-      set: async (newValue) => await stateManager.store("uploader_input", newValue)
-    });
     return App.createDUINavigationButton({
       id: "group_settings",
       label: "Scanlation Group Settings",
@@ -991,7 +987,10 @@ var _Sources = (() => {
               App.createDUIInputField({
                 id: "uploader_input",
                 label: "Group Name",
-                value: uploaderInputBinding
+                value: App.createDUIBinding({
+                  get: async () => await getUploaderInput(stateManager),
+                  set: async (newValue) => await stateManager.store("uploader_input", newValue)
+                })
               }),
               App.createDUIButton({
                 id: "add_uploader",
@@ -1007,7 +1006,7 @@ var _Sources = (() => {
                   }
                   uploaders.push(targetUploader);
                   await stateManager.store("uploaders", uploaders);
-                  await uploaderInputBinding.set("");
+                  await stateManager.store("uploader_input", "");
                 }
               }),
               App.createDUIButton({
@@ -1026,7 +1025,7 @@ var _Sources = (() => {
                   } else {
                     throw new Error(`Group "${targetUploader}" is not in the list!`);
                   }
-                  await uploaderInputBinding.set("");
+                  await stateManager.store("uploader_input", "");
                 }
               })
             ]
@@ -1044,6 +1043,8 @@ var _Sources = (() => {
           stateManager.store("trending_limit", null),
           stateManager.store("is_nsfw", null),
           stateManager.store("uploaders", null),
+          stateManager.store("uploaders_selected", null),
+          // Included selected groups state
           stateManager.store("uploaders_whitelisted", null),
           stateManager.store("uploaders_toggled", null),
           stateManager.store("uploader_input", null),
@@ -1055,7 +1056,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.2.1",
+    version: "1.2.2",
     name: "ComixTo",
     icon: "icon.png",
     author: "acepilot147",
