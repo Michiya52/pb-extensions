@@ -790,19 +790,15 @@ var _Sources = (() => {
             const priorityA = prioritizedUploaders.indexOf(groupA);
             const priorityB = prioritizedUploaders.indexOf(groupB);
 
-            // Both present in priority list
             if (priorityA !== -1 && priorityB !== -1) return priorityA - priorityB;
-
-            // One present in priority list
             if (priorityA !== -1) return -1;
             if (priorityB !== -1) return 1;
 
-            // Neither present, sort by votes
             const votesA = Number(a.upvotes_count || a.likes_count || a.views || 0);
             const votesB = Number(b.upvotes_count || b.likes_count || b.views || 0);
             return votesB - votesA;
           });
-          deduplicated.push(group[0]); // Take the highest voted one
+          deduplicated.push(group[0]);
         }
         chaptersData = deduplicated;
       }
@@ -828,7 +824,6 @@ var _Sources = (() => {
         );
       }
 
-      // Explicitly sort the final chapter list descending by chapNum
       chapters.sort((a, b) => b.chapNum - a.chapNum);
 
       return chapters;
@@ -841,13 +836,16 @@ var _Sources = (() => {
         pages
       });
     }
-    parseMangaList(items) {
+    parseMangaList(items, showNsfw) {
       const mangaList = [];
       for (const item of items) {
+        if (!showNsfw && item.is_nsfw) {
+          continue;
+        }
         mangaList.push(
           App.createPartialSourceManga({
             mangaId: item.hash_id,
-            image: item.poster.large || item.poster.medium || "https://comix.to/images/no-poster.png",
+            image: item.poster?.large || item.poster?.medium || "https://comix.to/images/no-poster.png",
             title: item.title,
             subtitle: item.latest_chapter ? `Ch. ${item.latest_chapter}` : void 0
           })
@@ -892,12 +890,43 @@ var _Sources = (() => {
     { id: "not_yet_released", label: "Not Yet Released" }
   ];
 
+  // src/ComixTo/Settings.ts
+  var getIsNsfw = async (stateManager) => {
+    const val = await stateManager.retrieve("is_nsfw");
+    return val !== null ? val : true;
+  };
+  var contentSettings = (stateManager) => {
+    return App.createDUINavigationButton({
+      id: "content_settings",
+      label: "Content Settings",
+      form: App.createDUIForm({
+        sections: async () => [
+          App.createDUISection({
+            id: "nsfw_settings",
+            header: "Content Filtering",
+            isHidden: false,
+            rows: async () => [
+              App.createDUISwitch({
+                id: "is_nsfw",
+                label: "Show NSFW Content",
+                value: App.createDUIBinding({
+                  get: async () => await getIsNsfw(stateManager),
+                  set: async (newValue) => await stateManager.store("is_nsfw", newValue)
+                })
+              })
+            ]
+          })
+        ]
+      })
+    });
+  };
   var resetSettings = (stateManager) => {
     return App.createDUIButton({
       id: "reset",
       label: "Reset to Default",
       onTap: async () => {
         await stateManager.store("trending_limit", null);
+        await stateManager.store("is_nsfw", null);
         await stateManager.store("show_volume_number", null);
         await stateManager.store("show_title", null);
         await stateManager.store("show_uploader", null);
@@ -952,7 +981,7 @@ var _Sources = (() => {
               }),
               App.createDUIInputField({
                 id: "prioritized_uploaders",
-                name: "Prioritized Uploaders (Comma separated)",
+                label: "Prioritized Uploaders (Comma separated)",
                 value: App.createDUIBinding({
                   get: async () => await stateManager.retrieve("prioritized_uploaders") ?? "",
                   set: async (newValue) => await stateManager.store("prioritized_uploaders", newValue)
@@ -967,7 +996,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.0.1",
+    version: "1.1.0",
     name: "ComixTo",
     icon: "icon.png",
     author: "acepilot147",
@@ -995,8 +1024,8 @@ var _Sources = (() => {
           interceptRequest: async (request) => {
             request.headers = {
               ...request.headers ?? {},
-              Referer: `${DOMAIN}/`,
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+              "Referer": `${DOMAIN}/`,
+              "User-Agent": await this.requestManager.getDefaultUserAgent()
             };
             return request;
           },
@@ -1017,6 +1046,7 @@ var _Sources = (() => {
         header: "Source Settings",
         isHidden: false,
         rows: async () => [
+          contentSettings(this.stateManager),
           chapterSettings(this.stateManager),
           resetSettings(this.stateManager)
         ]
@@ -1108,21 +1138,21 @@ var _Sources = (() => {
       );
       promises.push(
         this.fetchHomeData(
-          `${API_BASE}/manga?order[followed_count]=desc&limit=15&includes[]=author`,
+          `${API_BASE}/manga?order[chapter_updated_at]=desc&limit=15&scope=hot&includes[]=author`,
           sections[1],
           sectionCallback
         )
       );
       promises.push(
         this.fetchHomeData(
-          `${API_BASE}/manga?order[chapter_updated_at]=desc&limit=15&scope=hot&includes[]=author`,
+          `${API_BASE}/manga?order[created_at]=desc&limit=15&includes[]=author`,
           sections[2],
           sectionCallback
         )
       );
       promises.push(
         this.fetchHomeData(
-          `${API_BASE}/manga?order[created_at]=desc&limit=15&includes[]=author`,
+          `${API_BASE}/manga?order[follows_total]=desc&limit=15&includes[]=author`,
           sections[3],
           sectionCallback
         )
@@ -1133,11 +1163,10 @@ var _Sources = (() => {
       const request = App.createRequest({ url, method: "GET" });
       const response = await this.requestManager.schedule(request, 1);
       this.checkResponseError(response);
-      const json = JSON.parse(
-        response.data ?? "{}"
-      );
+      const json = JSON.parse(response.data ?? "{}");
+      const showNsfw = await getIsNsfw(this.stateManager);
       if (json.result && json.result.items) {
-        section.items = this.parser.parseMangaList(json.result.items);
+        section.items = this.parser.parseMangaList(json.result.items, showNsfw);
       }
       callback(section);
     }
@@ -1150,7 +1179,7 @@ var _Sources = (() => {
           url = `${API_BASE}/top?type=trending&days=${limit}&limit=20&page=${page}&includes[]=author`;
           break;
         case "follows":
-          url = `${API_BASE}/manga?order[followed_count]=desc&limit=20&page=${page}&includes[]=author`;
+          url = `${API_BASE}/manga?order[follows_total]=desc&limit=20&page=${page}&includes[]=author`;
           break;
         case "latest":
           url = `${API_BASE}/manga?order[chapter_updated_at]=desc&scope=hot&limit=20&page=${page}&includes[]=author`;
@@ -1166,7 +1195,8 @@ var _Sources = (() => {
       const json = JSON.parse(
         response.data ?? "{}"
       );
-      const items = this.parser.parseMangaList(json.result.items);
+      const showNsfw = await getIsNsfw(this.stateManager);
+      const items = this.parser.parseMangaList(json.result.items, showNsfw);
       const hasNext = items.length > 0;
       return App.createPagedResults({
         results: items,
@@ -1283,7 +1313,8 @@ var _Sources = (() => {
       const json = JSON.parse(
         response.data ?? "{}"
       );
-      const items = this.parser.parseMangaList(json.result.items);
+      const showNsfw = await getIsNsfw(this.stateManager);
+      const items = this.parser.parseMangaList(json.result.items, showNsfw);
       let nextPage = void 0;
       if (json.result.pagination && json.result.pagination.last_page > page) {
         nextPage = { page: page + 1 };
@@ -1295,13 +1326,13 @@ var _Sources = (() => {
         metadata: nextPage
       });
     }
-    getCloudflareBypassRequest() {
+    async getCloudflareBypassRequestAsync() {
       return App.createRequest({
         url: DOMAIN,
         method: "GET",
         headers: {
-          Referer: `${DOMAIN}/`,
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+          "Referer": `${DOMAIN}/`,
+          "User-Agent": await this.requestManager.getDefaultUserAgent()
         }
       });
     }
