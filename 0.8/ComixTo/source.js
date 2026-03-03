@@ -829,16 +829,51 @@ var _Sources = (() => {
   ];
 
   // src/ComixTo/Settings.ts
+  var TRENDING_OPTIONS = [
+    { id: "1", label: "1 day" },
+    { id: "7", label: "7 days" },
+    { id: "30", label: "1 month" },
+    { id: "90", label: "3 months" },
+    { id: "180", label: "6 months" },
+    { id: "365", label: "1 Year" }
+  ];
   var getIsNsfw = async (stateManager) => {
     const val = await stateManager.retrieve("is_nsfw");
     return val !== null ? val : true;
   };
+  var getTrendingLimit = async (stateManager) => {
+    const val = await stateManager.retrieve("trending_limit");
+    return val ?? ["30"];
+  };
   var contentSettings = (stateManager) => {
     return App.createDUINavigationButton({
       id: "content_settings",
-      label: "Content Settings",
+      label: "Extension Settings",
       form: App.createDUIForm({
         sections: async () => [
+          // 1. Home Page Settings
+          App.createDUISection({
+            id: "home_settings",
+            header: "Discover Page Settings",
+            footer: "Adjust the time range for trending media on the Discover page.",
+            isHidden: false,
+            rows: async () => [
+              App.createDUISelect({
+                id: "trending_limit",
+                label: "Trending Timeframe",
+                options: TRENDING_OPTIONS.map((opt) => opt.id),
+                value: App.createDUIBinding({
+                  get: async () => await getTrendingLimit(stateManager),
+                  set: async (newValue) => await stateManager.store("trending_limit", newValue)
+                }),
+                allowsMultiselect: false,
+                labelResolver: async (value) => {
+                  return TRENDING_OPTIONS.find((opt) => opt.id === value)?.label ?? value;
+                }
+              })
+            ]
+          }),
+          // 2. Content Filtering
           App.createDUISection({
             id: "nsfw_settings",
             header: "Content Filtering",
@@ -871,7 +906,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.1.0",
+    version: "1.1.1",
     name: "ComixTo",
     icon: "icon.png",
     author: "acepilot147",
@@ -975,11 +1010,12 @@ var _Sources = (() => {
       return this.parser.parseChapterDetails(json.result, mangaId, chapterId);
     }
     async getHomePageSections(sectionCallback) {
-      const limit = "30";
+      const limitArray = await getTrendingLimit(this.stateManager);
+      const limit = limitArray[0] ?? "30";
       const sections = [
         App.createHomeSection({
           id: "trending",
-          title: "Popular (Monthly)",
+          title: "Popular (Trending)",
           containsMoreItems: true,
           type: import_types.HomeSectionType.featured
         }),
@@ -1046,7 +1082,8 @@ var _Sources = (() => {
     }
     async getViewMoreItems(homepageSectionId, metadata) {
       const page = metadata?.page ?? 1;
-      const limit = "30";
+      const limitArray = await getTrendingLimit(this.stateManager);
+      const limit = limitArray[0] ?? "30";
       let url = "";
       switch (homepageSectionId) {
         case "trending":
