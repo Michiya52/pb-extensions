@@ -774,13 +774,16 @@ var _Sources = (() => {
         pages
       });
     }
-    parseMangaList(items) {
+    parseMangaList(items, showNsfw) {
       const mangaList = [];
       for (const item of items) {
+        if (!showNsfw && item.is_nsfw) {
+          continue;
+        }
         mangaList.push(
           App.createPartialSourceManga({
             mangaId: item.hash_id,
-            image: item.poster.large || item.poster.medium || "https://comix.to/images/no-poster.png",
+            image: item.poster?.large || item.poster?.medium || "https://comix.to/images/no-poster.png",
             title: item.title,
             subtitle: item.latest_chapter ? `Ch. ${item.latest_chapter}` : void 0
           })
@@ -826,19 +829,49 @@ var _Sources = (() => {
   ];
 
   // src/ComixTo/Settings.ts
+  var getIsNsfw = async (stateManager) => {
+    const val = await stateManager.retrieve("is_nsfw");
+    return val !== null ? val : true;
+  };
+  var contentSettings = (stateManager) => {
+    return App.createDUINavigationButton({
+      id: "content_settings",
+      label: "Content Settings",
+      form: App.createDUIForm({
+        sections: async () => [
+          App.createDUISection({
+            id: "nsfw_settings",
+            header: "Content Filtering",
+            isHidden: false,
+            rows: async () => [
+              App.createDUISwitch({
+                id: "is_nsfw",
+                label: "Show NSFW Content",
+                value: App.createDUIBinding({
+                  get: async () => await getIsNsfw(stateManager),
+                  set: async (newValue) => await stateManager.store("is_nsfw", newValue)
+                })
+              })
+            ]
+          })
+        ]
+      })
+    });
+  };
   var resetSettings = (stateManager) => {
     return App.createDUIButton({
       id: "reset",
       label: "Reset to Default",
       onTap: async () => {
         await stateManager.store("trending_limit", null);
+        await stateManager.store("is_nsfw", null);
       }
     });
   };
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.0.2",
+    version: "1.1.0",
     name: "ComixTo",
     icon: "icon.png",
     author: "acepilot147",
@@ -887,7 +920,10 @@ var _Sources = (() => {
         id: "main",
         header: "Source Settings",
         isHidden: false,
-        rows: async () => [resetSettings(this.stateManager)]
+        rows: async () => [
+          contentSettings(this.stateManager),
+          resetSettings(this.stateManager)
+        ]
       });
     }
     getMangaShareUrl(mangaId) {
@@ -976,21 +1012,21 @@ var _Sources = (() => {
       );
       promises.push(
         this.fetchHomeData(
-          `${API_BASE}/manga?order[followed_count]=desc&limit=15&includes[]=author`,
+          `${API_BASE}/manga?order[chapter_updated_at]=desc&limit=15&scope=hot&includes[]=author`,
           sections[1],
           sectionCallback
         )
       );
       promises.push(
         this.fetchHomeData(
-          `${API_BASE}/manga?order[chapter_updated_at]=desc&limit=15&scope=hot&includes[]=author`,
+          `${API_BASE}/manga?order[created_at]=desc&limit=15&includes[]=author`,
           sections[2],
           sectionCallback
         )
       );
       promises.push(
         this.fetchHomeData(
-          `${API_BASE}/manga?order[created_at]=desc&limit=15&includes[]=author`,
+          `${API_BASE}/manga?order[follows_total]=desc&limit=15&includes[]=author`,
           sections[3],
           sectionCallback
         )
@@ -1001,11 +1037,10 @@ var _Sources = (() => {
       const request = App.createRequest({ url, method: "GET" });
       const response = await this.requestManager.schedule(request, 1);
       this.checkResponseError(response);
-      const json = JSON.parse(
-        response.data ?? "{}"
-      );
+      const json = JSON.parse(response.data ?? "{}");
+      const showNsfw = await getIsNsfw(this.stateManager);
       if (json.result && json.result.items) {
-        section.items = this.parser.parseMangaList(json.result.items);
+        section.items = this.parser.parseMangaList(json.result.items, showNsfw);
       }
       callback(section);
     }
@@ -1018,7 +1053,7 @@ var _Sources = (() => {
           url = `${API_BASE}/top?type=trending&days=${limit}&limit=20&page=${page}&includes[]=author`;
           break;
         case "follows":
-          url = `${API_BASE}/manga?order[followed_count]=desc&limit=20&page=${page}&includes[]=author`;
+          url = `${API_BASE}/manga?order[follows_total]=desc&limit=20&page=${page}&includes[]=author`;
           break;
         case "latest":
           url = `${API_BASE}/manga?order[chapter_updated_at]=desc&scope=hot&limit=20&page=${page}&includes[]=author`;
@@ -1034,7 +1069,8 @@ var _Sources = (() => {
       const json = JSON.parse(
         response.data ?? "{}"
       );
-      const items = this.parser.parseMangaList(json.result.items);
+      const showNsfw = await getIsNsfw(this.stateManager);
+      const items = this.parser.parseMangaList(json.result.items, showNsfw);
       const hasNext = items.length > 0;
       return App.createPagedResults({
         results: items,
@@ -1151,7 +1187,8 @@ var _Sources = (() => {
       const json = JSON.parse(
         response.data ?? "{}"
       );
-      const items = this.parser.parseMangaList(json.result.items);
+      const showNsfw = await getIsNsfw(this.stateManager);
+      const items = this.parser.parseMangaList(json.result.items, showNsfw);
       let nextPage = void 0;
       if (json.result.pagination && json.result.pagination.last_page > page) {
         nextPage = { page: page + 1 };
