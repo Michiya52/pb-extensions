@@ -1065,7 +1065,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.2.3",
+    version: "1.2.4",
     name: "ComixTo",
     icon: "icon.png",
     author: "acepilot147",
@@ -1109,17 +1109,18 @@ var _Sources = (() => {
       return true;
     }
     // -- Settings Menu --
+    // -- Settings Menu --
     async getSourceMenu() {
-      return App.createDUISection({
+      return keepAlive(App.createDUISection({
         id: "main",
         header: "Source Settings",
         isHidden: false,
-        rows: async () => [
+        rows: async () => keepAlive([
           contentSettings(this.stateManager),
           groupSettings(this.stateManager),
           resetSettings(this.stateManager)
-        ]
-      });
+        ])
+      }));
     }
     getMangaShareUrl(mangaId) {
       return `${DOMAIN}/title/${mangaId}`;
