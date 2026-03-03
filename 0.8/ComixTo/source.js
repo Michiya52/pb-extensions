@@ -760,28 +760,55 @@ var _Sources = (() => {
       const showVolume = await stateManager.retrieve('show_volume_number') ?? false;
       const showTitle = await stateManager.retrieve('show_title') ?? false;
       const showUploader = await stateManager.retrieve('show_uploader') ?? false;
+      const removeDuplicates = await stateManager.retrieve('remove_duplicates') ?? true;
+      const prioritizedUploadersRaw = await stateManager.retrieve('prioritized_uploaders') ?? "";
 
-      // Group chapters by chapter number
-      const chapterGroups = new Map();
-      for (const chap of data) {
-        if (!chapterGroups.has(chap.number)) {
-          chapterGroups.set(chap.number, []);
+      const prioritizedUploaders = prioritizedUploadersRaw
+        .split(',')
+        .map(u => u.trim().toLowerCase())
+        .filter(u => u.length > 0);
+
+      let chaptersData = data;
+
+      // Group chapters by chapter number to deduplicate
+      if (removeDuplicates) {
+        const chapterGroups = new Map();
+        for (const chap of data) {
+          if (!chapterGroups.has(chap.number)) {
+            chapterGroups.set(chap.number, []);
+          }
+          chapterGroups.get(chap.number).push(chap);
         }
-        chapterGroups.get(chap.number).push(chap);
+
+        const deduplicated = [];
+        for (const [number, group] of chapterGroups.entries()) {
+          // Sort internally by priority groups first, then likes descending, fallback to views, fallback to 0
+          group.sort((a, b) => {
+            const groupA = (a.scanlation_group?.name || "").toLowerCase();
+            const groupB = (b.scanlation_group?.name || "").toLowerCase();
+
+            const priorityA = prioritizedUploaders.indexOf(groupA);
+            const priorityB = prioritizedUploaders.indexOf(groupB);
+
+            // Both present in priority list
+            if (priorityA !== -1 && priorityB !== -1) return priorityA - priorityB;
+
+            // One present in priority list
+            if (priorityA !== -1) return -1;
+            if (priorityB !== -1) return 1;
+
+            // Neither present, sort by votes
+            const votesA = Number(a.upvotes_count || a.likes_count || a.views || 0);
+            const votesB = Number(b.upvotes_count || b.likes_count || b.views || 0);
+            return votesB - votesA;
+          });
+          deduplicated.push(group[0]); // Take the highest voted one
+        }
+        chaptersData = deduplicated;
       }
 
-      // Select the chapter with highest like count (or views) for each group
       const chapters = [];
-      for (const [number, group] of chapterGroups.entries()) {
-        // Sort internally by likes descending, fallback to views, fallback to 0
-        group.sort((a, b) => {
-          const votesA = Number(a.upvotes_count || a.likes_count || a.views || 0);
-          const votesB = Number(b.upvotes_count || b.likes_count || b.views || 0);
-          return votesB - votesA;
-        });
-
-        const chap = group[0]; // Take the highest voted one
-
+      for (const chap of chaptersData) {
         let finalName = chap.name ? chap.name : `Chapter ${chap.number}`;
         if (!showTitle) {
           finalName = `Chapter ${chap.number}`;
@@ -874,6 +901,8 @@ var _Sources = (() => {
         await stateManager.store("show_volume_number", null);
         await stateManager.store("show_title", null);
         await stateManager.store("show_uploader", null);
+        await stateManager.store("remove_duplicates", null);
+        await stateManager.store("prioritized_uploaders", null);
       }
     });
   };
@@ -911,6 +940,22 @@ var _Sources = (() => {
                 value: App.createDUIBinding({
                   get: async () => await stateManager.retrieve("show_uploader") ?? false,
                   set: async (newValue) => await stateManager.store("show_uploader", newValue)
+                })
+              }),
+              App.createDUISwitch({
+                id: "remove_duplicates",
+                label: "Remove Duplicate Chapters",
+                value: App.createDUIBinding({
+                  get: async () => await stateManager.retrieve("remove_duplicates") ?? true,
+                  set: async (newValue) => await stateManager.store("remove_duplicates", newValue)
+                })
+              }),
+              App.createDUIInputField({
+                id: "prioritized_uploaders",
+                name: "Prioritized Uploaders (Comma separated)",
+                value: App.createDUIBinding({
+                  get: async () => await stateManager.retrieve("prioritized_uploaders") ?? "",
+                  set: async (newValue) => await stateManager.store("prioritized_uploaders", newValue)
                 })
               })
             ]
@@ -950,7 +995,8 @@ var _Sources = (() => {
           interceptRequest: async (request) => {
             request.headers = {
               ...request.headers ?? {},
-              Referer: `${DOMAIN}/`
+              Referer: `${DOMAIN}/`,
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
             };
             return request;
           },
@@ -1254,7 +1300,8 @@ var _Sources = (() => {
         url: DOMAIN,
         method: "GET",
         headers: {
-          Referer: `${DOMAIN}/`
+          Referer: `${DOMAIN}/`,
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
         }
       });
     }
