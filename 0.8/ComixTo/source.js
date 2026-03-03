@@ -748,9 +748,28 @@ var _Sources = (() => {
         })
       });
     }
-    parseChapters(data) {
+    parseChapters(data, isFiltering, isWhitelist, isStrict, savedGroups) {
       const chapters = [];
       for (const chap of data) {
+        const groupName = chap.scanlation_group?.name || "";
+        if (isFiltering && savedGroups.length > 0) {
+          let matchFound = false;
+          for (const savedGroup of savedGroups) {
+            if (isStrict) {
+              if (groupName.toLowerCase() === savedGroup.toLowerCase()) {
+                matchFound = true;
+                break;
+              }
+            } else {
+              if (groupName.toLowerCase().includes(savedGroup.toLowerCase())) {
+                matchFound = true;
+                break;
+              }
+            }
+          }
+          if (isWhitelist && !matchFound) continue;
+          if (!isWhitelist && matchFound) continue;
+        }
         chapters.push(
           App.createChapter({
             id: chap.chapter_id.toString(),
@@ -758,7 +777,7 @@ var _Sources = (() => {
             name: chap.name ? `${chap.name}` : `Chapter ${chap.number}`,
             langCode: chap.language || "en",
             volume: chap.volume,
-            group: chap.scanlation_group?.name || "",
+            group: groupName,
             time: new Date(chap.updated_at * 1e3),
             sortingIndex: chap.number
           })
@@ -835,7 +854,7 @@ var _Sources = (() => {
     { id: "30", label: "1 month" },
     { id: "90", label: "3 months" },
     { id: "180", label: "6 months" },
-    { id: "365", label: "1 Year" }
+    { id: "365", label: "1 year" }
   ];
   var getIsNsfw = async (stateManager) => {
     const val = await stateManager.retrieve("is_nsfw");
@@ -844,6 +863,21 @@ var _Sources = (() => {
   var getTrendingLimit = async (stateManager) => {
     const val = await stateManager.retrieve("trending_limit");
     return val ?? ["30"];
+  };
+  var getUploadersFiltering = async (stateManager) => {
+    return await stateManager.retrieve("uploaders_toggled") ?? false;
+  };
+  var getUploadersWhitelisted = async (stateManager) => {
+    return await stateManager.retrieve("uploaders_whitelisted") ?? false;
+  };
+  var getStrictNameMatching = async (stateManager) => {
+    return await stateManager.retrieve("strict_name_matching") ?? false;
+  };
+  var getUploaders = async (stateManager) => {
+    return await stateManager.retrieve("uploaders") ?? [];
+  };
+  var getUploaderInput = async (stateManager) => {
+    return await stateManager.retrieve("uploader_input") ?? "";
   };
   var contentSettings = (stateManager) => {
     return App.createDUINavigationButton({
@@ -893,20 +927,133 @@ var _Sources = (() => {
       })
     });
   };
+  var groupSettings = (stateManager) => {
+    const uploaderInputBinding = App.createDUIBinding({
+      get: async () => await getUploaderInput(stateManager),
+      set: async (newValue) => await stateManager.store("uploader_input", newValue)
+    });
+    return App.createDUINavigationButton({
+      id: "group_settings",
+      label: "Scanlation Group Settings",
+      form: App.createDUIForm({
+        sections: async () => [
+          App.createDUISection({
+            id: "filtering_settings",
+            header: "Filtering Settings",
+            footer: "By default, listed groups are excluded from chapter lists (blacklist mode). Turn off Strict Matching to catch partial names.",
+            isHidden: false,
+            rows: async () => [
+              App.createDUISwitch({
+                id: "toggle_uploaders_filtering",
+                label: "Enable Group Filtering",
+                value: App.createDUIBinding({
+                  get: async () => await getUploadersFiltering(stateManager),
+                  set: async (newValue) => await stateManager.store("uploaders_toggled", newValue)
+                })
+              }),
+              App.createDUISwitch({
+                id: "uploaders_switch",
+                label: "Enable Whitelist Mode",
+                value: App.createDUIBinding({
+                  get: async () => await getUploadersWhitelisted(stateManager),
+                  set: async (newValue) => await stateManager.store("uploaders_whitelisted", newValue)
+                })
+              }),
+              App.createDUISwitch({
+                id: "strict_name_matching",
+                label: "Strict Group Name Matching",
+                value: App.createDUIBinding({
+                  get: async () => await getStrictNameMatching(stateManager),
+                  set: async (newValue) => await stateManager.store("strict_name_matching", newValue)
+                })
+              })
+            ]
+          }),
+          App.createDUISection({
+            id: "manage_groups",
+            header: "Manage Groups",
+            isHidden: false,
+            rows: async () => [
+              App.createDUISelect({
+                id: "uploaders_list",
+                label: "Currently Saved Groups",
+                options: await getUploaders(stateManager),
+                value: App.createDUIBinding({
+                  get: async () => [],
+                  set: async () => {
+                  }
+                }),
+                labelResolver: async (value) => value,
+                allowsMultiselect: true
+              }),
+              App.createDUIInputField({
+                id: "uploader_input",
+                label: "Group Name",
+                value: uploaderInputBinding
+              }),
+              App.createDUIButton({
+                id: "add_uploader",
+                label: "Add Group",
+                onTap: async () => {
+                  const targetUploader = await getUploaderInput(stateManager);
+                  if (!targetUploader || targetUploader.trim() === "") {
+                    throw new Error("Group name cannot be empty!");
+                  }
+                  const uploaders = await getUploaders(stateManager);
+                  if (uploaders.includes(targetUploader)) {
+                    throw new Error(`Group "${targetUploader}" is already in the list!`);
+                  }
+                  uploaders.push(targetUploader);
+                  await stateManager.store("uploaders", uploaders);
+                  await uploaderInputBinding.set("");
+                }
+              }),
+              App.createDUIButton({
+                id: "remove_uploader",
+                label: "Remove Group",
+                onTap: async () => {
+                  const targetUploader = await getUploaderInput(stateManager);
+                  if (!targetUploader || targetUploader.trim() === "") {
+                    throw new Error("Group name cannot be empty!");
+                  }
+                  const uploaders = await getUploaders(stateManager);
+                  const index = uploaders.indexOf(targetUploader);
+                  if (index !== -1) {
+                    uploaders.splice(index, 1);
+                    await stateManager.store("uploaders", uploaders);
+                  } else {
+                    throw new Error(`Group "${targetUploader}" is not in the list!`);
+                  }
+                  await uploaderInputBinding.set("");
+                }
+              })
+            ]
+          })
+        ]
+      })
+    });
+  };
   var resetSettings = (stateManager) => {
     return App.createDUIButton({
       id: "reset",
-      label: "Reset to Default",
+      label: "Reset All Settings to Default",
       onTap: async () => {
-        await stateManager.store("trending_limit", null);
-        await stateManager.store("is_nsfw", null);
+        await Promise.all([
+          stateManager.store("trending_limit", null),
+          stateManager.store("is_nsfw", null),
+          stateManager.store("uploaders", null),
+          stateManager.store("uploaders_whitelisted", null),
+          stateManager.store("uploaders_toggled", null),
+          stateManager.store("uploader_input", null),
+          stateManager.store("strict_name_matching", null)
+        ]);
       }
     });
   };
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.1.1",
+    version: "1.2.0",
     name: "ComixTo",
     icon: "icon.png",
     author: "acepilot147",
@@ -957,6 +1104,7 @@ var _Sources = (() => {
         isHidden: false,
         rows: async () => [
           contentSettings(this.stateManager),
+          groupSettings(this.stateManager),
           resetSettings(this.stateManager)
         ]
       });
@@ -994,7 +1142,13 @@ var _Sources = (() => {
         lastPage = json.result.pagination.last_page;
         page++;
       } while (page <= lastPage);
-      return this.parser.parseChapters(chapters);
+      const [isFiltering, isWhitelist, isStrict, savedGroups] = await Promise.all([
+        getUploadersFiltering(this.stateManager),
+        getUploadersWhitelisted(this.stateManager),
+        getStrictNameMatching(this.stateManager),
+        getUploaders(this.stateManager)
+      ]);
+      return this.parser.parseChapters(chapters, isFiltering, isWhitelist, isStrict, savedGroups);
     }
     async getChapterDetails(mangaId, chapterId) {
       const request = App.createRequest({
