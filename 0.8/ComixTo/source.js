@@ -879,6 +879,9 @@ var _Sources = (() => {
   var getUploaderInput = async (stateManager) => {
     return await stateManager.retrieve("uploader_input") ?? "";
   };
+  var getSelectedUploaders = async (stateManager) => {
+    return await stateManager.retrieve("uploaders_selected") ?? [];
+  };
   var contentSettings = (stateManager) => {
     return App.createDUINavigationButton({
       id: "content_settings",
@@ -979,9 +982,8 @@ var _Sources = (() => {
                 label: "Currently Saved Groups",
                 options: await getUploaders(stateManager),
                 value: App.createDUIBinding({
-                  get: async () => [],
-                  set: async () => {
-                  }
+                  get: async () => await getSelectedUploaders(stateManager),
+                  set: async (newValue) => await stateManager.store("uploaders_selected", newValue)
                 }),
                 labelResolver: async (value) => value,
                 allowsMultiselect: true
@@ -1053,7 +1055,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.2.0",
+    version: "1.2.1",
     name: "ComixTo",
     icon: "icon.png",
     author: "acepilot147",
