@@ -861,14 +861,6 @@ var _Sources = (() => {
     uiKeepAlive.push(obj);
     return obj;
   };
-  var _smQueue = Promise.resolve();
-  var smSerial = (fn) => {
-    const result = _smQueue.then(fn);
-    _smQueue = result.then(() => {
-    }, () => {
-    });
-    return result;
-  };
   var groupSettingsWarmUp = null;
   var warmUpGroupSettings = (stateManager) => {
     if (!groupSettingsWarmUp) {
@@ -884,30 +876,30 @@ var _Sources = (() => {
     return groupSettingsWarmUp;
   };
   var getIsNsfw = async (stateManager) => {
-    const val = await smSerial(() => stateManager.retrieve("is_nsfw"));
+    const val = await stateManager.retrieve("is_nsfw");
     return val !== null ? val : true;
   };
   var getTrendingLimit = async (stateManager) => {
-    const val = await smSerial(() => stateManager.retrieve("trending_limit"));
-    return val ?? ["30"];
+    const val = await stateManager.retrieve("trending_limit");
+    return val ?? "30";
   };
   var getUploadersFiltering = async (stateManager) => {
-    return await smSerial(() => stateManager.retrieve("uploaders_toggled")) ?? false;
+    return await stateManager.retrieve("uploaders_toggled") ?? false;
   };
   var getUploadersWhitelisted = async (stateManager) => {
-    return await smSerial(() => stateManager.retrieve("uploaders_whitelisted")) ?? false;
+    return await stateManager.retrieve("uploaders_whitelisted") ?? false;
   };
   var getStrictNameMatching = async (stateManager) => {
-    return await smSerial(() => stateManager.retrieve("strict_name_matching")) ?? false;
+    return await stateManager.retrieve("strict_name_matching") ?? false;
   };
   var getUploaders = async (stateManager) => {
-    return await smSerial(() => stateManager.retrieve("uploaders")) ?? [];
+    return await stateManager.retrieve("uploaders") ?? [];
   };
   var getUploaderInput = async (stateManager) => {
-    return await smSerial(() => stateManager.retrieve("uploader_input")) ?? "";
+    return await stateManager.retrieve("uploader_input") ?? "";
   };
   var getSelectedUploaders = async (stateManager) => {
-    return await smSerial(() => stateManager.retrieve("uploaders_selected")) ?? [];
+    return await stateManager.retrieve("uploaders_selected") ?? [];
   };
   var contentSettings = (stateManager) => {
     return keepAlive(App.createDUINavigationButton({
@@ -928,7 +920,7 @@ var _Sources = (() => {
                 options: TRENDING_OPTIONS.map((opt) => opt.id),
                 value: App.createDUIBinding({
                   get: async () => await getTrendingLimit(stateManager),
-                  set: async (newValue) => await smSerial(() => stateManager.store("trending_limit", newValue))
+                  set: async (newValue) => await stateManager.store("trending_limit", newValue)
                 }),
                 allowsMultiselect: false,
                 labelResolver: async (value) => {
@@ -948,7 +940,7 @@ var _Sources = (() => {
                 label: "Show NSFW Content",
                 value: App.createDUIBinding({
                   get: async () => await getIsNsfw(stateManager),
-                  set: async (newValue) => await smSerial(() => stateManager.store("is_nsfw", newValue))
+                  set: async (newValue) => await stateManager.store("is_nsfw", newValue)
                 })
               })
             ])
@@ -976,7 +968,7 @@ var _Sources = (() => {
                   label: "Enable Group Filtering",
                   value: App.createDUIBinding({
                     get: async () => await getUploadersFiltering(stateManager),
-                    set: async (newValue) => await smSerial(() => stateManager.store("uploaders_toggled", newValue))
+                    set: async (newValue) => await stateManager.store("uploaders_toggled", newValue)
                   })
                 }),
                 App.createDUISwitch({
@@ -984,7 +976,7 @@ var _Sources = (() => {
                   label: "Enable Whitelist Mode",
                   value: App.createDUIBinding({
                     get: async () => await getUploadersWhitelisted(stateManager),
-                    set: async (newValue) => await smSerial(() => stateManager.store("uploaders_whitelisted", newValue))
+                    set: async (newValue) => await stateManager.store("uploaders_whitelisted", newValue)
                   })
                 }),
                 App.createDUISwitch({
@@ -992,7 +984,7 @@ var _Sources = (() => {
                   label: "Strict Group Name Matching",
                   value: App.createDUIBinding({
                     get: async () => await getStrictNameMatching(stateManager),
-                    set: async (newValue) => await smSerial(() => stateManager.store("strict_name_matching", newValue))
+                    set: async (newValue) => await stateManager.store("strict_name_matching", newValue)
                   })
                 })
               ])
@@ -1010,7 +1002,7 @@ var _Sources = (() => {
                     options: uploaders,
                     value: App.createDUIBinding({
                       get: async () => await getSelectedUploaders(stateManager),
-                      set: async (newValue) => await smSerial(() => stateManager.store("uploaders_selected", newValue))
+                      set: async (newValue) => await stateManager.store("uploaders_selected", newValue)
                     }),
                     labelResolver: async (value) => value,
                     allowsMultiselect: true
@@ -1020,7 +1012,7 @@ var _Sources = (() => {
                     label: "Group Name",
                     value: App.createDUIBinding({
                       get: async () => await getUploaderInput(stateManager),
-                      set: async (newValue) => await smSerial(() => stateManager.store("uploader_input", newValue))
+                      set: async (newValue) => await stateManager.store("uploader_input", newValue)
                     })
                   }),
                   App.createDUIButton({
@@ -1036,8 +1028,8 @@ var _Sources = (() => {
                         throw new Error(`Group "${targetUploader}" is already in the list!`);
                       }
                       uploadersList.push(targetUploader);
-                      await smSerial(() => stateManager.store("uploaders", uploadersList));
-                      await smSerial(() => stateManager.store("uploader_input", ""));
+                      await stateManager.store("uploaders", uploadersList);
+                      await stateManager.store("uploader_input", "");
                     }
                   }),
                   App.createDUIButton({
@@ -1052,14 +1044,14 @@ var _Sources = (() => {
                       const index = uploadersList.indexOf(targetUploader);
                       if (index !== -1) {
                         uploadersList.splice(index, 1);
-                        await smSerial(() => stateManager.store("uploaders", uploadersList));
+                        await stateManager.store("uploaders", uploadersList);
                         const selectedList = await getSelectedUploaders(stateManager);
                         const newSelected = selectedList.filter((s) => s !== targetUploader);
-                        await smSerial(() => stateManager.store("uploaders_selected", newSelected));
+                        await stateManager.store("uploaders_selected", newSelected);
                       } else {
                         throw new Error(`Group "${targetUploader}" is not in the list!`);
                       }
-                      await smSerial(() => stateManager.store("uploader_input", ""));
+                      await stateManager.store("uploader_input", "");
                     }
                   })
                 ]);
@@ -1075,21 +1067,21 @@ var _Sources = (() => {
       id: "reset",
       label: "Reset All Settings to Default",
       onTap: async () => {
-        await smSerial(() => stateManager.store("trending_limit", null));
-        await smSerial(() => stateManager.store("is_nsfw", null));
-        await smSerial(() => stateManager.store("uploaders", null));
-        await smSerial(() => stateManager.store("uploaders_selected", null));
-        await smSerial(() => stateManager.store("uploaders_whitelisted", null));
-        await smSerial(() => stateManager.store("uploaders_toggled", null));
-        await smSerial(() => stateManager.store("uploader_input", null));
-        await smSerial(() => stateManager.store("strict_name_matching", null));
+        await stateManager.store("trending_limit", null);
+        await stateManager.store("is_nsfw", null);
+        await stateManager.store("uploaders", null);
+        await stateManager.store("uploaders_selected", null);
+        await stateManager.store("uploaders_whitelisted", null);
+        await stateManager.store("uploaders_toggled", null);
+        await stateManager.store("uploader_input", null);
+        await stateManager.store("strict_name_matching", null);
       }
     }));
   };
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.2.12",
+    version: "1.2.13",
     name: "ComixTo",
     icon: "icon.png",
     author: "acepilot147",
