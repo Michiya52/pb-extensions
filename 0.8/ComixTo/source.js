@@ -1065,7 +1065,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.2.4",
+    version: "1.2.5",
     name: "ComixTo",
     icon: "icon.png",
     author: "acepilot147",
@@ -1109,8 +1109,8 @@ var _Sources = (() => {
       return true;
     }
     // -- Settings Menu --
-    // -- Settings Menu --
     async getSourceMenu() {
+      await this.stateManager.retrieve("_init");
       return keepAlive(App.createDUISection({
         id: "main",
         header: "Source Settings",
