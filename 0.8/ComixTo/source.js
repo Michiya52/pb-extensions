@@ -881,7 +881,7 @@ var _Sources = (() => {
   };
   var getTrendingLimit = async (stateManager) => {
     const val = await stateManager.retrieve("trending_limit");
-    return val ?? "30";
+    return val ?? ["30"];
   };
   var getUploadersFiltering = async (stateManager) => {
     return await stateManager.retrieve("uploaders_toggled") ?? false;
@@ -1081,7 +1081,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.2.13",
+    version: "1.3.0",
     name: "ComixTo",
     icon: "icon.png",
     author: "acepilot147",
