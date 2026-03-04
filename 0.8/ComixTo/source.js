@@ -861,20 +861,6 @@ var _Sources = (() => {
     uiKeepAlive.push(obj);
     return obj;
   };
-  var groupSettingsWarmUp = null;
-  var warmUpGroupSettings = (stateManager) => {
-    if (!groupSettingsWarmUp) {
-      groupSettingsWarmUp = (async () => {
-        await getUploadersFiltering(stateManager);
-        await getUploadersWhitelisted(stateManager);
-        await getStrictNameMatching(stateManager);
-        await getUploaders(stateManager);
-        await getSelectedUploaders(stateManager);
-        await getUploaderInput(stateManager);
-      })();
-    }
-    return groupSettingsWarmUp;
-  };
   var getIsNsfw = async (stateManager) => {
     const val = await stateManager.retrieve("is_nsfw");
     return val !== null ? val : true;
@@ -901,51 +887,94 @@ var _Sources = (() => {
   var getSelectedUploaders = async (stateManager) => {
     return await stateManager.retrieve("uploaders_selected") ?? [];
   };
+  var csCache = null;
+  var csWarmUp = null;
+  var warmUpContentSettings = (stateManager) => {
+    if (!csWarmUp) {
+      csWarmUp = (async () => {
+        csCache = {
+          trending_limit: await getTrendingLimit(stateManager),
+          is_nsfw: await getIsNsfw(stateManager)
+        };
+      })();
+    }
+    return csWarmUp;
+  };
+  var gsCache = null;
+  var gsWarmUp = null;
+  var warmUpGroupSettings = (stateManager) => {
+    if (!gsWarmUp) {
+      gsWarmUp = (async () => {
+        gsCache = {
+          uploaders_toggled: await getUploadersFiltering(stateManager),
+          uploaders_whitelisted: await getUploadersWhitelisted(stateManager),
+          strict_name_matching: await getStrictNameMatching(stateManager),
+          uploaders: await getUploaders(stateManager),
+          uploaders_selected: await getSelectedUploaders(stateManager),
+          uploader_input: await getUploaderInput(stateManager)
+        };
+      })();
+    }
+    return gsWarmUp;
+  };
+  var resetAllCaches = () => {
+    csCache = null;
+    csWarmUp = null;
+    gsCache = null;
+    gsWarmUp = null;
+  };
   var contentSettings = (stateManager) => {
     return keepAlive(App.createDUINavigationButton({
       id: "content_settings",
       label: "Extension Settings",
       form: App.createDUIForm({
-        sections: async () => keepAlive([
-          // 1. Home Page Settings
-          App.createDUISection({
-            id: "home_settings",
-            header: "Discover Page Settings",
-            footer: "Adjust the time range for trending media on the Discover page.",
-            isHidden: false,
-            rows: async () => keepAlive([
-              App.createDUISelect({
-                id: "trending_limit",
-                label: "Trending Timeframe",
-                options: TRENDING_OPTIONS.map((opt) => opt.id),
-                value: App.createDUIBinding({
-                  get: async () => await getTrendingLimit(stateManager),
-                  set: async (newValue) => await stateManager.store("trending_limit", newValue)
-                }),
-                allowsMultiselect: false,
-                labelResolver: async (value) => {
-                  return TRENDING_OPTIONS.find((opt) => opt.id === value)?.label ?? value;
-                }
-              })
-            ])
-          }),
-          // 2. Content Filtering
-          App.createDUISection({
-            id: "nsfw_settings",
-            header: "Content Filtering",
-            isHidden: false,
-            rows: async () => keepAlive([
-              App.createDUISwitch({
-                id: "is_nsfw",
-                label: "Show NSFW Content",
-                value: App.createDUIBinding({
-                  get: async () => await getIsNsfw(stateManager),
-                  set: async (newValue) => await stateManager.store("is_nsfw", newValue)
+        sections: async () => {
+          await warmUpContentSettings(stateManager);
+          return keepAlive([
+            App.createDUISection({
+              id: "home_settings",
+              header: "Discover Page Settings",
+              footer: "Adjust the time range for trending media on the Discover page.",
+              isHidden: false,
+              rows: async () => keepAlive([
+                App.createDUISelect({
+                  id: "trending_limit",
+                  label: "Trending Timeframe",
+                  options: TRENDING_OPTIONS.map((opt) => opt.id),
+                  value: App.createDUIBinding({
+                    get: async () => csCache?.trending_limit ?? ["30"],
+                    set: async (newValue) => {
+                      if (csCache) csCache.trending_limit = newValue;
+                      await stateManager.store("trending_limit", newValue);
+                    }
+                  }),
+                  allowsMultiselect: false,
+                  labelResolver: async (value) => {
+                    return TRENDING_OPTIONS.find((opt) => opt.id === value)?.label ?? value;
+                  }
                 })
-              })
-            ])
-          })
-        ])
+              ])
+            }),
+            App.createDUISection({
+              id: "nsfw_settings",
+              header: "Content Filtering",
+              isHidden: false,
+              rows: async () => keepAlive([
+                App.createDUISwitch({
+                  id: "is_nsfw",
+                  label: "Show NSFW Content",
+                  value: App.createDUIBinding({
+                    get: async () => csCache?.is_nsfw ?? true,
+                    set: async (newValue) => {
+                      if (csCache) csCache.is_nsfw = newValue;
+                      await stateManager.store("is_nsfw", newValue);
+                    }
+                  })
+                })
+              ])
+            })
+          ]);
+        }
       })
     }));
   };
@@ -967,24 +996,33 @@ var _Sources = (() => {
                   id: "toggle_uploaders_filtering",
                   label: "Enable Group Filtering",
                   value: App.createDUIBinding({
-                    get: async () => await getUploadersFiltering(stateManager),
-                    set: async (newValue) => await stateManager.store("uploaders_toggled", newValue)
+                    get: async () => gsCache?.uploaders_toggled ?? false,
+                    set: async (newValue) => {
+                      if (gsCache) gsCache.uploaders_toggled = newValue;
+                      await stateManager.store("uploaders_toggled", newValue);
+                    }
                   })
                 }),
                 App.createDUISwitch({
                   id: "uploaders_switch",
                   label: "Enable Whitelist Mode",
                   value: App.createDUIBinding({
-                    get: async () => await getUploadersWhitelisted(stateManager),
-                    set: async (newValue) => await stateManager.store("uploaders_whitelisted", newValue)
+                    get: async () => gsCache?.uploaders_whitelisted ?? false,
+                    set: async (newValue) => {
+                      if (gsCache) gsCache.uploaders_whitelisted = newValue;
+                      await stateManager.store("uploaders_whitelisted", newValue);
+                    }
                   })
                 }),
                 App.createDUISwitch({
                   id: "strict_name_matching",
                   label: "Strict Group Name Matching",
                   value: App.createDUIBinding({
-                    get: async () => await getStrictNameMatching(stateManager),
-                    set: async (newValue) => await stateManager.store("strict_name_matching", newValue)
+                    get: async () => gsCache?.strict_name_matching ?? false,
+                    set: async (newValue) => {
+                      if (gsCache) gsCache.strict_name_matching = newValue;
+                      await stateManager.store("strict_name_matching", newValue);
+                    }
                   })
                 })
               ])
@@ -994,15 +1032,18 @@ var _Sources = (() => {
               header: "Manage Groups",
               isHidden: false,
               rows: async () => {
-                const uploaders = await getUploaders(stateManager);
+                const uploaders = gsCache?.uploaders ?? [];
                 return keepAlive([
                   App.createDUISelect({
                     id: "uploaders_list",
                     label: "Currently Saved Groups",
                     options: uploaders,
                     value: App.createDUIBinding({
-                      get: async () => await getSelectedUploaders(stateManager),
-                      set: async (newValue) => await stateManager.store("uploaders_selected", newValue)
+                      get: async () => gsCache?.uploaders_selected ?? [],
+                      set: async (newValue) => {
+                        if (gsCache) gsCache.uploaders_selected = newValue;
+                        await stateManager.store("uploaders_selected", newValue);
+                      }
                     }),
                     labelResolver: async (value) => value,
                     allowsMultiselect: true
@@ -1011,24 +1052,28 @@ var _Sources = (() => {
                     id: "uploader_input",
                     label: "Group Name",
                     value: App.createDUIBinding({
-                      get: async () => await getUploaderInput(stateManager),
-                      set: async (newValue) => await stateManager.store("uploader_input", newValue)
+                      get: async () => gsCache?.uploader_input ?? "",
+                      set: async (newValue) => {
+                        if (gsCache) gsCache.uploader_input = newValue;
+                        await stateManager.store("uploader_input", newValue);
+                      }
                     })
                   }),
                   App.createDUIButton({
                     id: "add_uploader",
                     label: "Add Group",
                     onTap: async () => {
-                      const targetUploader = await getUploaderInput(stateManager);
+                      if (!gsCache) return;
+                      const targetUploader = gsCache.uploader_input;
                       if (!targetUploader || targetUploader.trim() === "") {
                         throw new Error("Group name cannot be empty!");
                       }
-                      const uploadersList = await getUploaders(stateManager);
-                      if (uploadersList.includes(targetUploader)) {
+                      if (gsCache.uploaders.includes(targetUploader)) {
                         throw new Error(`Group "${targetUploader}" is already in the list!`);
                       }
-                      uploadersList.push(targetUploader);
-                      await stateManager.store("uploaders", uploadersList);
+                      gsCache.uploaders.push(targetUploader);
+                      gsCache.uploader_input = "";
+                      await stateManager.store("uploaders", gsCache.uploaders);
                       await stateManager.store("uploader_input", "");
                     }
                   }),
@@ -1036,22 +1081,22 @@ var _Sources = (() => {
                     id: "remove_uploader",
                     label: "Remove Group",
                     onTap: async () => {
-                      const targetUploader = await getUploaderInput(stateManager);
+                      if (!gsCache) return;
+                      const targetUploader = gsCache.uploader_input;
                       if (!targetUploader || targetUploader.trim() === "") {
                         throw new Error("Group name cannot be empty!");
                       }
-                      const uploadersList = await getUploaders(stateManager);
-                      const index = uploadersList.indexOf(targetUploader);
+                      const index = gsCache.uploaders.indexOf(targetUploader);
                       if (index !== -1) {
-                        uploadersList.splice(index, 1);
-                        await stateManager.store("uploaders", uploadersList);
-                        const selectedList = await getSelectedUploaders(stateManager);
-                        const newSelected = selectedList.filter((s) => s !== targetUploader);
-                        await stateManager.store("uploaders_selected", newSelected);
+                        gsCache.uploaders.splice(index, 1);
+                        gsCache.uploaders_selected = gsCache.uploaders_selected.filter((s) => s !== targetUploader);
+                        gsCache.uploader_input = "";
+                        await stateManager.store("uploaders", gsCache.uploaders);
+                        await stateManager.store("uploaders_selected", gsCache.uploaders_selected);
+                        await stateManager.store("uploader_input", "");
                       } else {
                         throw new Error(`Group "${targetUploader}" is not in the list!`);
                       }
-                      await stateManager.store("uploader_input", "");
                     }
                   })
                 ]);
@@ -1067,6 +1112,7 @@ var _Sources = (() => {
       id: "reset",
       label: "Reset All Settings to Default",
       onTap: async () => {
+        resetAllCaches();
         await stateManager.store("trending_limit", null);
         await stateManager.store("is_nsfw", null);
         await stateManager.store("uploaders", null);
@@ -1081,7 +1127,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.2.10",
+    version: "1.2.11",
     name: "ComixTo",
     icon: "icon.png",
     author: "acepilot147",
