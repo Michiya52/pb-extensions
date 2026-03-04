@@ -861,6 +861,20 @@ var _Sources = (() => {
     uiKeepAlive.push(obj);
     return obj;
   };
+  var groupSettingsWarmUp = null;
+  var warmUpGroupSettings = (stateManager) => {
+    if (!groupSettingsWarmUp) {
+      groupSettingsWarmUp = (async () => {
+        await getUploadersFiltering(stateManager);
+        await getUploadersWhitelisted(stateManager);
+        await getStrictNameMatching(stateManager);
+        await getUploaders(stateManager);
+        await getSelectedUploaders(stateManager);
+        await getUploaderInput(stateManager);
+      })();
+    }
+    return groupSettingsWarmUp;
+  };
   var getIsNsfw = async (stateManager) => {
     const val = await stateManager.retrieve("is_nsfw");
     return val !== null ? val : true;
@@ -941,12 +955,7 @@ var _Sources = (() => {
       label: "Scanlation Group Settings",
       form: App.createDUIForm({
         sections: async () => {
-          await getUploadersFiltering(stateManager);
-          await getUploadersWhitelisted(stateManager);
-          await getStrictNameMatching(stateManager);
-          await getUploaders(stateManager);
-          await getSelectedUploaders(stateManager);
-          await getUploaderInput(stateManager);
+          await warmUpGroupSettings(stateManager);
           return keepAlive([
             App.createDUISection({
               id: "filtering_settings",
@@ -1072,7 +1081,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.2.9",
+    version: "1.2.10",
     name: "ComixTo",
     icon: "icon.png",
     author: "acepilot147",
