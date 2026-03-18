@@ -761,64 +761,19 @@ var _Sources = (() => {
       const showTitle = await stateManager.retrieve('show_title') ?? false;
       const showUploader = await stateManager.retrieve('show_uploader') ?? false;
       const removeDuplicates = await stateManager.retrieve('remove_duplicates') ?? true;
-      const matchMode = await stateManager.retrieve('source_match_mode') ?? "strict";
-
       const prioritizedUploadersRaw = await stateManager.retrieve('prioritized_uploaders') ?? "";
+
       const prioritizedUploaders = prioritizedUploadersRaw
         .split(',')
         .map(u => u.trim().toLowerCase())
         .filter(u => u.length > 0);
 
-      const blacklistedRaw = await stateManager.retrieve('blacklisted_uploaders') ?? "";
-      const blacklistedUploaders = blacklistedRaw
-        .split(',')
-        .map(u => u.trim().toLowerCase())
-        .filter(u => u.length > 0);
-
-      const langRaw = await stateManager.retrieve('language_filters') ?? "";
-      const langFilters = langRaw
-        .split(',')
-        .map(u => u.trim().toLowerCase())
-        .filter(u => u.length > 0);
-
-      // Pre-filter blacklist and languages
-      let chaptersData = data.filter(chap => {
-        const groupName = (chap.scanlation_group?.name || "").toLowerCase();
-        if (blacklistedUploaders.includes(groupName)) return false;
-        
-        const lang = (chap.language || "en").toLowerCase();
-        if (langFilters.length > 0 && !langFilters.includes(lang)) return false;
-        
-        return true;
-      });
-
-      // Default sorting: if no prioritized uploaders, prevent mixing/matching
-      // by automatically prioritizing the source with the most chapters.
-      if (prioritizedUploaders.length === 0 && chaptersData.length > 0) {
-        const sourceCounts = {};
-        for (const chap of chaptersData) {
-          const gName = (chap.scanlation_group?.name || "").toLowerCase();
-          if (gName) {
-            sourceCounts[gName] = (sourceCounts[gName] || 0) + 1;
-          }
-        }
-        let bestSource = "";
-        let maxCount = 0;
-        for (const [gName, count] of Object.entries(sourceCounts)) {
-          if (count > maxCount) {
-            maxCount = count;
-            bestSource = gName;
-          }
-        }
-        if (bestSource) {
-          prioritizedUploaders.push(bestSource);
-        }
-      }
+      let chaptersData = data;
 
       // Group chapters by chapter number to deduplicate
       if (removeDuplicates) {
         const chapterGroups = new Map();
-        for (const chap of chaptersData) {
+        for (const chap of data) {
           if (!chapterGroups.has(chap.number)) {
             chapterGroups.set(chap.number, []);
           }
@@ -827,39 +782,17 @@ var _Sources = (() => {
 
         const deduplicated = [];
         for (const [number, group] of chapterGroups.entries()) {
-          
-          let hasStrictMatch = false;
-          if (prioritizedUploaders.length > 0) {
-            hasStrictMatch = group.some(chap => {
-              const gName = (chap.scanlation_group?.name || "").toLowerCase();
-              return prioritizedUploaders.includes(gName);
-            });
-          }
-
-          const getPriority = (gName) => {
-            if (!gName) return 999;
-            let idx = prioritizedUploaders.indexOf(gName);
-            if (idx !== -1) return idx;
-            
-            // If matchMode is closest OR (matchMode is strict but no strict match was found), fallback to closest
-            if (matchMode === "closest" || !hasStrictMatch) {
-               idx = prioritizedUploaders.findIndex(u => gName.includes(u) || u.includes(gName));
-               if (idx !== -1) return idx + 100;
-            }
-            return 999;
-          };
-
           // Sort internally by priority groups first, then likes descending, fallback to views, fallback to 0
           group.sort((a, b) => {
             const groupA = (a.scanlation_group?.name || "").toLowerCase();
             const groupB = (b.scanlation_group?.name || "").toLowerCase();
 
-            const priorityA = getPriority(groupA);
-            const priorityB = getPriority(groupB);
+            const priorityA = prioritizedUploaders.indexOf(groupA);
+            const priorityB = prioritizedUploaders.indexOf(groupB);
 
-            if (priorityA !== priorityB) {
-              return priorityA - priorityB;
-            }
+            if (priorityA !== -1 && priorityB !== -1) return priorityA - priorityB;
+            if (priorityA !== -1) return -1;
+            if (priorityB !== -1) return 1;
 
             const votesA = Number(a.upvotes_count || a.likes_count || a.views || 0);
             const votesB = Number(b.upvotes_count || b.likes_count || b.views || 0);
@@ -1013,121 +946,48 @@ var _Sources = (() => {
             id: "contentchapter",
             header: "Chapter Display",
             isHidden: false,
-            rows: async () => {
-              const rowsUI = [];
-              
-              rowsUI.push(App.createDUISwitch({
+            rows: async () => [
+              App.createDUISwitch({
                 id: "show_volume_number",
                 label: "Show Chapter Volume",
                 value: App.createDUIBinding({
                   get: async () => await stateManager.retrieve("show_volume_number") ?? false,
                   set: async (newValue) => await stateManager.store("show_volume_number", newValue)
                 })
-              }));
-              
-              rowsUI.push(App.createDUISwitch({
+              }),
+              App.createDUISwitch({
                 id: "show_title",
                 label: "Show Chapter Title",
                 value: App.createDUIBinding({
                   get: async () => await stateManager.retrieve("show_title") ?? false,
                   set: async (newValue) => await stateManager.store("show_title", newValue)
                 })
-              }));
-              
-              rowsUI.push(App.createDUISwitch({
+              }),
+              App.createDUISwitch({
                 id: "show_uploader",
                 label: "Show Uploader",
                 value: App.createDUIBinding({
                   get: async () => await stateManager.retrieve("show_uploader") ?? false,
                   set: async (newValue) => await stateManager.store("show_uploader", newValue)
                 })
-              }));
-              
-              rowsUI.push(App.createDUISwitch({
+              }),
+              App.createDUISwitch({
                 id: "remove_duplicates",
                 label: "Remove Duplicate Chapters",
                 value: App.createDUIBinding({
                   get: async () => await stateManager.retrieve("remove_duplicates") ?? true,
                   set: async (newValue) => await stateManager.store("remove_duplicates", newValue)
                 })
-              }));
-              
-              rowsUI.push(App.createDUISelect({
-                id: "source_match_mode",
-                label: "Source Match Mode",
-                options: ["strict", "closest"],
+              }),
+              App.createDUIInputField({
+                id: "prioritized_uploaders",
+                label: "Prioritized Uploaders (Comma separated)",
                 value: App.createDUIBinding({
-                  get: async () => {
-                    const mode = await stateManager.retrieve("source_match_mode");
-                    return (mode === "strict" || mode === "closest") ? mode : "strict";
-                  },
-                  set: async (newValue) => await stateManager.store("source_match_mode", newValue)
-                }),
-                displayLabel: (option) => option === "strict" ? "Strict (Fallback to Closest)" : "Closest Match"
-              }));
-
-              for (let i = 0; i < 10; i++) {
-                rowsUI.push(App.createDUIInputField({
-                  id: `prioritized_uploader_${i}`,
-                  label: `Prioritized Uploader List ${i + 1}`,
-                  value: App.createDUIBinding({
-                    get: async () => {
-                        const p = await stateManager.retrieve("prioritized_uploaders");
-                        const arr = (typeof p === 'string' ? p : "").split(",").map(x=>x.trim()).filter(x=>x);
-                        return arr[i] || "";
-                    },
-                    set: async (newValue) => {
-                        const p = await stateManager.retrieve("prioritized_uploaders");
-                        const arr = (typeof p === 'string' ? p : "").split(",").map(x=>x.trim()).filter(x=>x);
-                        arr[i] = newValue ? newValue.trim() : "";
-                        await stateManager.store("prioritized_uploaders", arr.filter(x=>x).join(","));
-                    }
-                  })
-                }));
-              }
-
-              for (let i = 0; i < 10; i++) {
-                rowsUI.push(App.createDUIInputField({
-                  id: `blacklisted_uploader_${i}`,
-                  label: `Blacklist Uploader List ${i + 1}`,
-                  value: App.createDUIBinding({
-                    get: async () => {
-                        const p = await stateManager.retrieve("blacklisted_uploaders");
-                        const arr = (typeof p === 'string' ? p : "").split(",").map(x=>x.trim()).filter(x=>x);
-                        return arr[i] || "";
-                    },
-                    set: async (newValue) => {
-                        const p = await stateManager.retrieve("blacklisted_uploaders");
-                        const arr = (typeof p === 'string' ? p : "").split(",").map(x=>x.trim()).filter(x=>x);
-                        arr[i] = newValue ? newValue.trim() : "";
-                        await stateManager.store("blacklisted_uploaders", arr.filter(x=>x).join(","));
-                    }
-                  })
-                }));
-              }
-
-              for (let i = 0; i < 5; i++) {
-                rowsUI.push(App.createDUIInputField({
-                  id: `language_filter_${i}`,
-                  label: `Language/Region List ${i + 1} (e.g. en)`,
-                  value: App.createDUIBinding({
-                    get: async () => {
-                        const p = await stateManager.retrieve("language_filters");
-                        const arr = (typeof p === 'string' ? p : "").split(",").map(x=>x.trim()).filter(x=>x);
-                        return arr[i] || "";
-                    },
-                    set: async (newValue) => {
-                        const p = await stateManager.retrieve("language_filters");
-                        const arr = (typeof p === 'string' ? p : "").split(",").map(x=>x.trim()).filter(x=>x);
-                        arr[i] = newValue ? newValue.trim() : "";
-                        await stateManager.store("language_filters", arr.filter(x=>x).join(","));
-                    }
-                  })
-                }));
-              }
-
-              return rowsUI;
-            }
+                  get: async () => await stateManager.retrieve("prioritized_uploaders") ?? "",
+                  set: async (newValue) => await stateManager.store("prioritized_uploaders", newValue)
+                })
+              })
+            ]
           })
         ]
       })
