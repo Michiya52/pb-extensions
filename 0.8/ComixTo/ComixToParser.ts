@@ -83,14 +83,15 @@ export const parseChapterList = (
         regions: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] }
     }
 ): Chapter[] => {
-    const chapters: any[] = [];
+    const rawChapters: any[] = [];
 
-    // Generic selector for chapter lists
+    // 1. Extract all chapters from the page
     $('ul.row-content-chapter li, .chapter-list .row, .listing-chapters_wrap li').each((_: any, element: any) => {
         const id = $('a', element).attr('href')?.split('/').pop() ?? '';
         const name = $('a', element).text().trim();
         const time = $('.chapter-release-date, .date', element).text().trim();
-        const chapNum = Number(name.match(/Chapter\s*(\d+(\.\d+)?)/i)?.[1] ?? 0);
+        const chapMatch = name.match(/Chapter\s*(\d+(\.\d+)?)/i);
+        const chapNum = Number(chapMatch?.[1] ?? 0);
 
         let finalName = name;
         let volumeNumber: number | undefined = undefined;
@@ -103,75 +104,118 @@ export const parseChapterList = (
             }
         }
 
-        if (chapSettings && !chapSettings.showTitle) {
-            finalName = `Chapter ${chapNum}`;
-        }
-
         const uploader = $('.scanlator, .chapter-uploader, .group, .group-name', element).text().trim();
         if (uploader) {
             groupName = uploader;
         }
 
-        // --- Filtering Logic ---
-        if (filters) {
-            const checkFilter = (val: string | undefined, filter: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] }) => {
-                if (!filter.enabled || filter.list.length === 0) return true;
-                if (!val) return !filter.whitelist; // If no value, fail whitelist, pass blacklist
-
-                const target = val.toLowerCase();
-                const match = filter.list.some(item => {
-                    const listItem = item.toLowerCase();
-                    return filter.strict ? target === listItem : target.includes(listItem);
-                });
-
-                return filter.whitelist ? match : !match;
-            };
-
-            // Assuming the site provides language/region info in elements
-            // For now, we only have groupName reliably from the uploader element
-            if (!checkFilter(groupName, filters.uploaders)) return;
-
-            // Language/Region info might be in specific icons or text
-            const langInfo = $('.lang-icon, .language', element).attr('title') || $('.language', element).text().trim();
-            if (!checkFilter(langInfo, filters.languages)) return;
-
-            const regionInfo = $('.region-icon, .region', element).attr('title') || $('.region', element).text().trim();
-            if (!checkFilter(regionInfo, filters.regions)) return;
-        }
-
-        // Attempt to find metadata for sorting
         const voteText = $('.votes, .like-count', element).text().trim();
         const votes = parseInt(voteText.replace(/,/g, '')) || 0;
 
+        const langInfo = $('.lang-icon, .language', element).attr('title') || $('.language', element).text().trim() || 'en';
+        const regionInfo = $('.region-icon, .region', element).attr('title') || $('.region', element).text().trim() || '';
+
         if (!id) return;
 
-        chapters.push({
+        rawChapters.push({
             id: id,
             mangaId: mangaId,
-            name: (chapSettings && !chapSettings.showTitle) ? `Chapter ${chapNum}` : (chapSettings?.showUploader && groupName ? `${finalName} [${groupName}]` : finalName),
-            langCode: 'en', 
+            name: finalName,
             chapNum: chapNum,
             volume: volumeNumber,
             time: new Date(time),
             votes: votes,
-            group: groupName
+            group: groupName,
+            lang: langInfo,
+            region: regionInfo
         });
     });
 
-    if (sortVotes) {
-        chapters.sort((a, b) => b.votes - a.votes);
+    // 2. Group by Chapter Number for "Soft Whitelist" logic
+    const grouped = rawChapters.reduce((acc: any, chap: any) => {
+        if (!acc[chap.chapNum]) acc[chap.chapNum] = [];
+        acc[chap.chapNum].push(chap);
+        return acc;
+    }, {});
+
+    const finalChapters: Chapter[] = [];
+
+    const checkFilterFunc = (val: string | undefined, filter: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] }) => {
+        if (!filter.enabled || filter.list.length === 0) return { pass: true, isMatched: false };
+        if (!val) return { pass: !filter.whitelist, isMatched: false };
+
+        const target = val.toLowerCase();
+        const isMatched = filter.list.some(item => {
+            const listItem = item.toLowerCase();
+            return filter.strict ? target === listItem : target.includes(listItem);
+        });
+
+        return { pass: filter.whitelist ? isMatched : !isMatched, isMatched };
+    };
+
+    for (const chapNum in grouped) {
+        const variants = grouped[chapNum];
+        let filtered = variants;
+
+        if (filters) {
+            // A. Hard Filter: Blacklist (Always hide if matched in blacklist mode)
+            filtered = variants.filter((v: any) => {
+                const u = checkFilterFunc(v.group, filters.uploaders);
+                const l = checkFilterFunc(v.lang, filters.languages);
+                const r = checkFilterFunc(v.region, filters.regions);
+                
+                // If any is a "Blacklist Match", reject it immediately
+                if (filters.uploaders.enabled && !filters.uploaders.whitelist && !u.pass) return false;
+                if (filters.languages.enabled && !filters.languages.whitelist && !l.pass) return false;
+                if (filters.regions.enabled && !filters.regions.whitelist && !r.pass) return false;
+                
+                return true;
+            });
+
+            // B. Soft Filter: Whitelist (Prefer whitelisted, fallback to "filtered" if none match)
+            if (filtered.length > 0) {
+                const whitelisted = filtered.filter((v: any) => {
+                    const u = checkFilterFunc(v.group, filters.uploaders);
+                    const l = checkFilterFunc(v.lang, filters.languages);
+                    const r = checkFilterFunc(v.region, filters.regions);
+                    
+                    let matchAnyWhitelist = false;
+                    if (filters.uploaders.enabled && filters.uploaders.whitelist && u.isMatched) matchAnyWhitelist = true;
+                    if (filters.languages.enabled && filters.languages.whitelist && l.isMatched) matchAnyWhitelist = true;
+                    if (filters.regions.enabled && filters.regions.whitelist && r.isMatched) matchAnyWhitelist = true;
+                    
+                    return matchAnyWhitelist;
+                });
+
+                // If we have whitelisted matches, only show those. Otherwise, show all (that passed blacklist).
+                if (whitelisted.length > 0) {
+                    filtered = whitelisted;
+                }
+            }
+        }
+
+        for (const chap of filtered) {
+            const groupTag = (chapSettings?.showUploader && chap.group) ? ` [${chap.group}]` : "";
+            const displayName = (chapSettings && !chapSettings.showTitle) ? `Chapter ${chap.chapNum}${groupTag}` : `${chap.name}${groupTag}`;
+
+            finalChapters.push(createChapter({
+                id: chap.id,
+                mangaId: chap.mangaId,
+                name: displayName,
+                langCode: 'en',
+                chapNum: chap.chapNum,
+                time: chap.time,
+                volume: chap.volume,
+                group: chap.group
+            }));
+        }
     }
 
-    return chapters.map(chap => createChapter({
-        id: chap.id,
-        mangaId: chap.mangaId,
-        name: chap.name,
-        langCode: chap.langCode,
-        chapNum: chap.chapNum,
-        time: chap.time,
-        volume: chap.volume,
-        group: chap.group
-    }));
+    if (sortVotes) {
+        finalChapters.sort((a, b) => (b as any).votes - (a as any).votes);
+    }
+
+    return finalChapters;
 }
 
 export const parsePageList = ($: any, mangaId: string, chapterId: string): ChapterDetails => {

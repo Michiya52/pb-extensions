@@ -749,42 +749,82 @@ var _Sources = (() => {
       });
     }
     parseChapters(data, filters) {
-      const chapters = [];
+      const rawChapters = [];
       const checkFilter = (val, filter) => {
-        if (!filter.enabled || filter.list.length === 0) return true;
-        if (!val) return !filter.whitelist;
+        if (!filter.enabled || filter.list.length === 0) return { pass: true, isMatched: false };
+        if (!val) return { pass: !filter.whitelist, isMatched: false };
         const target = val.toLowerCase();
-        const match = filter.list.some(item => {
+        const isMatched = filter.list.some(item => {
             const listItem = item.toLowerCase();
             return filter.strict ? target === listItem : target.includes(listItem);
         });
-        return filter.whitelist ? match : !match;
+        return { pass: filter.whitelist ? isMatched : !isMatched, isMatched };
       };
 
       for (const chap of data) {
-        const groupName = chap.scanlation_group?.name || "";
-        const langInfo = chap.language || "en";
-        const regionInfo = chap.region || "";
-
-        if (filters) {
-            if (!checkFilter(groupName, filters.uploaders)) continue;
-            if (!checkFilter(langInfo, filters.languages)) continue;
-            if (!checkFilter(regionInfo, filters.regions)) continue;
-        }
-        chapters.push(
-          App.createChapter({
+        rawChapters.push({
             id: chap.chapter_id.toString(),
             chapNum: chap.number,
             name: chap.name ? `${chap.name}` : `Chapter ${chap.number}`,
             langCode: chap.language || "en",
             volume: chap.volume,
-            group: groupName,
-            time: new Date(chap.updated_at * 1e3),
-            sortingIndex: chap.number
-          })
-        );
+            group: chap.scanlation_group?.name || "",
+            lang: chap.language || "en",
+            region: chap.region || ""
+        });
       }
-      return chapters;
+
+      const grouped = rawChapters.reduce((acc, chap) => {
+        if (!acc[chap.chapNum]) acc[chap.chapNum] = [];
+        acc[chap.chapNum].push(chap);
+        return acc;
+      }, {});
+
+      const finalChapters = [];
+      for (const chapNum in grouped) {
+        const variants = grouped[chapNum];
+        let filtered = variants;
+
+        if (filters) {
+            // A. Hard Filter: Blacklist
+            filtered = variants.filter(v => {
+                const u = checkFilter(v.group, filters.uploaders);
+                const l = checkFilter(v.lang, filters.languages);
+                const r = checkFilter(v.region, filters.regions);
+                if (filters.uploaders.enabled && !filters.uploaders.whitelist && !u.pass) return false;
+                if (filters.languages.enabled && !filters.languages.whitelist && !l.pass) return false;
+                if (filters.regions.enabled && !filters.regions.whitelist && !r.pass) return false;
+                return true;
+            });
+
+            // B. Soft Filter: Whitelist
+            if (filtered.length > 0) {
+                const whitelisted = filtered.filter(v => {
+                    const u = checkFilter(v.group, filters.uploaders);
+                    const l = checkFilter(v.lang, filters.languages);
+                    const r = checkFilter(v.region, filters.regions);
+                    let m = false;
+                    if (filters.uploaders.enabled && filters.uploaders.whitelist && u.isMatched) m = true;
+                    if (filters.languages.enabled && filters.languages.whitelist && l.isMatched) m = true;
+                    if (filters.regions.enabled && filters.regions.whitelist && r.isMatched) m = true;
+                    return m;
+                });
+                if (whitelisted.length > 0) filtered = whitelisted;
+            }
+        }
+
+        for (const chap of filtered) {
+            finalChapters.push(App.createChapter({
+                id: chap.id,
+                chapNum: chap.chapNum,
+                name: chap.name,
+                langCode: chap.langCode,
+                volume: chap.volume,
+                group: chap.group
+            }));
+        }
+      }
+      return finalChapters;
     }
     parseChapterDetails(data, mangaId, chapterId) {
       const pages = data.images.map((img) => img.url);
@@ -1083,7 +1123,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.3.1",
+    version: "1.3.2",
     name: "ComixTo",
     icon: "icon.png",
     author: "Michiya52",
