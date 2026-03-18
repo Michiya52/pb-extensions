@@ -31,28 +31,35 @@ import { chapterSettings, filterSettings, resetSettings } from "./ComixToSetting
 const COMIXTO_DOMAIN = "https://comix.to";
 
 export const ComixToInfo: SourceInfo = {
-    version: '1.3.3',
-    name: "Comix.to",
-    icon: "icon.png",
-    author: "Michiya52",
-    authorWebsite: "https://github.com/Michiya52",
-    description: "Extension for Comix.to with advanced filters. (Inspired by Ace)",
+    version: '1.3.4',
+    name: 'Comix.to',
+    icon: 'icon.png',
+    author: 'Michiya52',
+    authorWebsite: 'https://github.com/Michiya52',
+    description: 'Comix.to Extension with advanced uploader, language, and region filters. (Inspired by Ace)',
     contentRating: ContentRating.MATURE,
     websiteBaseURL: COMIXTO_DOMAIN,
+    sourceTags: [
+        {
+            text: 'English',
+            type: BadgeColor.GREY
+        }
+    ],
+    intents: SourceIntents.MANGA_CHAPTERS | SourceIntents.HOMEPAGE_SECTIONS | SourceIntents.CLOUDFLARE_BYPASS_REQUIRED | SourceIntents.SETTINGS_UI
 };
 
 export class ComixTo extends Source {
     requestManager = createRequestManager({
-        requestsPerSecond: 3,
+        requestsPerSecond: 4,
         requestTimeout: 15000,
         interceptor: {
             interceptRequest: async (request: Request): Promise<Request> => {
                 request.headers = {
                     ...(request.headers ?? {}),
                     ...{
-                        "Referer": COMIXTO_DOMAIN,
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-                    },
+                        'user-agent': await this.requestManager.getDefaultUserAgent(),
+                        'referer': `${COMIXTO_DOMAIN}/`
+                    }
                 };
                 return request;
             },
@@ -64,12 +71,9 @@ export class ComixTo extends Source {
 
     stateManager = createSourceStateManager();
 
-    async getSourceMenu(): Promise<DUISection> {
-        return createDUISection({
-            id: "main",
-            header: "Source Settings",
-            isHidden: false,
-            rows: async () => [
+    override async getSourceMenu(): Promise<DUIForm> {
+        return createDUIForm({
+            sections: async () => [
                 createDUISection({
                     id: "general_settings",
                     header: "General Filtering",
@@ -84,9 +88,15 @@ export class ComixTo extends Source {
                         })
                     ]
                 }),
-                chapterSettings(this.stateManager),
-                filterSettings(this.stateManager),
-                resetSettings(this.stateManager)
+                createDUISection({
+                    id: "source_settings",
+                    header: "Source Settings",
+                    rows: async () => [
+                        chapterSettings(this.stateManager),
+                        filterSettings(this.stateManager),
+                        resetSettings(this.stateManager)
+                    ]
+                })
             ]
         });
     }

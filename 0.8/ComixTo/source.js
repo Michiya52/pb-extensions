@@ -1125,7 +1125,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.3.3",
+    version: "1.3.4",
     name: "ComixTo",
     icon: "icon.png",
     author: "Michiya52",
@@ -1170,11 +1170,8 @@ var _Sources = (() => {
     }
     // -- Settings Menu --
     async getSourceMenu() {
-      return keepAlive(App.createDUISection({
-        id: "main",
-        header: "Source Settings",
-        isHidden: false,
-        rows: async () => keepAlive([
+      return App.createDUIForm({
+        sections: async () => keepAlive([
           App.createDUISection({
             id: "general_settings",
             header: "General Filtering",
@@ -1189,11 +1186,17 @@ var _Sources = (() => {
               })
             ])
           }),
-          contentSettings(this.stateManager),
-          filterSettings(this.stateManager),
-          resetSettings(this.stateManager)
+          App.createDUISection({
+            id: "source_settings",
+            header: "Source Settings",
+            rows: async () => keepAlive([
+              contentSettings(this.stateManager),
+              filterSettings(this.stateManager),
+              resetSettings(this.stateManager)
+            ])
+          })
         ])
-      }));
+      });
     }
     getMangaShareUrl(mangaId) {
       return `${DOMAIN}/title/${mangaId}`;
