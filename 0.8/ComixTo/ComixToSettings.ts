@@ -154,6 +154,36 @@ const createDynamicListSection = (
                         set: async (newValue: boolean) => await stateManager.store('one_version_only', newValue)
                     })
                 }),
+                createDUIButton({
+                    id: `${id}_move_up`,
+                    label: `Move Selected ${header} Up`,
+                    onTap: async () => {
+                        const current: string[] = await stateManager.retrieve(selectedKey) ?? [];
+                        const list: string[] = await stateManager.retrieve(listKey) ?? [];
+                        if (current.length === 1) {
+                            const index = list.indexOf(current[0] as string);
+                            if (index > 0) {
+                                [list[index - 1], list[index]] = [list[index] as string, list[index - 1] as string];
+                                await stateManager.store(listKey, list);
+                            }
+                        }
+                    }
+                }),
+                createDUIButton({
+                    id: `${id}_move_down`,
+                    label: `Move Selected ${header} Down`,
+                    onTap: async () => {
+                        const current: string[] = await stateManager.retrieve(selectedKey) ?? [];
+                        const list: string[] = await stateManager.retrieve(listKey) ?? [];
+                        if (current.length === 1) {
+                            const index = list.indexOf(current[0] as string);
+                            if (index !== -1 && index < list.length - 1) {
+                                [list[index + 1], list[index]] = [list[index] as string, list[index + 1] as string];
+                                await stateManager.store(listKey, list);
+                            }
+                        }
+                    }
+                }),
                 createDUISelect({
                     id: `${id}_select`,
                     label: `Currently Saved ${header}`,

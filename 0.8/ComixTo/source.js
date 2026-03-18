@@ -1040,6 +1040,36 @@ var _Sources = (() => {
               set: async (val) => await stateManager.store(strictKey, val)
             })
           }),
+          App.createDUIButton({
+            id: `${id}_move_up`,
+            label: `Move Selected ${header} Up`,
+            onTap: async () => {
+              const current = await stateManager.retrieve(selectedKey) ?? [];
+              const list = await stateManager.retrieve(listKey) ?? [];
+              if (current.length === 1) {
+                const index = list.indexOf(current[0]);
+                if (index > 0) {
+                  [list[index - 1], list[index]] = [list[index], list[index - 1]];
+                  await stateManager.store(listKey, list);
+                }
+              }
+            }
+          }),
+          App.createDUIButton({
+            id: `${id}_move_down`,
+            label: `Move Selected ${header} Down`,
+            onTap: async () => {
+              const current = await stateManager.retrieve(selectedKey) ?? [];
+              const list = await stateManager.retrieve(listKey) ?? [];
+              if (current.length === 1) {
+                const index = list.indexOf(current[0]);
+                if (index !== -1 && index < list.length - 1) {
+                  [list[index + 1], list[index]] = [list[index], list[index + 1]];
+                  await stateManager.store(listKey, list);
+                }
+              }
+            }
+          }),
           App.createDUISelect({
             id: `${id}_list`,
             label: `Currently Saved ${header}`,
@@ -1154,7 +1184,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.3.4",
+    version: "1.3.5",
     name: "ComixTo",
     icon: "icon.png",
     author: "Michiya52",
