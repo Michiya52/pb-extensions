@@ -1084,26 +1084,28 @@ var _Sources = (() => {
     return keepAlive(App.createDUINavigationButton({
       id: "filter_settings",
       label: "Advanced Filtering Settings",
-            sections: async () => {
-                await warmUpGroupSettings(stateManager);
-                return keepAlive([
-                    App.createDUISection({
-                        id: 'general_filter_settings',
-                        header: 'General Filtering Settings',
-                        rows: async () => keepAlive([
-                            App.createDUISwitch({
-                                id: 'one_version_only',
-                                label: 'Always Only Show 1 Source',
-                                value: App.createDUIBinding({
-                                    get: async () => await stateManager.retrieve('one_version_only') ?? false,
-                                    set: async (val) => await stateManager.store('one_version_only', val)
-                                })
-                            })
-                        ])
-                    }),
-                    createDynamicListSection(stateManager, "uploaders", "Uploaders", "uploaders", "uploaders_selected", "uploader_input", "uploaders_enabled", "uploaders_whitelist", "uploaders_strict")
-                ]);
-            }
+      form: App.createDUIForm({
+        sections: async () => {
+          await warmUpGroupSettings(stateManager);
+          return keepAlive([
+            App.createDUISection({
+              id: "general_filter_settings",
+              header: "General Filtering Settings",
+              rows: async () => keepAlive([
+                App.createDUISwitch({
+                  id: "one_version_only",
+                  label: "Always Only Show 1 Source",
+                  value: App.createDUIBinding({
+                    get: async () => await stateManager.retrieve("one_version_only") ?? false,
+                    set: async (val) => await stateManager.store("one_version_only", val)
+                  })
+                })
+              ])
+            }),
+            createDynamicListSection(stateManager, "uploaders", "Uploaders", "uploaders", "uploaders_selected", "uploader_input", "uploaders_enabled", "uploaders_whitelist", "uploaders_strict")
+          ]);
+        }
+      })
     }));
   };
   var resetSettings = (stateManager) => {
@@ -1126,7 +1128,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.4.0",
+    version: "1.4.1",
     name: "ComixTo",
     icon: "icon.png",
     author: "Michiya52",

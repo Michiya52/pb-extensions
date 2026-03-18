@@ -31,7 +31,7 @@ import { chapterSettings, filterSettings, resetSettings } from "./ComixToSetting
 const COMIXTO_DOMAIN = "https://comix.to";
 
 export const ComixToInfo: SourceInfo = {
-    version: "1.4.0",
+    version: "1.4.1",
     name: "Comix.to",
     icon: "icon.png",
     author: "Michiya52",
