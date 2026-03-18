@@ -812,7 +812,19 @@ var _Sources = (() => {
                 if (whitelisted.length > 0) filtered = whitelisted;
             }
 
-            // C. One Version per Chapter logic
+            // C. Priority Ranking (v1.3.4)
+            const uLoaderList = (filters.uploaders.list || []).map(u => u.toLowerCase());
+            filtered.sort((a, b) => {
+                const aName = (a.group || "").toLowerCase();
+                const bName = (b.group || "").toLowerCase();
+                let aIdx = uLoaderList.findIndex(u => filters.uploaders.strict ? aName === u : aName.includes(u));
+                let bIdx = uLoaderList.findIndex(u => filters.uploaders.strict ? bName === u : bName.includes(u));
+                if (aIdx === -1) aIdx = 9999;
+                if (bIdx === -1) bIdx = 9999;
+                return aIdx - bIdx;
+            });
+
+            // D. One Version per Chapter logic
             if (filters.oneVersionOnly && filtered.length > 1) {
                 filtered = [filtered[0]];
             }
@@ -1142,7 +1154,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.3.3",
+    version: "1.3.4",
     name: "ComixTo",
     icon: "icon.png",
     author: "Michiya52",

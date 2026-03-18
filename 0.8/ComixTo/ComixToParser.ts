@@ -194,9 +194,26 @@ export const parseChapterList = (
                 }
             }
 
-            // C. One Version per Chapter logic
+            // C. Priority Ranking (v1.3.4) - Sort by uploader preference
+            const uploaderList = filters.uploaders.list.map(u => u.toLowerCase());
+            filtered.sort((a: any, b: any) => {
+                const aName = a.group?.toLowerCase() ?? "";
+                const bName = b.group?.toLowerCase() ?? "";
+                
+                // Find index in user's preferred list
+                let aIdx = uploaderList.findIndex(u => filters.uploaders.strict ? aName === u : aName.includes(u));
+                let bIdx = uploaderList.findIndex(u => filters.uploaders.strict ? bName === u : bName.includes(u));
+                
+                // If not found, put at the end
+                if (aIdx === -1) aIdx = 9999;
+                if (bIdx === -1) bIdx = 9999;
+                
+                return aIdx - bIdx;
+            });
+
+            // D. One Version per Chapter logic
             if (filters.oneVersionOnly && filtered.length > 1) {
-                filtered = [filtered[0]]; // Take the first available version (best source based on filters)
+                filtered = [filtered[0]]; // Take the first available version (now sorted by priority)
             }
         }
 
