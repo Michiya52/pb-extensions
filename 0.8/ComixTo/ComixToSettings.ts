@@ -80,36 +80,33 @@ export const chapterSettings = (stateManager: SourceStateManager): DUINavigation
                             displayLabel: (option: string) => option === "strict" ? "Strict (Fallback to Closest)" : "Closest Match"
                         }),
                         createDUIInputField({
+                            id: "new_uploader_input",
+                            label: "Add Uploader to List (Type & Save)",
+                            value: createDUIBinding({
+                                get: async () => "",
+                                set: async (newValue: any) => {
+                                    const p = await stateManager.retrieve("prioritized_uploaders");
+                                    const prioritizedRaw = typeof p === 'string' ? p : "";
+                                    if (newValue && newValue.trim().length > 0) {
+                                        await stateManager.store("prioritized_uploaders", prioritizedRaw ? (prioritizedRaw + "," + newValue.trim()) : newValue.trim());
+                                    }
+                                }
+                            })
+                        }),
+                        createDUIButton({
+                            id: "clear_prioritized",
+                            label: "Clear All Prioritized Uploaders",
+                            onTap: async () => await stateManager.store("prioritized_uploaders", "")
+                        }),
+                        createDUIInputField({
                             id: "prioritized_uploaders",
-                            label: "Prioritized Uploaders (Comma separated)",
+                            label: "Current Prioritized Uploaders (Editable list)",
                             value: createDUIBinding({
                                 get: async () => {
                                     const p = await stateManager.retrieve("prioritized_uploaders");
                                     return typeof p === 'string' ? p : "";
                                 },
                                 set: async (newValue: any) => await stateManager.store("prioritized_uploaders", newValue)
-                            })
-                        }),
-                        createDUIInputField({
-                            id: "blacklisted_uploaders",
-                            label: "Blacklisted Uploaders (Comma separated)",
-                            value: createDUIBinding({
-                                get: async () => {
-                                    const b = await stateManager.retrieve("blacklisted_uploaders");
-                                    return typeof b === 'string' ? b : "";
-                                },
-                                set: async (newValue: any) => await stateManager.store("blacklisted_uploaders", newValue)
-                            })
-                        }),
-                        createDUIInputField({
-                            id: "language_filters",
-                            label: "Language/Region Filters (Comma separated, e.g. en, es)",
-                            value: createDUIBinding({
-                                get: async () => {
-                                    const l = await stateManager.retrieve("language_filters");
-                                    return typeof l === 'string' ? l : "";
-                                },
-                                set: async (newValue: any) => await stateManager.store("language_filters", newValue)
                             })
                         })
                     ]

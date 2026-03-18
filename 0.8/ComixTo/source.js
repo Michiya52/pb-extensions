@@ -769,56 +769,12 @@ var _Sources = (() => {
         .map(u => u.trim().toLowerCase())
         .filter(u => u.length > 0);
 
-      const blacklistedRaw = await stateManager.retrieve('blacklisted_uploaders') ?? "";
-      const blacklistedUploaders = blacklistedRaw
-        .split(',')
-        .map(u => u.trim().toLowerCase())
-        .filter(u => u.length > 0);
-
-      const langRaw = await stateManager.retrieve('language_filters') ?? "";
-      const langFilters = langRaw
-        .split(',')
-        .map(u => u.trim().toLowerCase())
-        .filter(u => u.length > 0);
-
-      // Pre-filter blacklist and languages
-      let chaptersData = data.filter(chap => {
-        const groupName = (chap.scanlation_group?.name || "").toLowerCase();
-        if (blacklistedUploaders.includes(groupName)) return false;
-        
-        const lang = (chap.language || "en").toLowerCase();
-        if (langFilters.length > 0 && !langFilters.includes(lang)) return false;
-        
-        return true;
-      });
-
-      // Default sorting: if no prioritized uploaders, prevent mixing/matching
-      // by automatically prioritizing the source with the most chapters.
-      if (prioritizedUploaders.length === 0 && chaptersData.length > 0) {
-        const sourceCounts = {};
-        for (const chap of chaptersData) {
-          const gName = (chap.scanlation_group?.name || "").toLowerCase();
-          if (gName) {
-            sourceCounts[gName] = (sourceCounts[gName] || 0) + 1;
-          }
-        }
-        let bestSource = "";
-        let maxCount = 0;
-        for (const [gName, count] of Object.entries(sourceCounts)) {
-          if (count > maxCount) {
-            maxCount = count;
-            bestSource = gName;
-          }
-        }
-        if (bestSource) {
-          prioritizedUploaders.push(bestSource);
-        }
-      }
+      let chaptersData = data;
 
       // Group chapters by chapter number to deduplicate
       if (removeDuplicates) {
         const chapterGroups = new Map();
-        for (const chap of chaptersData) {
+        for (const chap of data) {
           if (!chapterGroups.has(chap.number)) {
             chapterGroups.set(chap.number, []);
           }
@@ -827,7 +783,6 @@ var _Sources = (() => {
 
         const deduplicated = [];
         for (const [number, group] of chapterGroups.entries()) {
-          
           let hasStrictMatch = false;
           if (prioritizedUploaders.length > 0) {
             hasStrictMatch = group.some(chap => {
@@ -849,7 +804,6 @@ var _Sources = (() => {
             return 999;
           };
 
-          // Sort internally by priority groups first, then likes descending, fallback to views, fallback to 0
           group.sort((a, b) => {
             const groupA = (a.scanlation_group?.name || "").toLowerCase();
             const groupB = (b.scanlation_group?.name || "").toLowerCase();
@@ -1060,36 +1014,33 @@ var _Sources = (() => {
                 displayLabel: (option) => option === "strict" ? "Strict (Fallback to Closest)" : "Closest Match"
               }),
               App.createDUIInputField({
+                id: "new_uploader_input",
+                label: "Add Uploader to List (Type & Save)",
+                value: App.createDUIBinding({
+                  get: async () => "",
+                  set: async (newValue) => {
+                    const p = await stateManager.retrieve("prioritized_uploaders");
+                    const prioritizedRaw = typeof p === 'string' ? p : "";
+                    if (newValue && newValue.trim().length > 0) {
+                      await stateManager.store("prioritized_uploaders", prioritizedRaw ? (prioritizedRaw + "," + newValue.trim()) : newValue.trim());
+                    }
+                  }
+                })
+              }),
+              App.createDUIButton({
+                id: "clear_prioritized",
+                label: "Clear All Prioritized Uploaders",
+                onTap: async () => await stateManager.store("prioritized_uploaders", "")
+              }),
+              App.createDUIInputField({
                 id: "prioritized_uploaders",
-                label: "Prioritized Uploaders (Comma separated)",
+                label: "Current Prioritized Uploaders (Editable list)",
                 value: App.createDUIBinding({
                   get: async () => {
                     const p = await stateManager.retrieve("prioritized_uploaders");
                     return typeof p === 'string' ? p : "";
                   },
                   set: async (newValue) => await stateManager.store("prioritized_uploaders", newValue)
-                })
-              }),
-              App.createDUIInputField({
-                id: "blacklisted_uploaders",
-                label: "Blacklisted Uploaders (Comma separated)",
-                value: App.createDUIBinding({
-                  get: async () => {
-                    const b = await stateManager.retrieve("blacklisted_uploaders");
-                    return typeof b === 'string' ? b : "";
-                  },
-                  set: async (newValue) => await stateManager.store("blacklisted_uploaders", newValue)
-                })
-              }),
-              App.createDUIInputField({
-                id: "language_filters",
-                label: "Language/Region Filters (Comma separated, e.g. en, es)",
-                value: App.createDUIBinding({
-                  get: async () => {
-                    const l = await stateManager.retrieve("language_filters");
-                    return typeof l === 'string' ? l : "";
-                  },
-                  set: async (newValue) => await stateManager.store("language_filters", newValue)
                 })
               })
             ]
