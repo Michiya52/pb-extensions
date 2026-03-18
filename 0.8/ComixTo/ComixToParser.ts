@@ -80,9 +80,9 @@ export const parseChapterList = (
     filters?: {
         uploaders: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] },
         languages: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] },
-        regions: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] }
-    },
-    onlyOne: boolean = false
+        regions: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] },
+        oneVersionOnly: boolean
+    }
 ): Chapter[] => {
     const rawChapters: any[] = [];
 
@@ -193,6 +193,11 @@ export const parseChapterList = (
                     filtered = whitelisted;
                 }
             }
+
+            // C. One Version per Chapter logic
+            if (filters.oneVersionOnly && filtered.length > 1) {
+                filtered = [filtered[0]]; // Take the first available version (best source based on filters)
+            }
         }
 
         for (const chap of filtered) {
@@ -209,8 +214,6 @@ export const parseChapterList = (
                 volume: chap.volume,
                 group: chap.group
             }));
-
-            if (onlyOne) break;
         }
     }
 

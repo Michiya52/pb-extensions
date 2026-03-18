@@ -811,6 +811,11 @@ var _Sources = (() => {
                 });
                 if (whitelisted.length > 0) filtered = whitelisted;
             }
+
+            // C. One Version per Chapter logic
+            if (filters.oneVersionOnly && filtered.length > 1) {
+                filtered = [filtered[0]];
+            }
         }
 
         for (const chap of filtered) {
@@ -822,7 +827,6 @@ var _Sources = (() => {
                 volume: chap.volume,
                 group: chap.group
             }));
-            if (filters.onlyOne) break;
         }
       }
       return finalChapters;
@@ -1085,6 +1089,20 @@ var _Sources = (() => {
         sections: async () => {
           await warmUpGroupSettings(stateManager);
           return keepAlive([
+            App.createDUISection({
+              id: "general_filter_settings",
+              header: "General Filtering Settings",
+              rows: async () => keepAlive([
+                App.createDUISwitch({
+                  id: "one_version_only",
+                  label: "Always Only Show 1 Source",
+                  value: App.createDUIBinding({
+                    get: async () => await stateManager.retrieve("one_version_only") ?? false,
+                    set: async (val) => await stateManager.store("one_version_only", val)
+                  })
+                })
+              ])
+            }),
             createDynamicListSection(stateManager, "uploaders", "Uploaders", "uploaders", "uploaders_selected", "uploader_input", "uploaders_enabled", "uploaders_whitelist", "uploaders_strict"),
             createDynamicListSection(stateManager, "languages", "Languages", "languages", "languages_selected", "language_input", "languages_enabled", "languages_whitelist", "languages_strict"),
             createDynamicListSection(stateManager, "regions", "Regions", "regions", "regions_selected", "region_input", "regions_enabled", "regions_whitelist", "regions_strict")
@@ -1118,14 +1136,13 @@ var _Sources = (() => {
         await stateManager.store("regions_enabled", null);
         await stateManager.store("region_input", null);
         await stateManager.store("regions_strict", null);
-        await stateManager.store("only_one_per_chapter", null);
       }
     }));
   };
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.3.4",
+    version: "1.3.3",
     name: "ComixTo",
     icon: "icon.png",
     author: "Michiya52",
@@ -1170,33 +1187,16 @@ var _Sources = (() => {
     }
     // -- Settings Menu --
     async getSourceMenu() {
-      return App.createDUIForm({
-        sections: async () => keepAlive([
-          App.createDUISection({
-            id: "general_settings",
-            header: "General Filtering",
-            rows: async () => keepAlive([
-              App.createDUISwitch({
-                id: "only_one_per_chapter",
-                label: "Only Show One Source per Chapter",
-                value: App.createDUIBinding({
-                  get: async () => await this.stateManager.retrieve("only_one_per_chapter") ?? false,
-                  set: async (val) => await this.stateManager.store("only_one_per_chapter", val)
-                })
-              })
-            ])
-          }),
-          App.createDUISection({
-            id: "source_settings",
-            header: "Source Settings",
-            rows: async () => keepAlive([
-              contentSettings(this.stateManager),
-              filterSettings(this.stateManager),
-              resetSettings(this.stateManager)
-            ])
-          })
+      return keepAlive(App.createDUISection({
+        id: "main",
+        header: "Source Settings",
+        isHidden: false,
+        rows: async () => keepAlive([
+          contentSettings(this.stateManager),
+          filterSettings(this.stateManager),
+          resetSettings(this.stateManager)
         ])
-      });
+      }));
     }
     getMangaShareUrl(mangaId) {
       return `${DOMAIN}/title/${mangaId}`;
@@ -1251,7 +1251,7 @@ var _Sources = (() => {
             strict: await this.stateManager.retrieve("regions_strict") ?? false,
             list: await this.stateManager.retrieve("regions_selected") ?? []
         },
-        onlyOne: await this.stateManager.retrieve("only_one_per_chapter") ?? false
+        oneVersionOnly: await this.stateManager.retrieve("one_version_only") ?? false
       };
 
       return this.parser.parseChapters(chapters, filters);

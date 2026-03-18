@@ -146,6 +146,14 @@ const createDynamicListSection = (
                         set: async (newValue: boolean) => await stateManager.store(strictToggleKey, newValue)
                     })
                 }),
+                createDUISwitch({
+                    id: 'one_version_only',
+                    label: 'Always Only Show 1 Source',
+                    value: createDUIBinding({
+                        get: async () => await stateManager.retrieve('one_version_only') ?? false,
+                        set: async (newValue: boolean) => await stateManager.store('one_version_only', newValue)
+                    })
+                }),
                 createDUISelect({
                     id: `${id}_select`,
                     label: `Currently Saved ${header}`,

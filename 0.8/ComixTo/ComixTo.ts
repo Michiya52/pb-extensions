@@ -31,35 +31,28 @@ import { chapterSettings, filterSettings, resetSettings } from "./ComixToSetting
 const COMIXTO_DOMAIN = "https://comix.to";
 
 export const ComixToInfo: SourceInfo = {
-    version: '1.3.4',
-    name: 'Comix.to',
-    icon: 'icon.png',
-    author: 'Michiya52',
-    authorWebsite: 'https://github.com/Michiya52',
-    description: 'Comix.to Extension with advanced uploader, language, and region filters. (Inspired by Ace)',
+    version: "1.3.3",
+    name: "Comix.to",
+    icon: "icon.png",
+    author: "Michiya52",
+    authorWebsite: "https://github.com/Michiya52",
+    description: "Extension for Comix.to with advanced filters. (Inspired by Ace)",
     contentRating: ContentRating.MATURE,
     websiteBaseURL: COMIXTO_DOMAIN,
-    sourceTags: [
-        {
-            text: 'English',
-            type: BadgeColor.GREY
-        }
-    ],
-    intents: SourceIntents.MANGA_CHAPTERS | SourceIntents.HOMEPAGE_SECTIONS | SourceIntents.CLOUDFLARE_BYPASS_REQUIRED | SourceIntents.SETTINGS_UI
 };
 
 export class ComixTo extends Source {
     requestManager = createRequestManager({
-        requestsPerSecond: 4,
+        requestsPerSecond: 3,
         requestTimeout: 15000,
         interceptor: {
             interceptRequest: async (request: Request): Promise<Request> => {
                 request.headers = {
                     ...(request.headers ?? {}),
                     ...{
-                        'user-agent': await this.requestManager.getDefaultUserAgent(),
-                        'referer': `${COMIXTO_DOMAIN}/`
-                    }
+                        "Referer": COMIXTO_DOMAIN,
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                    },
                 };
                 return request;
             },
@@ -71,32 +64,15 @@ export class ComixTo extends Source {
 
     stateManager = createSourceStateManager();
 
-    override async getSourceMenu(): Promise<DUIForm> {
-        return createDUIForm({
-            sections: async () => [
-                createDUISection({
-                    id: "general_settings",
-                    header: "General Filtering",
-                    rows: async () => [
-                        createDUISwitch({
-                            id: "only_one_per_chapter",
-                            label: "Only Show One Source per Chapter",
-                            value: createDUIBinding({
-                                get: async () => await this.stateManager.retrieve("only_one_per_chapter") ?? false,
-                                set: async (newValue: boolean) => await this.stateManager.store("only_one_per_chapter", newValue)
-                            })
-                        })
-                    ]
-                }),
-                createDUISection({
-                    id: "source_settings",
-                    header: "Source Settings",
-                    rows: async () => [
-                        chapterSettings(this.stateManager),
-                        filterSettings(this.stateManager),
-                        resetSettings(this.stateManager)
-                    ]
-                })
+    async getSourceMenu(): Promise<DUISection> {
+        return createDUISection({
+            id: "main",
+            header: "Source Settings",
+            isHidden: false,
+            rows: async () => [
+                chapterSettings(this.stateManager),
+                filterSettings(this.stateManager),
+                resetSettings(this.stateManager)
             ]
         });
     }
@@ -162,7 +138,6 @@ export class ComixTo extends Source {
         const showVolume = await this.stateManager.retrieve("show_volume_number") as boolean ?? false;
         const showTitle = await this.stateManager.retrieve("show_title") as boolean ?? false;
         const showUploader = await this.stateManager.retrieve("show_uploader") as boolean ?? false;
-        const onlyOne = await this.stateManager.retrieve("only_one_per_chapter") as boolean ?? false;
 
         const filters = {
             uploaders: {
@@ -182,10 +157,11 @@ export class ComixTo extends Source {
                 whitelist: await this.stateManager.retrieve("regions_whitelist") as boolean ?? false,
                 strict: await this.stateManager.retrieve("regions_strict") as boolean ?? false,
                 list: await this.stateManager.retrieve("regions_selected") as string[] ?? []
-            }
+            },
+            oneVersionOnly: await this.stateManager.retrieve('one_version_only') ?? false
         };
 
-        return parseChapterList($, mangaId, sortVotes, { showVolume, showTitle, showUploader }, filters, onlyOne);
+        return parseChapterList($, mangaId, sortVotes, { showVolume, showTitle, showUploader }, filters);
     }
 
     async getChapterDetails(mangaId: string, chapterId: string): Promise<ChapterDetails> {
