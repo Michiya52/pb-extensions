@@ -26,17 +26,17 @@ import {
 } from "paperback-extensions-common";
 
 import { parseMangaDetails, parseChapterList, parsePageList, parseMangaList } from "./ComixToParser";
-import { chapterSettings, getShowChapterVolume, getShowChapterTitle, getShowUploader } from "./ComixToSettings";
+import { chapterSettings, filterSettings, resetSettings } from "./ComixToSettings";
 
 const COMIXTO_DOMAIN = "https://comix.to";
 
 export const ComixToInfo: SourceInfo = {
-    version: "1.0.1",
+    version: "1.3.1",
     name: "Comix.to",
     icon: "icon.png",
     author: "Michiya52",
     authorWebsite: "https://github.com/Michiya52",
-    description: "Extension for Comix.to",
+    description: "Extension for Comix.to with advanced filters. (Inspired by Ace)",
     contentRating: ContentRating.MATURE,
     websiteBaseURL: COMIXTO_DOMAIN,
 };
@@ -71,47 +71,8 @@ export class ComixTo extends Source {
             isHidden: false,
             rows: async () => [
                 chapterSettings(this.stateManager),
-                createDUINavigationButton({
-                    id: "settings",
-                    label: "Comix.to Settings",
-                    form: createDUIForm({
-                        sections: async () => [
-                            createDUISection({
-                                id: "sorting",
-                                header: "Sorting",
-                                isHidden: false,
-                                rows: async () => [
-                                    createDUISwitch({
-                                        id: "sort_upvotes",
-                                        label: "Sort Chapters by Highest Upvoted",
-                                        value: createDUIBinding({
-                                            get: async () => await this.stateManager.retrieve("sort_upvotes") ?? false,
-                                            set: async (newValue: any) => await this.stateManager.store("sort_upvotes", newValue)
-                                        })
-                                    }),
-                                    createDUISelect({
-                                        id: "manga_sorting",
-                                        label: "Global Manga Sorting",
-                                        options: ["", "sort.follow", "sort.view", "sort.rating", "sort.uploaded"],
-                                        value: createDUIBinding({
-                                            get: async () => await this.stateManager.retrieve("manga_sorting") ?? "",
-                                            set: async (newValue: any) => await this.stateManager.store("manga_sorting", newValue)
-                                        }),
-                                        displayLabel: (option: any) => {
-                                            switch (option) {
-                                                case "sort.follow": return "Most follows";
-                                                case "sort.view": return "Most views";
-                                                case "sort.rating": return "High rating";
-                                                case "sort.uploaded": return "Last updated";
-                                                default: return "None";
-                                            }
-                                        }
-                                    })
-                                ]
-                            })
-                        ]
-                    })
-                })
+                filterSettings(this.stateManager),
+                resetSettings(this.stateManager)
             ]
         });
     }
@@ -169,16 +130,37 @@ export class ComixTo extends Source {
             method: "GET",
         });
         const response = await this.requestManager.schedule(request, 1);
-        const $ = this.cheerio.load(response.data);
+        const $ = (this as any).cheerio.load(response.data);
 
-        // Retrieve setting
-        const sortVotes = await this.stateManager.retrieve("sort_upvotes") ?? false;
+        // Retrieve settings
+        const sortVotes = await this.stateManager.retrieve("sort_upvotes") as boolean ?? false;
+        
+        const showVolume = await this.stateManager.retrieve("show_volume_number") as boolean ?? false;
+        const showTitle = await this.stateManager.retrieve("show_title") as boolean ?? false;
+        const showUploader = await this.stateManager.retrieve("show_uploader") as boolean ?? false;
 
-        const showVolume = await getShowChapterVolume(this.stateManager);
-        const showTitle = await getShowChapterTitle(this.stateManager);
-        const showUploader = await getShowUploader(this.stateManager);
+        const filters = {
+            uploaders: {
+                enabled: await this.stateManager.retrieve("uploaders_enabled") as boolean ?? false,
+                whitelist: await this.stateManager.retrieve("uploaders_whitelist") as boolean ?? false,
+                strict: await this.stateManager.retrieve("uploaders_strict") as boolean ?? false,
+                list: await this.stateManager.retrieve("uploaders_selected") as string[] ?? []
+            },
+            languages: {
+                enabled: await this.stateManager.retrieve("languages_enabled") as boolean ?? false,
+                whitelist: await this.stateManager.retrieve("languages_whitelist") as boolean ?? false,
+                strict: await this.stateManager.retrieve("languages_strict") as boolean ?? false,
+                list: await this.stateManager.retrieve("languages_selected") as string[] ?? []
+            },
+            regions: {
+                enabled: await this.stateManager.retrieve("regions_enabled") as boolean ?? false,
+                whitelist: await this.stateManager.retrieve("regions_whitelist") as boolean ?? false,
+                strict: await this.stateManager.retrieve("regions_strict") as boolean ?? false,
+                list: await this.stateManager.retrieve("regions_selected") as string[] ?? []
+            }
+        };
 
-        return parseChapterList($, mangaId, sortVotes, { showVolume, showTitle, showUploader });
+        return parseChapterList($, mangaId, sortVotes, { showVolume, showTitle, showUploader }, filters);
     }
 
     async getChapterDetails(mangaId: string, chapterId: string): Promise<ChapterDetails> {
@@ -187,7 +169,7 @@ export class ComixTo extends Source {
             method: "GET",
         });
         const response = await this.requestManager.schedule(request, 1);
-        const $ = this.cheerio.load(response.data);
+        const $ = (this as any).cheerio.load(response.data);
         return parsePageList($, mangaId, chapterId);
     }
 }

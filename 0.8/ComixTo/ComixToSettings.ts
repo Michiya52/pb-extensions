@@ -4,10 +4,38 @@ import {
     createDUINavigationButton,
     createDUISection,
     createDUISwitch,
+    createDUIInputField,
+    createDUIButton,
+    createDUISelect,
     DUINavigationButton,
-    SourceStateManager
+    SourceStateManager,
+    DUISection,
+    DUIButton
 } from 'paperback-extensions-common';
 
+// --- Stability Utilities ---
+const uiKeepAlive: any[] = [];
+const keepAlive = <T>(obj: T): T => {
+    uiKeepAlive.push(obj);
+    return obj;
+};
+
+let settingsWarmUp: Promise<void> | null = null;
+const warmUpSettings = (stateManager: SourceStateManager) => {
+    if (!settingsWarmUp) {
+        settingsWarmUp = (async () => {
+            await stateManager.retrieve('uploaders');
+            await stateManager.retrieve('languages');
+            await stateManager.retrieve('regions');
+            await stateManager.retrieve('uploader_input');
+            await stateManager.retrieve('language_input');
+            await stateManager.retrieve('region_input');
+        })();
+    }
+    return settingsWarmUp;
+};
+
+// --- Getters ---
 export const getShowChapterVolume = async (stateManager: SourceStateManager): Promise<boolean> => {
     return (await stateManager.retrieve('show_volume_number') as boolean) ?? false;
 }
@@ -20,10 +48,24 @@ export const getShowUploader = async (stateManager: SourceStateManager): Promise
     return (await stateManager.retrieve('show_uploader') as boolean) ?? false;
 }
 
+const getList = async (stateManager: SourceStateManager, key: string): Promise<string[]> => {
+    return (await stateManager.retrieve(key) as string[]) ?? [];
+}
+
+const getSelected = async (stateManager: SourceStateManager, key: string): Promise<string[]> => {
+    return (await stateManager.retrieve(key) as string[]) ?? [];
+}
+
+const getInput = async (stateManager: SourceStateManager, key: string): Promise<string> => {
+    return (await stateManager.retrieve(key) as string) ?? '';
+}
+
+// --- Sections ---
+
 export const chapterSettings = (stateManager: SourceStateManager): DUINavigationButton => {
-    return createDUINavigationButton({
+    return keepAlive(createDUINavigationButton({
         id: 'chapter_settings',
-        label: 'Chapter Settings',
+        label: 'Chapter Display Settings',
         form: createDUIForm({
             sections: async () => [
                 createDUISection({
@@ -59,5 +101,147 @@ export const chapterSettings = (stateManager: SourceStateManager): DUINavigation
                 })
             ]
         })
+    }));
+}
+
+const createDynamicListSection = (
+    stateManager: SourceStateManager,
+    id: string,
+    header: string,
+    listKey: string,
+    selectedKey: string,
+    inputKey: string,
+    filterToggleKey: string,
+    whitelistToggleKey: string,
+    strictToggleKey: string
+): DUISection => {
+    return createDUISection({
+        id: id,
+        header: header,
+        isHidden: false,
+        rows: async () => {
+            const masterList = await getList(stateManager, listKey);
+            return [
+                createDUISwitch({
+                    id: `${id}_filter_toggle`,
+                    label: `Enable ${header} Filtering`,
+                    value: createDUIBinding({
+                        get: async () => await stateManager.retrieve(filterToggleKey) ?? false,
+                        set: async (newValue: boolean) => await stateManager.store(filterToggleKey, newValue)
+                    })
+                }),
+                createDUISwitch({
+                    id: `${id}_whitelist_toggle`,
+                    label: 'Enable Whitelist Mode',
+                    value: createDUIBinding({
+                        get: async () => await stateManager.retrieve(whitelistToggleKey) ?? false,
+                        set: async (newValue: boolean) => await stateManager.store(whitelistToggleKey, newValue)
+                    })
+                }),
+                createDUISwitch({
+                    id: `${id}_strict_toggle`,
+                    label: 'Strict Matching',
+                    value: createDUIBinding({
+                        get: async () => await stateManager.retrieve(strictToggleKey) ?? false,
+                        set: async (newValue: boolean) => await stateManager.store(strictToggleKey, newValue)
+                    })
+                }),
+                createDUISelect({
+                    id: `${id}_select`,
+                    label: `Currently Saved ${header}`,
+                    options: masterList,
+                    value: createDUIBinding({
+                        get: async () => await getSelected(stateManager, selectedKey),
+                        set: async (newValue: string[]) => await stateManager.store(selectedKey, newValue)
+                    }),
+                    allowsMultiselect: true,
+                    labelResolver: async (val: string) => val
+                }),
+                createDUIInputField({
+                    id: `${id}_input`,
+                    label: 'Name',
+                    value: createDUIBinding({
+                        get: async () => await getInput(stateManager, inputKey),
+                        set: async (newValue: string) => await stateManager.store(inputKey, newValue)
+                    })
+                }),
+                createDUIButton({
+                    id: `${id}_add`,
+                    label: 'Add to List',
+                    onTap: async () => {
+                        const val = await getInput(stateManager, inputKey);
+                        if (!val || val.trim() === '') return;
+                        const list = await getList(stateManager, listKey);
+                        if (!list.includes(val)) {
+                            list.push(val);
+                            await stateManager.store(listKey, list);
+                            await stateManager.store(inputKey, '');
+                        }
+                    }
+                }),
+                createDUIButton({
+                    id: `${id}_remove`,
+                    label: 'Remove from List',
+                    onTap: async () => {
+                        const val = await getInput(stateManager, inputKey);
+                        if (!val) return;
+                        let list = await getList(stateManager, listKey);
+                        list = list.filter(item => item !== val);
+                        await stateManager.store(listKey, list);
+                        let selected = await getSelected(stateManager, selectedKey);
+                        selected = selected.filter(item => item !== val);
+                        await stateManager.store(selectedKey, selected);
+                        await stateManager.store(inputKey, '');
+                    }
+                })
+            ];
+        }
+    });
+};
+
+export const filterSettings = (stateManager: SourceStateManager): DUINavigationButton => {
+    return keepAlive(createDUINavigationButton({
+        id: 'filter_settings',
+        label: 'Advanced Filter & Sorting Settings',
+        form: createDUIForm({
+            sections: async () => {
+                await warmUpSettings(stateManager);
+                return [
+                    createDynamicListSection(stateManager, 'uploaders', 'Uploaders', 'uploaders', 'uploaders_selected', 'uploader_input', 'uploaders_enabled', 'uploaders_whitelist', 'uploaders_strict'),
+                    createDynamicListSection(stateManager, 'languages', 'Languages', 'languages', 'languages_selected', 'language_input', 'languages_enabled', 'languages_whitelist', 'languages_strict'),
+                    createDynamicListSection(stateManager, 'regions', 'Regions', 'regions', 'regions_selected', 'region_input', 'regions_enabled', 'regions_whitelist', 'regions_strict')
+                ];
+            }
+        })
+    }));
+}
+
+export const resetSettings = (stateManager: SourceStateManager): DUIButton => {
+    return createDUIButton({
+        id: 'reset',
+        label: 'Reset All Settings',
+        onTap: async () => {
+            await stateManager.store('show_volume_number', null);
+            await stateManager.store('show_title', null);
+            await stateManager.store('show_uploader', null);
+            await stateManager.store('uploaders', null);
+            await stateManager.store('uploaders_selected', null);
+            await stateManager.store('uploader_input', null);
+            await stateManager.store('uploaders_enabled', null);
+            await stateManager.store('uploaders_whitelist', null);
+            await stateManager.store('uploaders_strict', null);
+            await stateManager.store('languages', null);
+            await stateManager.store('languages_selected', null);
+            await stateManager.store('language_input', null);
+            await stateManager.store('languages_enabled', null);
+            await stateManager.store('languages_whitelist', null);
+            await stateManager.store('languages_strict', null);
+            await stateManager.store('regions', null);
+            await stateManager.store('regions_selected', null);
+            await stateManager.store('region_input', null);
+            await stateManager.store('regions_enabled', null);
+            await stateManager.store('regions_whitelist', null);
+            await stateManager.store('regions_strict', null);
+        }
     });
 }

@@ -72,7 +72,17 @@ export const parseMangaDetails = ($: any, mangaId: string): Manga => {
     });
 }
 
-export const parseChapterList = ($: any, mangaId: string, sortVotes: boolean = false, chapSettings?: { showVolume: boolean, showTitle: boolean, showUploader: boolean }): Chapter[] => {
+export const parseChapterList = (
+    $: any,
+    mangaId: string,
+    sortVotes: boolean = false,
+    chapSettings?: { showVolume: boolean, showTitle: boolean, showUploader: boolean },
+    filters?: {
+        uploaders: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] },
+        languages: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] },
+        regions: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] }
+    }
+): Chapter[] => {
     const chapters: any[] = [];
 
     // Generic selector for chapter lists
@@ -97,15 +107,39 @@ export const parseChapterList = ($: any, mangaId: string, sortVotes: boolean = f
             finalName = `Chapter ${chapNum}`;
         }
 
-        if (chapSettings?.showUploader) {
-            const uploader = $('.scanlator, .chapter-uploader, .group, .group-name', element).text().trim();
-            if (uploader) {
-                groupName = uploader;
-            }
+        const uploader = $('.scanlator, .chapter-uploader, .group, .group-name', element).text().trim();
+        if (uploader) {
+            groupName = uploader;
+        }
+
+        // --- Filtering Logic ---
+        if (filters) {
+            const checkFilter = (val: string | undefined, filter: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] }) => {
+                if (!filter.enabled || filter.list.length === 0) return true;
+                if (!val) return !filter.whitelist; // If no value, fail whitelist, pass blacklist
+
+                const target = val.toLowerCase();
+                const match = filter.list.some(item => {
+                    const listItem = item.toLowerCase();
+                    return filter.strict ? target === listItem : target.includes(listItem);
+                });
+
+                return filter.whitelist ? match : !match;
+            };
+
+            // Assuming the site provides language/region info in elements
+            // For now, we only have groupName reliably from the uploader element
+            if (!checkFilter(groupName, filters.uploaders)) return;
+
+            // Language/Region info might be in specific icons or text
+            const langInfo = $('.lang-icon, .language', element).attr('title') || $('.language', element).text().trim();
+            if (!checkFilter(langInfo, filters.languages)) return;
+
+            const regionInfo = $('.region-icon, .region', element).attr('title') || $('.region', element).text().trim();
+            if (!checkFilter(regionInfo, filters.regions)) return;
         }
 
         // Attempt to find metadata for sorting
-        // Assumption: Generic upvote selectors
         const voteText = $('.votes, .like-count', element).text().trim();
         const votes = parseInt(voteText.replace(/,/g, '')) || 0;
 
@@ -114,18 +148,17 @@ export const parseChapterList = ($: any, mangaId: string, sortVotes: boolean = f
         chapters.push({
             id: id,
             mangaId: mangaId,
-            name: finalName,
-            langCode: 'en', // Assuming English
+            name: (chapSettings && !chapSettings.showTitle) ? `Chapter ${chapNum}` : (chapSettings?.showUploader && groupName ? `${finalName} [${groupName}]` : finalName),
+            langCode: 'en', 
             chapNum: chapNum,
             volume: volumeNumber,
-            time: new Date(time), // Basic date parsing
+            time: new Date(time),
             votes: votes,
             group: groupName
         });
     });
 
     if (sortVotes) {
-        // Sort by votes descending
         chapters.sort((a, b) => b.votes - a.votes);
     }
 
