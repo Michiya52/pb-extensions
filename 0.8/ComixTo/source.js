@@ -822,6 +822,7 @@ var _Sources = (() => {
                 volume: chap.volume,
                 group: chap.group
             }));
+            if (filters.onlyOne) break;
         }
       }
       return finalChapters;
@@ -1117,13 +1118,14 @@ var _Sources = (() => {
         await stateManager.store("regions_enabled", null);
         await stateManager.store("region_input", null);
         await stateManager.store("regions_strict", null);
+        await stateManager.store("only_one_per_chapter", null);
       }
     }));
   };
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.3.2",
+    version: "1.3.3",
     name: "ComixTo",
     icon: "icon.png",
     author: "Michiya52",
@@ -1173,6 +1175,20 @@ var _Sources = (() => {
         header: "Source Settings",
         isHidden: false,
         rows: async () => keepAlive([
+          App.createDUISection({
+            id: "general_settings",
+            header: "General Filtering",
+            rows: async () => keepAlive([
+              App.createDUISwitch({
+                id: "only_one_per_chapter",
+                label: "Only Show One Source per Chapter",
+                value: App.createDUIBinding({
+                  get: async () => await this.stateManager.retrieve("only_one_per_chapter") ?? false,
+                  set: async (val) => await this.stateManager.store("only_one_per_chapter", val)
+                })
+              })
+            ])
+          }),
           contentSettings(this.stateManager),
           filterSettings(this.stateManager),
           resetSettings(this.stateManager)
@@ -1231,7 +1247,8 @@ var _Sources = (() => {
             whitelist: await this.stateManager.retrieve("regions_whitelist") ?? false,
             strict: await this.stateManager.retrieve("regions_strict") ?? false,
             list: await this.stateManager.retrieve("regions_selected") ?? []
-        }
+        },
+        onlyOne: await this.stateManager.retrieve("only_one_per_chapter") ?? false
       };
 
       return this.parser.parseChapters(chapters, filters);

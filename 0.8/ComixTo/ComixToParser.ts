@@ -81,7 +81,8 @@ export const parseChapterList = (
         uploaders: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] },
         languages: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] },
         regions: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] }
-    }
+    },
+    onlyOne: boolean = false
 ): Chapter[] => {
     const rawChapters: any[] = [];
 
@@ -208,6 +209,8 @@ export const parseChapterList = (
                 volume: chap.volume,
                 group: chap.group
             }));
+
+            if (onlyOne) break;
         }
     }
 

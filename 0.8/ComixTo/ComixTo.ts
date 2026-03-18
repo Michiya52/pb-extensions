@@ -31,7 +31,7 @@ import { chapterSettings, filterSettings, resetSettings } from "./ComixToSetting
 const COMIXTO_DOMAIN = "https://comix.to";
 
 export const ComixToInfo: SourceInfo = {
-    version: "1.3.2",
+    version: '1.3.3',
     name: "Comix.to",
     icon: "icon.png",
     author: "Michiya52",
@@ -70,6 +70,20 @@ export class ComixTo extends Source {
             header: "Source Settings",
             isHidden: false,
             rows: async () => [
+                createDUISection({
+                    id: "general_settings",
+                    header: "General Filtering",
+                    rows: async () => [
+                        createDUISwitch({
+                            id: "only_one_per_chapter",
+                            label: "Only Show One Source per Chapter",
+                            value: createDUIBinding({
+                                get: async () => await this.stateManager.retrieve("only_one_per_chapter") ?? false,
+                                set: async (newValue: boolean) => await this.stateManager.store("only_one_per_chapter", newValue)
+                            })
+                        })
+                    ]
+                }),
                 chapterSettings(this.stateManager),
                 filterSettings(this.stateManager),
                 resetSettings(this.stateManager)
@@ -138,6 +152,7 @@ export class ComixTo extends Source {
         const showVolume = await this.stateManager.retrieve("show_volume_number") as boolean ?? false;
         const showTitle = await this.stateManager.retrieve("show_title") as boolean ?? false;
         const showUploader = await this.stateManager.retrieve("show_uploader") as boolean ?? false;
+        const onlyOne = await this.stateManager.retrieve("only_one_per_chapter") as boolean ?? false;
 
         const filters = {
             uploaders: {
@@ -160,7 +175,7 @@ export class ComixTo extends Source {
             }
         };
 
-        return parseChapterList($, mangaId, sortVotes, { showVolume, showTitle, showUploader }, filters);
+        return parseChapterList($, mangaId, sortVotes, { showVolume, showTitle, showUploader }, filters, onlyOne);
     }
 
     async getChapterDetails(mangaId: string, chapterId: string): Promise<ChapterDetails> {
