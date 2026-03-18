@@ -4,9 +4,6 @@ import {
     createDUINavigationButton,
     createDUISection,
     createDUISwitch,
-    createDUIInputField,
-    createDUISelect,
-    createDUIButton,
     DUINavigationButton,
     SourceStateManager
 } from 'paperback-extensions-common';
@@ -56,57 +53,6 @@ export const chapterSettings = (stateManager: SourceStateManager): DUINavigation
                             value: createDUIBinding({
                                 get: async () => await getShowUploader(stateManager),
                                 set: async (newValue: any) => await stateManager.store('show_uploader', newValue)
-                            })
-                        }),
-                        createDUISwitch({
-                            id: "remove_duplicates",
-                            label: "Remove Duplicate Chapters",
-                            value: createDUIBinding({
-                                get: async () => await stateManager.retrieve("remove_duplicates") ?? true,
-                                set: async (newValue: any) => await stateManager.store("remove_duplicates", newValue)
-                            })
-                        }),
-                        createDUISelect({
-                            id: "source_match_mode",
-                            label: "Source Match Mode",
-                            options: ["strict", "closest"],
-                            value: createDUIBinding({
-                                get: async () => {
-                                    const mode = await stateManager.retrieve("source_match_mode");
-                                    return (mode === "strict" || mode === "closest") ? mode : "strict";
-                                },
-                                set: async (newValue: any) => await stateManager.store("source_match_mode", newValue)
-                            }),
-                            displayLabel: (option: string) => option === "strict" ? "Strict (Fallback to Closest)" : "Closest Match"
-                        }),
-                        createDUIInputField({
-                            id: "new_uploader_input",
-                            label: "Add Uploader to List (Type & Save)",
-                            value: createDUIBinding({
-                                get: async () => "",
-                                set: async (newValue: any) => {
-                                    const p = await stateManager.retrieve("prioritized_uploaders");
-                                    const prioritizedRaw = typeof p === 'string' ? p : "";
-                                    if (newValue && newValue.trim().length > 0) {
-                                        await stateManager.store("prioritized_uploaders", prioritizedRaw ? (prioritizedRaw + "," + newValue.trim()) : newValue.trim());
-                                    }
-                                }
-                            })
-                        }),
-                        createDUIButton({
-                            id: "clear_prioritized",
-                            label: "Clear All Prioritized Uploaders",
-                            onTap: async () => await stateManager.store("prioritized_uploaders", "")
-                        }),
-                        createDUIInputField({
-                            id: "prioritized_uploaders",
-                            label: "Current Prioritized Uploaders (Editable list)",
-                            value: createDUIBinding({
-                                get: async () => {
-                                    const p = await stateManager.retrieve("prioritized_uploaders");
-                                    return typeof p === 'string' ? p : "";
-                                },
-                                set: async (newValue: any) => await stateManager.store("prioritized_uploaders", newValue)
                             })
                         })
                     ]

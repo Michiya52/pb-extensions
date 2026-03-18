@@ -761,9 +761,8 @@ var _Sources = (() => {
       const showTitle = await stateManager.retrieve('show_title') ?? false;
       const showUploader = await stateManager.retrieve('show_uploader') ?? false;
       const removeDuplicates = await stateManager.retrieve('remove_duplicates') ?? true;
-      const matchMode = await stateManager.retrieve('source_match_mode') ?? "strict";
-
       const prioritizedUploadersRaw = await stateManager.retrieve('prioritized_uploaders') ?? "";
+
       const prioritizedUploaders = prioritizedUploadersRaw
         .split(',')
         .map(u => u.trim().toLowerCase())
@@ -783,37 +782,17 @@ var _Sources = (() => {
 
         const deduplicated = [];
         for (const [number, group] of chapterGroups.entries()) {
-          let hasStrictMatch = false;
-          if (prioritizedUploaders.length > 0) {
-            hasStrictMatch = group.some(chap => {
-              const gName = (chap.scanlation_group?.name || "").toLowerCase();
-              return prioritizedUploaders.includes(gName);
-            });
-          }
-
-          const getPriority = (gName) => {
-            if (!gName) return 999;
-            let idx = prioritizedUploaders.indexOf(gName);
-            if (idx !== -1) return idx;
-            
-            // If matchMode is closest OR (matchMode is strict but no strict match was found), fallback to closest
-            if (matchMode === "closest" || !hasStrictMatch) {
-               idx = prioritizedUploaders.findIndex(u => gName.includes(u) || u.includes(gName));
-               if (idx !== -1) return idx + 100;
-            }
-            return 999;
-          };
-
+          // Sort internally by priority groups first, then likes descending, fallback to views, fallback to 0
           group.sort((a, b) => {
             const groupA = (a.scanlation_group?.name || "").toLowerCase();
             const groupB = (b.scanlation_group?.name || "").toLowerCase();
 
-            const priorityA = getPriority(groupA);
-            const priorityB = getPriority(groupB);
+            const priorityA = prioritizedUploaders.indexOf(groupA);
+            const priorityB = prioritizedUploaders.indexOf(groupB);
 
-            if (priorityA !== priorityB) {
-              return priorityA - priorityB;
-            }
+            if (priorityA !== -1 && priorityB !== -1) return priorityA - priorityB;
+            if (priorityA !== -1) return -1;
+            if (priorityB !== -1) return 1;
 
             const votesA = Number(a.upvotes_count || a.likes_count || a.views || 0);
             const votesB = Number(b.upvotes_count || b.likes_count || b.views || 0);
@@ -1000,46 +979,11 @@ var _Sources = (() => {
                   set: async (newValue) => await stateManager.store("remove_duplicates", newValue)
                 })
               }),
-              App.createDUISelect({
-                id: "source_match_mode",
-                label: "Source Match Mode",
-                options: ["strict", "closest"],
-                value: App.createDUIBinding({
-                  get: async () => {
-                    const mode = await stateManager.retrieve("source_match_mode");
-                    return (mode === "strict" || mode === "closest") ? mode : "strict";
-                  },
-                  set: async (newValue) => await stateManager.store("source_match_mode", newValue)
-                }),
-                displayLabel: (option) => option === "strict" ? "Strict (Fallback to Closest)" : "Closest Match"
-              }),
-              App.createDUIInputField({
-                id: "new_uploader_input",
-                label: "Add Uploader to List (Type & Save)",
-                value: App.createDUIBinding({
-                  get: async () => "",
-                  set: async (newValue) => {
-                    const p = await stateManager.retrieve("prioritized_uploaders");
-                    const prioritizedRaw = typeof p === 'string' ? p : "";
-                    if (newValue && newValue.trim().length > 0) {
-                      await stateManager.store("prioritized_uploaders", prioritizedRaw ? (prioritizedRaw + "," + newValue.trim()) : newValue.trim());
-                    }
-                  }
-                })
-              }),
-              App.createDUIButton({
-                id: "clear_prioritized",
-                label: "Clear All Prioritized Uploaders",
-                onTap: async () => await stateManager.store("prioritized_uploaders", "")
-              }),
               App.createDUIInputField({
                 id: "prioritized_uploaders",
-                label: "Current Prioritized Uploaders (Editable list)",
+                label: "Prioritized Uploaders (Comma separated)",
                 value: App.createDUIBinding({
-                  get: async () => {
-                    const p = await stateManager.retrieve("prioritized_uploaders");
-                    return typeof p === 'string' ? p : "";
-                  },
+                  get: async () => await stateManager.retrieve("prioritized_uploaders") ?? "",
                   set: async (newValue) => await stateManager.store("prioritized_uploaders", newValue)
                 })
               })
