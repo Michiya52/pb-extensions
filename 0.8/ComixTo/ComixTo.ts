@@ -31,7 +31,7 @@ import { chapterSettings, filterSettings, resetSettings } from "./ComixToSetting
 const COMIXTO_DOMAIN = "https://comix.to";
 
 export const ComixToInfo: SourceInfo = {
-    version: "1.3.5",
+    version: "1.4.0",
     name: "Comix.to",
     icon: "icon.png",
     author: "Michiya52",
@@ -146,19 +146,7 @@ export class ComixTo extends Source {
                 strict: await this.stateManager.retrieve("uploaders_strict") as boolean ?? false,
                 list: await this.stateManager.retrieve("uploaders_selected") as string[] ?? []
             },
-            languages: {
-                enabled: await this.stateManager.retrieve("languages_enabled") as boolean ?? false,
-                whitelist: await this.stateManager.retrieve("languages_whitelist") as boolean ?? false,
-                strict: await this.stateManager.retrieve("languages_strict") as boolean ?? false,
-                list: await this.stateManager.retrieve("languages_selected") as string[] ?? []
-            },
-            regions: {
-                enabled: await this.stateManager.retrieve("regions_enabled") as boolean ?? false,
-                whitelist: await this.stateManager.retrieve("regions_whitelist") as boolean ?? false,
-                strict: await this.stateManager.retrieve("regions_strict") as boolean ?? false,
-                list: await this.stateManager.retrieve("regions_selected") as string[] ?? []
-            },
-            oneVersionOnly: await this.stateManager.retrieve('one_version_only') ?? false
+            oneVersionOnly: await this.stateManager.retrieve('one_version_only') as boolean ?? false
         };
 
         return parseChapterList($, mangaId, sortVotes, { showVolume, showTitle, showUploader }, filters);

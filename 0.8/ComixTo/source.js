@@ -948,19 +948,6 @@ var _Sources = (() => {
   var getUploaderInput = async (stateManager) => await stateManager.retrieve("uploader_input") ?? "";
   var getSelectedUploaders = async (stateManager) => await stateManager.retrieve("uploaders_selected") ?? [];
 
-  var getLanguagesFiltering = async (stateManager) => await stateManager.retrieve("languages_enabled") ?? false;
-  var getLanguagesWhitelisted = async (stateManager) => await stateManager.retrieve("languages_whitelist") ?? false;
-  var getLanguagesStrict = async (stateManager) => await stateManager.retrieve("languages_strict") ?? false;
-  var getLanguages = async (stateManager) => await stateManager.retrieve("languages") ?? [];
-  var getLanguageInput = async (stateManager) => await stateManager.retrieve("language_input") ?? "";
-  var getSelectedLanguages = async (stateManager) => await stateManager.retrieve("languages_selected") ?? [];
-
-  var getRegionsFiltering = async (stateManager) => await stateManager.retrieve("regions_enabled") ?? false;
-  var getRegionsWhitelisted = async (stateManager) => await stateManager.retrieve("regions_whitelist") ?? false;
-  var getRegionsStrict = async (stateManager) => await stateManager.retrieve("regions_strict") ?? false;
-  var getRegions = async (stateManager) => await stateManager.retrieve("regions") ?? [];
-  var getRegionInput = async (stateManager) => await stateManager.retrieve("region_input") ?? "";
-  var getSelectedRegions = async (stateManager) => await stateManager.retrieve("regions_selected") ?? [];
   var contentSettings = (stateManager) => {
     return keepAlive(App.createDUINavigationButton({
       id: "content_settings",
@@ -1040,36 +1027,6 @@ var _Sources = (() => {
               set: async (val) => await stateManager.store(strictKey, val)
             })
           }),
-          App.createDUIButton({
-            id: `${id}_move_up`,
-            label: `Move Selected ${header} Up`,
-            onTap: async () => {
-              const current = await stateManager.retrieve(selectedKey) ?? [];
-              const list = await stateManager.retrieve(listKey) ?? [];
-              if (current.length === 1) {
-                const index = list.indexOf(current[0]);
-                if (index > 0) {
-                  [list[index - 1], list[index]] = [list[index], list[index - 1]];
-                  await stateManager.store(listKey, list);
-                }
-              }
-            }
-          }),
-          App.createDUIButton({
-            id: `${id}_move_down`,
-            label: `Move Selected ${header} Down`,
-            onTap: async () => {
-              const current = await stateManager.retrieve(selectedKey) ?? [];
-              const list = await stateManager.retrieve(listKey) ?? [];
-              if (current.length === 1) {
-                const index = list.indexOf(current[0]);
-                if (index !== -1 && index < list.length - 1) {
-                  [list[index + 1], list[index]] = [list[index], list[index + 1]];
-                  await stateManager.store(listKey, list);
-                }
-              }
-            }
-          }),
           App.createDUISelect({
             id: `${id}_list`,
             label: `Currently Saved ${header}`,
@@ -1127,30 +1084,26 @@ var _Sources = (() => {
     return keepAlive(App.createDUINavigationButton({
       id: "filter_settings",
       label: "Advanced Filtering Settings",
-      form: App.createDUIForm({
-        sections: async () => {
-          await warmUpGroupSettings(stateManager);
-          return keepAlive([
-            App.createDUISection({
-              id: "general_filter_settings",
-              header: "General Filtering Settings",
-              rows: async () => keepAlive([
-                App.createDUISwitch({
-                  id: "one_version_only",
-                  label: "Always Only Show 1 Source",
-                  value: App.createDUIBinding({
-                    get: async () => await stateManager.retrieve("one_version_only") ?? false,
-                    set: async (val) => await stateManager.store("one_version_only", val)
-                  })
-                })
-              ])
-            }),
-            createDynamicListSection(stateManager, "uploaders", "Uploaders", "uploaders", "uploaders_selected", "uploader_input", "uploaders_enabled", "uploaders_whitelist", "uploaders_strict"),
-            createDynamicListSection(stateManager, "languages", "Languages", "languages", "languages_selected", "language_input", "languages_enabled", "languages_whitelist", "languages_strict"),
-            createDynamicListSection(stateManager, "regions", "Regions", "regions", "regions_selected", "region_input", "regions_enabled", "regions_whitelist", "regions_strict")
-          ]);
-        }
-      })
+            sections: async () => {
+                await warmUpGroupSettings(stateManager);
+                return keepAlive([
+                    App.createDUISection({
+                        id: 'general_filter_settings',
+                        header: 'General Filtering Settings',
+                        rows: async () => keepAlive([
+                            App.createDUISwitch({
+                                id: 'one_version_only',
+                                label: 'Always Only Show 1 Source',
+                                value: App.createDUIBinding({
+                                    get: async () => await stateManager.retrieve('one_version_only') ?? false,
+                                    set: async (val) => await stateManager.store('one_version_only', val)
+                                })
+                            })
+                        ])
+                    }),
+                    createDynamicListSection(stateManager, "uploaders", "Uploaders", "uploaders", "uploaders_selected", "uploader_input", "uploaders_enabled", "uploaders_whitelist", "uploaders_strict")
+                ]);
+            }
     }));
   };
   var resetSettings = (stateManager) => {
@@ -1160,36 +1113,25 @@ var _Sources = (() => {
       onTap: async () => {
         await stateManager.store("trending_limit", null);
         await stateManager.store("is_nsfw", null);
+        await stateManager.store("one_version_only", null);
         await stateManager.store("uploaders", null);
         await stateManager.store("uploaders_selected", null);
         await stateManager.store("uploaders_whitelist", null);
         await stateManager.store("uploaders_enabled", null);
         await stateManager.store("uploader_input", null);
         await stateManager.store("uploaders_strict", null);
-        await stateManager.store("languages", null);
-        await stateManager.store("languages_selected", null);
-        await stateManager.store("languages_whitelist", null);
-        await stateManager.store("languages_enabled", null);
-        await stateManager.store("language_input", null);
-        await stateManager.store("languages_strict", null);
-        await stateManager.store("regions", null);
-        await stateManager.store("regions_selected", null);
-        await stateManager.store("regions_whitelist", null);
-        await stateManager.store("regions_enabled", null);
-        await stateManager.store("region_input", null);
-        await stateManager.store("regions_strict", null);
       }
     }));
   };
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.3.5",
+    version: "1.4.0",
     name: "ComixTo",
     icon: "icon.png",
     author: "Michiya52",
     authorWebsite: "https://github.com/Michiya52",
-    description: "Comix.to Extension with advanced uploader, language, and region filters. (Inspired by Ace)",
+    description: "Comix.to Extension with advanced uploader filtering. (Inspired by Ace)",
     contentRating: import_types.ContentRating.MATURE,
     websiteBaseURL: DOMAIN,
     sourceTags: [
@@ -1280,18 +1222,6 @@ var _Sources = (() => {
             whitelist: await this.stateManager.retrieve("uploaders_whitelist") ?? false,
             strict: await this.stateManager.retrieve("uploaders_strict") ?? false,
             list: await this.stateManager.retrieve("uploaders_selected") ?? []
-        },
-        languages: {
-            enabled: await this.stateManager.retrieve("languages_enabled") ?? false,
-            whitelist: await this.stateManager.retrieve("languages_whitelist") ?? false,
-            strict: await this.stateManager.retrieve("languages_strict") ?? false,
-            list: await this.stateManager.retrieve("languages_selected") ?? []
-        },
-        regions: {
-            enabled: await this.stateManager.retrieve("regions_enabled") ?? false,
-            whitelist: await this.stateManager.retrieve("regions_whitelist") ?? false,
-            strict: await this.stateManager.retrieve("regions_strict") ?? false,
-            list: await this.stateManager.retrieve("regions_selected") ?? []
         },
         oneVersionOnly: await this.stateManager.retrieve("one_version_only") ?? false
       };

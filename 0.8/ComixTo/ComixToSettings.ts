@@ -25,11 +25,7 @@ const warmUpSettings = (stateManager: SourceStateManager) => {
     if (!settingsWarmUp) {
         settingsWarmUp = (async () => {
             await stateManager.retrieve('uploaders');
-            await stateManager.retrieve('languages');
-            await stateManager.retrieve('regions');
             await stateManager.retrieve('uploader_input');
-            await stateManager.retrieve('language_input');
-            await stateManager.retrieve('region_input');
         })();
     }
     return settingsWarmUp;
@@ -146,44 +142,6 @@ const createDynamicListSection = (
                         set: async (newValue: boolean) => await stateManager.store(strictToggleKey, newValue)
                     })
                 }),
-                createDUISwitch({
-                    id: 'one_version_only',
-                    label: 'Always Only Show 1 Source',
-                    value: createDUIBinding({
-                        get: async () => await stateManager.retrieve('one_version_only') ?? false,
-                        set: async (newValue: boolean) => await stateManager.store('one_version_only', newValue)
-                    })
-                }),
-                createDUIButton({
-                    id: `${id}_move_up`,
-                    label: `Move Selected ${header} Up`,
-                    onTap: async () => {
-                        const current: string[] = await stateManager.retrieve(selectedKey) ?? [];
-                        const list: string[] = await stateManager.retrieve(listKey) ?? [];
-                        if (current.length === 1) {
-                            const index = list.indexOf(current[0] as string);
-                            if (index > 0) {
-                                [list[index - 1], list[index]] = [list[index] as string, list[index - 1] as string];
-                                await stateManager.store(listKey, list);
-                            }
-                        }
-                    }
-                }),
-                createDUIButton({
-                    id: `${id}_move_down`,
-                    label: `Move Selected ${header} Down`,
-                    onTap: async () => {
-                        const current: string[] = await stateManager.retrieve(selectedKey) ?? [];
-                        const list: string[] = await stateManager.retrieve(listKey) ?? [];
-                        if (current.length === 1) {
-                            const index = list.indexOf(current[0] as string);
-                            if (index !== -1 && index < list.length - 1) {
-                                [list[index + 1], list[index]] = [list[index] as string, list[index + 1] as string];
-                                await stateManager.store(listKey, list);
-                            }
-                        }
-                    }
-                }),
                 createDUISelect({
                     id: `${id}_select`,
                     label: `Currently Saved ${header}`,
@@ -245,9 +203,21 @@ export const filterSettings = (stateManager: SourceStateManager): DUINavigationB
             sections: async () => {
                 await warmUpSettings(stateManager);
                 return [
-                    createDynamicListSection(stateManager, 'uploaders', 'Uploaders', 'uploaders', 'uploaders_selected', 'uploader_input', 'uploaders_enabled', 'uploaders_whitelist', 'uploaders_strict'),
-                    createDynamicListSection(stateManager, 'languages', 'Languages', 'languages', 'languages_selected', 'language_input', 'languages_enabled', 'languages_whitelist', 'languages_strict'),
-                    createDynamicListSection(stateManager, 'regions', 'Regions', 'regions', 'regions_selected', 'region_input', 'regions_enabled', 'regions_whitelist', 'regions_strict')
+                    createDUISection({
+                        id: 'general_settings',
+                        header: 'General Filtering Settings',
+                        rows: async () => [
+                            createDUISwitch({
+                                id: 'one_version_only',
+                                label: 'Always Only Show 1 Source',
+                                value: createDUIBinding({
+                                    get: async () => await stateManager.retrieve('one_version_only') ?? false,
+                                    set: async (newValue: boolean) => await stateManager.store('one_version_only', newValue)
+                                })
+                            })
+                        ]
+                    }),
+                    createDynamicListSection(stateManager, 'uploaders', 'Uploaders', 'uploaders', 'uploaders_selected', 'uploader_input', 'uploaders_enabled', 'uploaders_whitelist', 'uploaders_strict')
                 ];
             }
         })
@@ -262,24 +232,13 @@ export const resetSettings = (stateManager: SourceStateManager): DUIButton => {
             await stateManager.store('show_volume_number', null);
             await stateManager.store('show_title', null);
             await stateManager.store('show_uploader', null);
+            await stateManager.store('one_version_only', null);
             await stateManager.store('uploaders', null);
             await stateManager.store('uploaders_selected', null);
             await stateManager.store('uploader_input', null);
             await stateManager.store('uploaders_enabled', null);
             await stateManager.store('uploaders_whitelist', null);
             await stateManager.store('uploaders_strict', null);
-            await stateManager.store('languages', null);
-            await stateManager.store('languages_selected', null);
-            await stateManager.store('language_input', null);
-            await stateManager.store('languages_enabled', null);
-            await stateManager.store('languages_whitelist', null);
-            await stateManager.store('languages_strict', null);
-            await stateManager.store('regions', null);
-            await stateManager.store('regions_selected', null);
-            await stateManager.store('region_input', null);
-            await stateManager.store('regions_enabled', null);
-            await stateManager.store('regions_whitelist', null);
-            await stateManager.store('regions_strict', null);
         }
     });
 }

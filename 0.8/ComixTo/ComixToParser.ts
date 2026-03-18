@@ -79,8 +79,6 @@ export const parseChapterList = (
     chapSettings?: { showVolume: boolean, showTitle: boolean, showUploader: boolean },
     filters?: {
         uploaders: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] },
-        languages: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] },
-        regions: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] },
         oneVersionOnly: boolean
     }
 ): Chapter[] => {
@@ -159,36 +157,14 @@ export const parseChapterList = (
         let filtered = variants;
 
         if (filters) {
-            // A. Hard Filter: Blacklist (Always hide if matched in blacklist mode)
-            filtered = variants.filter((v: any) => {
-                const u = checkFilterFunc(v.group, filters.uploaders);
-                const l = checkFilterFunc(v.lang, filters.languages);
-                const r = checkFilterFunc(v.region, filters.regions);
-                
-                // If any is a "Blacklist Match", reject it immediately
-                if (filters.uploaders.enabled && !filters.uploaders.whitelist && !u.pass) return false;
-                if (filters.languages.enabled && !filters.languages.whitelist && !l.pass) return false;
-                if (filters.regions.enabled && !filters.regions.whitelist && !r.pass) return false;
-                
-                return true;
-            });
+            // A. Hard Filter: Uploader Blacklist
+            if (filters.uploaders.enabled && !filters.uploaders.whitelist) {
+                filtered = variants.filter((v: any) => checkFilterFunc(v.group, filters.uploaders).pass);
+            }
 
-            // B. Soft Filter: Whitelist (Prefer whitelisted, fallback to "filtered" if none match)
-            if (filtered.length > 0) {
-                const whitelisted = filtered.filter((v: any) => {
-                    const u = checkFilterFunc(v.group, filters.uploaders);
-                    const l = checkFilterFunc(v.lang, filters.languages);
-                    const r = checkFilterFunc(v.region, filters.regions);
-                    
-                    let matchAnyWhitelist = false;
-                    if (filters.uploaders.enabled && filters.uploaders.whitelist && u.isMatched) matchAnyWhitelist = true;
-                    if (filters.languages.enabled && filters.languages.whitelist && l.isMatched) matchAnyWhitelist = true;
-                    if (filters.regions.enabled && filters.regions.whitelist && r.isMatched) matchAnyWhitelist = true;
-                    
-                    return matchAnyWhitelist;
-                });
-
-                // If we have whitelisted matches, only show those. Otherwise, show all (that passed blacklist).
+            // B. Soft Filter: Uploader Whitelist (Fallback to all if zero matches)
+            if (filters.uploaders.enabled && filters.uploaders.whitelist) {
+                const whitelisted = filtered.filter((v: any) => checkFilterFunc(v.group, filters.uploaders).isMatched);
                 if (whitelisted.length > 0) {
                     filtered = whitelisted;
                 }
@@ -199,21 +175,16 @@ export const parseChapterList = (
             filtered.sort((a: any, b: any) => {
                 const aName = a.group?.toLowerCase() ?? "";
                 const bName = b.group?.toLowerCase() ?? "";
-                
-                // Find index in user's preferred list
                 let aIdx = uploaderList.findIndex(u => filters.uploaders.strict ? aName === u : aName.includes(u));
                 let bIdx = uploaderList.findIndex(u => filters.uploaders.strict ? bName === u : bName.includes(u));
-                
-                // If not found, put at the end
                 if (aIdx === -1) aIdx = 9999;
                 if (bIdx === -1) bIdx = 9999;
-                
                 return aIdx - bIdx;
             });
 
             // D. One Version per Chapter logic
             if (filters.oneVersionOnly && filtered.length > 1) {
-                filtered = [filtered[0]]; // Take the first available version (now sorted by priority)
+                filtered = [filtered[0]];
             }
         }
 
