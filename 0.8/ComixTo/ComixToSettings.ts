@@ -14,15 +14,6 @@ import {
 } from 'paperback-extensions-common';
 
 // --- Stability Utilities ---
-const TRENDING_OPTIONS = [
-    { id: '1', label: '1 day' },
-    { id: '7', label: '7 days' },
-    { id: '30', label: '1 month' },
-    { id: '90', label: '3 months' },
-    { id: '180', label: '6 months' },
-    { id: '365', label: '1 year' }
-];
-
 const uiKeepAlive: any[] = [];
 const keepAlive = <T>(obj: T): T => {
     uiKeepAlive.push(obj);
@@ -35,7 +26,6 @@ const warmUpSettings = (stateManager: SourceStateManager) => {
         settingsWarmUp = (async () => {
             await stateManager.retrieve('uploaders');
             await stateManager.retrieve('uploader_input');
-            await stateManager.retrieve('trending_limit');
         })();
     }
     return settingsWarmUp;
@@ -64,10 +54,6 @@ const getSelected = async (stateManager: SourceStateManager, key: string): Promi
 
 const getInput = async (stateManager: SourceStateManager, key: string): Promise<string> => {
     return (await stateManager.retrieve(key) as string) ?? '';
-}
-
-export const getTrendingLimit = async (stateManager: SourceStateManager): Promise<string[]> => {
-    return (await stateManager.retrieve('trending_limit') as string[]) ?? ['30'];
 }
 
 // --- Sections ---
@@ -110,74 +96,6 @@ export const chapterSettings = (stateManager: SourceStateManager): DUINavigation
                     ]
                 })
             ]
-        })
-    }));
-}
-
-export const contentSettings = (stateManager: SourceStateManager): DUINavigationButton => {
-    return keepAlive(createDUINavigationButton({
-        id: 'content_settings',
-        label: 'Extension Settings',
-        form: createDUIForm({
-            sections: async () => {
-                await warmUpSettings(stateManager);
-                return [
-                    createDUISection({
-                        id: 'nsfw_settings',
-                        header: 'Content Filtering',
-                        rows: async () => [
-                            createDUISwitch({
-                                id: 'is_nsfw',
-                                label: 'Show NSFW Content',
-                                value: createDUIBinding({
-                                    get: async () => (await stateManager.retrieve('is_nsfw') as boolean) ?? true,
-                                    set: async (newValue: boolean) => await stateManager.store('is_nsfw', newValue)
-                                })
-                            })
-                        ]
-                    }),
-                    createDUISection({
-                        id: 'home_settings',
-                        header: 'Discover Page Settings',
-                        rows: async () => [
-                            createDUISelect({
-                                id: 'trending_limit',
-                                label: 'Trending Timeframe',
-                                options: TRENDING_OPTIONS.map(opt => opt.id),
-                                value: createDUIBinding({
-                                    get: async () => await getTrendingLimit(stateManager),
-                                    set: async (newValue: string[]) => await stateManager.store('trending_limit', newValue)
-                                }),
-                                allowsMultiselect: false,
-                                labelResolver: async (value: string) => TRENDING_OPTIONS.find(opt => opt.id === value)?.label ?? value
-                            })
-                        ]
-                    }),
-                    createDUISection({
-                        id: 'general_filtering',
-                        header: 'Advanced Chapter Filtering',
-                        rows: async () => [
-                            createDUISwitch({
-                                id: 'one_version_only',
-                                label: 'Always Only Show 1 Source',
-                                value: createDUIBinding({
-                                    get: async () => await stateManager.retrieve('one_version_only') ?? false,
-                                    set: async (newValue: boolean) => await stateManager.store('one_version_only', newValue)
-                                })
-                            }),
-                            createDUISwitch({
-                                id: 'remove_duplicates',
-                                label: 'Remove Duplicate Chapters',
-                                value: createDUIBinding({
-                                    get: async () => await stateManager.retrieve('remove_duplicates') ?? true,
-                                    set: async (newValue: boolean) => await stateManager.store('remove_duplicates', newValue)
-                                })
-                            })
-                        ]
-                    }),
-                    createDynamicListSection(stateManager, 'uploaders', 'Uploaders', 'uploaders', 'uploaders_selected', 'uploader_input', 'uploaders_enabled', 'uploaders_whitelist', 'uploaders_strict')
-                ];
-            }
         })
     }));
 }
@@ -321,8 +239,6 @@ export const resetSettings = (stateManager: SourceStateManager): DUIButton => {
             await stateManager.store('uploaders_enabled', null);
             await stateManager.store('uploaders_whitelist', null);
             await stateManager.store('uploaders_strict', null);
-            await stateManager.store('trending_limit', null);
-            await stateManager.store('remove_duplicates', null);
         }
     });
 }
