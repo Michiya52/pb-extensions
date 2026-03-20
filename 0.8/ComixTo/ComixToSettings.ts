@@ -214,6 +214,24 @@ export const filterSettings = (stateManager: SourceStateManager): DUINavigationB
                                     get: async () => await stateManager.retrieve('one_version_only') ?? false,
                                     set: async (newValue: boolean) => await stateManager.store('one_version_only', newValue)
                                 })
+                            }),
+                            createDUISelect({
+                                id: 'manga_sorting',
+                                label: 'Manga Sorting',
+                                options: ['sort.follow', 'sort.view', 'sort.rating', 'sort.uploaded'],
+                                value: createDUIBinding({
+                                    get: async () => await stateManager.retrieve('manga_sorting') as string ?? 'sort.uploaded',
+                                    set: async (newValue: string) => await stateManager.store('manga_sorting', newValue)
+                                }),
+                                labelResolver: async (val: string) => {
+                                    switch (val) {
+                                        case 'sort.follow': return 'Most follows';
+                                        case 'sort.view': return 'Most views';
+                                        case 'sort.rating': return 'High rating';
+                                        case 'sort.uploaded': return 'Last updated';
+                                        default: return 'Unknown';
+                                    }
+                                }
                             })
                         ]
                     }),
@@ -233,6 +251,7 @@ export const resetSettings = (stateManager: SourceStateManager): DUIButton => {
             await stateManager.store('show_title', null);
             await stateManager.store('show_uploader', null);
             await stateManager.store('one_version_only', null);
+            await stateManager.store('manga_sorting', null);
             await stateManager.store('uploaders', null);
             await stateManager.store('uploaders_selected', null);
             await stateManager.store('uploader_input', null);

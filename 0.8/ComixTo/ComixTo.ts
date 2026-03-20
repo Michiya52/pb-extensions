@@ -23,6 +23,8 @@ import {
     createDUIBinding,
     SourceStateManager,
     DUISection,
+    SourceIntents,
+    createDUILink,
 } from "paperback-extensions-common";
 
 import { parseMangaDetails, parseChapterList, parsePageList, parseMangaList } from "./ComixToParser";
@@ -39,6 +41,7 @@ export const ComixToInfo: SourceInfo = {
     description: "Extension for Comix.to with advanced filters. (Inspired by Ace)",
     contentRating: ContentRating.MATURE,
     websiteBaseURL: COMIXTO_DOMAIN,
+    intents: SourceIntents.MANGA_CHAPTERS | SourceIntents.HOMEPAGE_SECTIONS | SourceIntents.SETTINGS_UI | SourceIntents.CLOUDFLARE_BYPASS_REQUIRED,
 };
 
 export class ComixTo extends Source {
@@ -70,6 +73,14 @@ export class ComixTo extends Source {
             header: "Source Settings",
             isHidden: false,
             rows: async () => [
+                createDUILink({
+                    id: "solve_cloudflare",
+                    label: "Solve Cloudflare",
+                    value: "Solve Cloudflare",
+                    onTap: async () => {
+                        await (this as any).openWebView(COMIXTO_DOMAIN);
+                    }
+                }),
                 chapterSettings(this.stateManager),
                 filterSettings(this.stateManager),
                 resetSettings(this.stateManager)
@@ -87,7 +98,7 @@ export class ComixTo extends Source {
             method: "GET",
         });
         const response = await this.requestManager.schedule(request, 1);
-        const $ = this.cheerio.load(response.data);
+        const $ = (this as any).cheerio.load(response.data);
         return parseMangaList($, COMIXTO_DOMAIN);
     }
 
@@ -97,7 +108,7 @@ export class ComixTo extends Source {
             method: "GET",
         });
         const response = await this.requestManager.schedule(request, 1);
-        const $ = this.cheerio.load(response.data);
+        const $ = (this as any).cheerio.load(response.data);
         return parseMangaList($, COMIXTO_DOMAIN);
     }
 
@@ -110,7 +121,7 @@ export class ComixTo extends Source {
             param: `?q=${encodeURIComponent(query.title ?? "")}${sortParam}`,
         });
         const response = await this.requestManager.schedule(request, 1);
-        const $ = this.cheerio.load(response.data);
+        const $ = (this as any).cheerio.load(response.data);
         return parseMangaList($, COMIXTO_DOMAIN);
     }
 
@@ -120,7 +131,7 @@ export class ComixTo extends Source {
             method: "GET",
         });
         const response = await this.requestManager.schedule(request, 1);
-        const $ = this.cheerio.load(response.data);
+        const $ = (this as any).cheerio.load(response.data);
         return parseMangaDetails($, mangaId);
     }
 
@@ -160,5 +171,12 @@ export class ComixTo extends Source {
         const response = await this.requestManager.schedule(request, 1);
         const $ = (this as any).cheerio.load(response.data);
         return parsePageList($, mangaId, chapterId);
+    }
+
+    getCloudflareBypassRequest(): Request {
+        return createRequestObject({
+            url: COMIXTO_DOMAIN,
+            method: 'GET',
+        });
     }
 }
