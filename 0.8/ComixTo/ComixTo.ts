@@ -52,20 +52,20 @@ export class ComixTo extends Source {
             interceptRequest: async (request: Request): Promise<Request> => {
                 request.headers = {
                     ...(request.headers ?? {}),
-                    ...{
-                        "Referer": COMIXTO_DOMAIN,
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-                    },
+                    "Referer": `${COMIXTO_DOMAIN}/`,
+                    "User-Agent": await this.requestManager.getDefaultUserAgent(),
                 };
                 return request;
             },
-            interceptResponse: async (response: Response): Promise<Response> => {
-                return response;
-            },
         },
     });
-
     stateManager = createSourceStateManager();
+
+    checkResponseError(response: Response): void {
+        if (response.status === 403 || response.status === 503) {
+            throw new Error("Cloudflare Bypass Required");
+        }
+    }
 
     async getSourceMenu(): Promise<DUISection> {
         return createDUISection({
@@ -98,6 +98,7 @@ export class ComixTo extends Source {
             method: "GET",
         });
         const response = await this.requestManager.schedule(request, 1);
+        this.checkResponseError(response);
         const $ = (this as any).cheerio.load(response.data);
         return parseMangaList($, COMIXTO_DOMAIN);
     }
@@ -108,6 +109,7 @@ export class ComixTo extends Source {
             method: "GET",
         });
         const response = await this.requestManager.schedule(request, 1);
+        this.checkResponseError(response);
         const $ = (this as any).cheerio.load(response.data);
         return parseMangaList($, COMIXTO_DOMAIN);
     }
@@ -121,6 +123,7 @@ export class ComixTo extends Source {
             param: `?q=${encodeURIComponent(query.title ?? "")}${sortParam}`,
         });
         const response = await this.requestManager.schedule(request, 1);
+        this.checkResponseError(response);
         const $ = (this as any).cheerio.load(response.data);
         return parseMangaList($, COMIXTO_DOMAIN);
     }
@@ -131,6 +134,7 @@ export class ComixTo extends Source {
             method: "GET",
         });
         const response = await this.requestManager.schedule(request, 1);
+        this.checkResponseError(response);
         const $ = (this as any).cheerio.load(response.data);
         return parseMangaDetails($, mangaId);
     }
@@ -141,6 +145,7 @@ export class ComixTo extends Source {
             method: "GET",
         });
         const response = await this.requestManager.schedule(request, 1);
+        this.checkResponseError(response);
         const $ = (this as any).cheerio.load(response.data);
 
         // Retrieve settings
@@ -169,6 +174,7 @@ export class ComixTo extends Source {
             method: "GET",
         });
         const response = await this.requestManager.schedule(request, 1);
+        this.checkResponseError(response);
         const $ = (this as any).cheerio.load(response.data);
         return parsePageList($, mangaId, chapterId);
     }
