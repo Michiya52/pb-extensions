@@ -26,7 +26,7 @@ import {
 } from "paperback-extensions-common";
 
 import { parseMangaDetails, parseChapterList, parsePageList, parseMangaList } from "./ComixToParser";
-import { chapterSettings, filterSettings, resetSettings } from "./ComixToSettings";
+import { chapterSettings, contentSettings, resetSettings } from "./ComixToSettings";
 
 const COMIXTO_DOMAIN = "https://comix.to";
 
@@ -70,8 +70,8 @@ export class ComixTo extends Source {
             header: "Source Settings",
             isHidden: false,
             rows: async () => [
+                contentSettings(this.stateManager),
                 chapterSettings(this.stateManager),
-                filterSettings(this.stateManager),
                 resetSettings(this.stateManager)
             ]
         });
@@ -146,7 +146,8 @@ export class ComixTo extends Source {
                 strict: await this.stateManager.retrieve("uploaders_strict") as boolean ?? false,
                 list: await this.stateManager.retrieve("uploaders_selected") as string[] ?? []
             },
-            oneVersionOnly: await this.stateManager.retrieve('one_version_only') as boolean ?? false
+            oneVersionOnly: await this.stateManager.retrieve('one_version_only') as boolean ?? false,
+            removeDuplicates: await this.stateManager.retrieve('remove_duplicates') as boolean ?? true
         };
 
         return parseChapterList($, mangaId, sortVotes, { showVolume, showTitle, showUploader }, filters);

@@ -79,7 +79,8 @@ export const parseChapterList = (
     chapSettings?: { showVolume: boolean, showTitle: boolean, showUploader: boolean },
     filters?: {
         uploaders: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] },
-        oneVersionOnly: boolean
+        oneVersionOnly: boolean,
+        removeDuplicates: boolean
     }
 ): Chapter[] => {
     const rawChapters: any[] = [];
@@ -182,7 +183,21 @@ export const parseChapterList = (
                 return aIdx - bIdx;
             });
 
-            // D. One Version per Chapter logic
+            // D. Deduplication (v1.6)
+            if (filters.removeDuplicates && filtered.length > 1) {
+                const unique: any[] = [];
+                const seen = new Set();
+                for (const chap of filtered) {
+                    const key = `${chap.chapNum}-${chap.lang}`;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        unique.push(chap);
+                    }
+                }
+                filtered = unique;
+            }
+
+            // E. One Version per Chapter logic
             if (filters.oneVersionOnly && filtered.length > 1) {
                 filtered = [filtered[0]];
             }
