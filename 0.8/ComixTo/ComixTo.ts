@@ -26,7 +26,7 @@ import {
 } from "paperback-extensions-common";
 
 import { parseMangaDetails, parseChapterList, parsePageList, parseMangaList } from "./ComixToParser";
-import { chapterSettings, filterSettings, resetSettings, contentSettings, getTrendingLimit } from "./ComixToSettings";
+import { chapterSettings, resetSettings, contentSettings, getTrendingLimit } from "./ComixToSettings";
 
 const COMIXTO_DOMAIN = "https://comix.to";
 
@@ -72,7 +72,6 @@ export class ComixTo extends Source {
             rows: async () => [
                 contentSettings(this.stateManager),
                 chapterSettings(this.stateManager),
-                filterSettings(this.stateManager),
                 resetSettings(this.stateManager)
             ]
         });

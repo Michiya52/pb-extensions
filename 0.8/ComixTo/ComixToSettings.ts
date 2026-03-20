@@ -106,14 +106,6 @@ export const chapterSettings = (stateManager: SourceStateManager): DUINavigation
                                 get: async () => await getShowUploader(stateManager),
                                 set: async (newValue: any) => await stateManager.store('show_uploader', newValue)
                             })
-                        }),
-                        createDUISwitch({
-                            id: 'remove_duplicates',
-                            label: 'Remove Duplicate Chapters',
-                            value: createDUIBinding({
-                                get: async () => await stateManager.retrieve('remove_duplicates') ?? true,
-                                set: async (newValue: boolean) => await stateManager.store('remove_duplicates', newValue)
-                            })
                         })
                     ]
                 })
@@ -127,25 +119,65 @@ export const contentSettings = (stateManager: SourceStateManager): DUINavigation
         id: 'content_settings',
         label: 'Extension Settings',
         form: createDUIForm({
-            sections: async () => [
-                createDUISection({
-                    id: 'home_settings',
-                    header: 'Discover Page Settings',
-                    rows: async () => [
-                        createDUISelect({
-                            id: 'trending_limit',
-                            label: 'Trending Timeframe',
-                            options: TRENDING_OPTIONS.map(opt => opt.id),
-                            value: createDUIBinding({
-                                get: async () => await getTrendingLimit(stateManager),
-                                set: async (newValue: string[]) => await stateManager.store('trending_limit', newValue)
+            sections: async () => {
+                await warmUpSettings(stateManager);
+                return [
+                    createDUISection({
+                        id: 'nsfw_settings',
+                        header: 'Content Filtering',
+                        rows: async () => [
+                            createDUISwitch({
+                                id: 'is_nsfw',
+                                label: 'Show NSFW Content',
+                                value: createDUIBinding({
+                                    get: async () => (await stateManager.retrieve('is_nsfw') as boolean) ?? true,
+                                    set: async (newValue: boolean) => await stateManager.store('is_nsfw', newValue)
+                                })
+                            })
+                        ]
+                    }),
+                    createDUISection({
+                        id: 'home_settings',
+                        header: 'Discover Page Settings',
+                        rows: async () => [
+                            createDUISelect({
+                                id: 'trending_limit',
+                                label: 'Trending Timeframe',
+                                options: TRENDING_OPTIONS.map(opt => opt.id),
+                                value: createDUIBinding({
+                                    get: async () => await getTrendingLimit(stateManager),
+                                    set: async (newValue: string[]) => await stateManager.store('trending_limit', newValue)
+                                }),
+                                allowsMultiselect: false,
+                                labelResolver: async (value: string) => TRENDING_OPTIONS.find(opt => opt.id === value)?.label ?? value
+                            })
+                        ]
+                    }),
+                    createDUISection({
+                        id: 'general_filtering',
+                        header: 'Advanced Chapter Filtering',
+                        rows: async () => [
+                            createDUISwitch({
+                                id: 'one_version_only',
+                                label: 'Always Only Show 1 Source',
+                                value: createDUIBinding({
+                                    get: async () => await stateManager.retrieve('one_version_only') ?? false,
+                                    set: async (newValue: boolean) => await stateManager.store('one_version_only', newValue)
+                                })
                             }),
-                            allowsMultiselect: false,
-                            labelResolver: async (value: string) => TRENDING_OPTIONS.find(opt => opt.id === value)?.label ?? value
-                        })
-                    ]
-                })
-            ]
+                            createDUISwitch({
+                                id: 'remove_duplicates',
+                                label: 'Remove Duplicate Chapters',
+                                value: createDUIBinding({
+                                    get: async () => await stateManager.retrieve('remove_duplicates') ?? true,
+                                    set: async (newValue: boolean) => await stateManager.store('remove_duplicates', newValue)
+                                })
+                            })
+                        ]
+                    }),
+                    createDynamicListSection(stateManager, 'uploaders', 'Uploaders', 'uploaders', 'uploaders_selected', 'uploader_input', 'uploaders_enabled', 'uploaders_whitelist', 'uploaders_strict')
+                ];
+            }
         })
     }));
 }
