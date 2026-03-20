@@ -748,42 +748,100 @@ var _Sources = (() => {
         })
       });
     }
-    parseChapters(data, isFiltering, isWhitelist, isStrict, savedGroups) {
-      const chapters = [];
+    parseChapters(data, filters) {
+      const rawChapters = [];
+      const checkFilter = (val, filter) => {
+        if (!filter.enabled || filter.list.length === 0) return { pass: true, isMatched: false };
+        if (!val) return { pass: !filter.whitelist, isMatched: false };
+        const target = val.toLowerCase();
+        const isMatched = filter.list.some(item => {
+            const listItem = item.toLowerCase();
+            return filter.strict ? target === listItem : target.includes(listItem);
+        });
+        return { pass: filter.whitelist ? isMatched : !isMatched, isMatched };
+      };
+
       for (const chap of data) {
-        const groupName = chap.scanlation_group?.name || "";
-        if (isFiltering && savedGroups.length > 0) {
-          let matchFound = false;
-          for (const savedGroup of savedGroups) {
-            if (isStrict) {
-              if (groupName.toLowerCase() === savedGroup.toLowerCase()) {
-                matchFound = true;
-                break;
-              }
-            } else {
-              if (groupName.toLowerCase().includes(savedGroup.toLowerCase())) {
-                matchFound = true;
-                break;
-              }
-            }
-          }
-          if (isWhitelist && !matchFound) continue;
-          if (!isWhitelist && matchFound) continue;
-        }
-        chapters.push(
-          App.createChapter({
+        rawChapters.push({
             id: chap.chapter_id.toString(),
             chapNum: chap.number,
             name: chap.name ? `${chap.name}` : `Chapter ${chap.number}`,
             langCode: chap.language || "en",
             volume: chap.volume,
-            group: groupName,
-            time: new Date(chap.updated_at * 1e3),
-            sortingIndex: chap.number
-          })
-        );
+            group: chap.scanlation_group?.name || "",
+            lang: chap.language || "en",
+            region: chap.region || ""
+        });
       }
-      return chapters;
+
+      const grouped = rawChapters.reduce((acc, chap) => {
+        if (!acc[chap.chapNum]) acc[chap.chapNum] = [];
+        acc[chap.chapNum].push(chap);
+        return acc;
+      }, {});
+
+      const finalChapters = [];
+      for (const chapNum in grouped) {
+        const variants = grouped[chapNum];
+        let filtered = variants;
+
+        if (filters) {
+            // A. Hard Filter: Blacklist
+            filtered = variants.filter(v => {
+                const u = checkFilter(v.group, filters.uploaders);
+                const l = checkFilter(v.lang, filters.languages);
+                const r = checkFilter(v.region, filters.regions);
+                if (filters.uploaders.enabled && !filters.uploaders.whitelist && !u.pass) return false;
+                if (filters.languages.enabled && !filters.languages.whitelist && !l.pass) return false;
+                if (filters.regions.enabled && !filters.regions.whitelist && !r.pass) return false;
+                return true;
+            });
+
+            // B. Soft Filter: Whitelist
+            if (filtered.length > 0) {
+                const whitelisted = filtered.filter(v => {
+                    const u = checkFilter(v.group, filters.uploaders);
+                    const l = checkFilter(v.lang, filters.languages);
+                    const r = checkFilter(v.region, filters.regions);
+                    let m = false;
+                    if (filters.uploaders.enabled && filters.uploaders.whitelist && u.isMatched) m = true;
+                    if (filters.languages.enabled && filters.languages.whitelist && l.isMatched) m = true;
+                    if (filters.regions.enabled && filters.regions.whitelist && r.isMatched) m = true;
+                    return m;
+                });
+                if (whitelisted.length > 0) filtered = whitelisted;
+            }
+
+            // C. Priority Ranking (v1.3.4)
+            const uLoaderList = (filters.uploaders.list || []).map(u => u.toLowerCase());
+            filtered.sort((a, b) => {
+                const aName = (a.group || "").toLowerCase();
+                const bName = (b.group || "").toLowerCase();
+                let aIdx = uLoaderList.findIndex(u => filters.uploaders.strict ? aName === u : aName.includes(u));
+                let bIdx = uLoaderList.findIndex(u => filters.uploaders.strict ? bName === u : bName.includes(u));
+                if (aIdx === -1) aIdx = 9999;
+                if (bIdx === -1) bIdx = 9999;
+                return aIdx - bIdx;
+            });
+
+            // D. One Version per Chapter logic
+            if (filters.oneVersionOnly && filtered.length > 1) {
+                filtered = [filtered[0]];
+            }
+        }
+
+        for (const chap of filtered) {
+            finalChapters.push(App.createChapter({
+                id: chap.id,
+                chapNum: chap.chapNum,
+                name: chap.name,
+                langCode: chap.langCode,
+                volume: chap.volume,
+                group: chap.group
+            }));
+        }
+      }
+      return finalChapters;
     }
     parseChapterDetails(data, mangaId, chapterId) {
       const pages = data.images.map((img) => img.url);
@@ -883,24 +941,13 @@ var _Sources = (() => {
     const val = await stateManager.retrieve("trending_limit");
     return val ?? ["30"];
   };
-  var getUploadersFiltering = async (stateManager) => {
-    return await stateManager.retrieve("uploaders_toggled") ?? false;
-  };
-  var getUploadersWhitelisted = async (stateManager) => {
-    return await stateManager.retrieve("uploaders_whitelisted") ?? false;
-  };
-  var getStrictNameMatching = async (stateManager) => {
-    return await stateManager.retrieve("strict_name_matching") ?? false;
-  };
-  var getUploaders = async (stateManager) => {
-    return await stateManager.retrieve("uploaders") ?? [];
-  };
-  var getUploaderInput = async (stateManager) => {
-    return await stateManager.retrieve("uploader_input") ?? "";
-  };
-  var getSelectedUploaders = async (stateManager) => {
-    return await stateManager.retrieve("uploaders_selected") ?? [];
-  };
+  var getUploadersFiltering = async (stateManager) => await stateManager.retrieve("uploaders_enabled") ?? false;
+  var getUploadersWhitelisted = async (stateManager) => await stateManager.retrieve("uploaders_whitelist") ?? false;
+  var getStrictNameMatching = async (stateManager) => await stateManager.retrieve("uploaders_strict") ?? false;
+  var getUploaders = async (stateManager) => await stateManager.retrieve("uploaders") ?? [];
+  var getUploaderInput = async (stateManager) => await stateManager.retrieve("uploader_input") ?? "";
+  var getSelectedUploaders = async (stateManager) => await stateManager.retrieve("uploaders_selected") ?? [];
+
   var contentSettings = (stateManager) => {
     return keepAlive(App.createDUINavigationButton({
       id: "content_settings",
@@ -949,114 +996,113 @@ var _Sources = (() => {
       })
     }));
   };
-  var groupSettings = (stateManager) => {
+  var createDynamicListSection = (stateManager, id, header, listKey, selectedKey, inputKey, filterKey, whitelistKey, strictKey) => {
+    return App.createDUISection({
+      id,
+      header,
+      rows: async () => {
+        const masterList = await stateManager.retrieve(listKey) ?? [];
+        return keepAlive([
+          App.createDUISwitch({
+            id: `${id}_enabled`,
+            label: `Enable ${header} Filtering`,
+            value: App.createDUIBinding({
+              get: async () => await stateManager.retrieve(filterKey) ?? false,
+              set: async (val) => await stateManager.store(filterKey, val)
+            })
+          }),
+          App.createDUISwitch({
+            id: `${id}_whitelist`,
+            label: `Enable Whitelist Mode`,
+            value: App.createDUIBinding({
+              get: async () => await stateManager.retrieve(whitelistKey) ?? false,
+              set: async (val) => await stateManager.store(whitelistKey, val)
+            })
+          }),
+          App.createDUISwitch({
+            id: `${id}_strict`,
+            label: `Strict Matching`,
+            value: App.createDUIBinding({
+              get: async () => await stateManager.retrieve(strictKey) ?? false,
+              set: async (val) => await stateManager.store(strictKey, val)
+            })
+          }),
+          App.createDUISelect({
+            id: `${id}_list`,
+            label: `Currently Saved ${header}`,
+            options: masterList,
+            value: App.createDUIBinding({
+              get: async () => await stateManager.retrieve(selectedKey) ?? [],
+              set: async (val) => await stateManager.store(selectedKey, val)
+            }),
+            allowsMultiselect: true,
+            labelResolver: async (v) => v
+          }),
+          App.createDUIInputField({
+            id: `${id}_input`,
+            label: `Add/Remove Name`,
+            value: App.createDUIBinding({
+              get: async () => await stateManager.retrieve(inputKey) ?? "",
+              set: async (val) => await stateManager.store(inputKey, val)
+            })
+          }),
+          App.createDUIButton({
+            id: `${id}_add`,
+            label: `Add to List`,
+            onTap: async () => {
+              const val = await stateManager.retrieve(inputKey);
+              if (!val) return;
+              const list = await stateManager.retrieve(listKey) ?? [];
+              if (!list.includes(val)) {
+                list.push(val);
+                await stateManager.store(listKey, list);
+              }
+              await stateManager.store(inputKey, "");
+            }
+          }),
+          App.createDUIButton({
+            id: `${id}_remove`,
+            label: `Remove from List`,
+            onTap: async () => {
+              const val = await stateManager.retrieve(inputKey);
+              if (!val) return;
+              let list = await stateManager.retrieve(listKey) ?? [];
+              list = list.filter(x => x !== val);
+              await stateManager.store(listKey, list);
+              let sel = await stateManager.retrieve(selectedKey) ?? [];
+              sel = sel.filter(x => x !== val);
+              await stateManager.store(selectedKey, sel);
+              await stateManager.store(inputKey, "");
+            }
+          })
+        ]);
+      }
+    });
+  };
+
+  var filterSettings = (stateManager) => {
     return keepAlive(App.createDUINavigationButton({
-      id: "group_settings",
-      label: "Scanlation Group Settings",
+      id: "filter_settings",
+      label: "Advanced Filtering Settings",
       form: App.createDUIForm({
         sections: async () => {
           await warmUpGroupSettings(stateManager);
           return keepAlive([
             App.createDUISection({
-              id: "filtering_settings",
-              header: "Filtering Settings",
-              footer: "By default, listed groups are excluded from chapter lists (blacklist mode). Turn off Strict Matching to catch partial names.",
-              isHidden: false,
+              id: "general_filter_settings",
+              header: "General Filtering Settings",
               rows: async () => keepAlive([
                 App.createDUISwitch({
-                  id: "toggle_uploaders_filtering",
-                  label: "Enable Group Filtering",
+                  id: "one_version_only",
+                  label: "Always Only Show 1 Source",
                   value: App.createDUIBinding({
-                    get: async () => await getUploadersFiltering(stateManager),
-                    set: async (newValue) => await stateManager.store("uploaders_toggled", newValue)
-                  })
-                }),
-                App.createDUISwitch({
-                  id: "uploaders_switch",
-                  label: "Enable Whitelist Mode",
-                  value: App.createDUIBinding({
-                    get: async () => await getUploadersWhitelisted(stateManager),
-                    set: async (newValue) => await stateManager.store("uploaders_whitelisted", newValue)
-                  })
-                }),
-                App.createDUISwitch({
-                  id: "strict_name_matching",
-                  label: "Strict Group Name Matching",
-                  value: App.createDUIBinding({
-                    get: async () => await getStrictNameMatching(stateManager),
-                    set: async (newValue) => await stateManager.store("strict_name_matching", newValue)
+                    get: async () => await stateManager.retrieve("one_version_only") ?? false,
+                    set: async (val) => await stateManager.store("one_version_only", val)
                   })
                 })
               ])
             }),
-            App.createDUISection({
-              id: "manage_groups",
-              header: "Manage Groups",
-              isHidden: false,
-              rows: async () => {
-                const uploaders = await getUploaders(stateManager);
-                return keepAlive([
-                  App.createDUISelect({
-                    id: "uploaders_list",
-                    label: "Currently Saved Groups",
-                    options: uploaders,
-                    value: App.createDUIBinding({
-                      get: async () => await getSelectedUploaders(stateManager),
-                      set: async (newValue) => await stateManager.store("uploaders_selected", newValue)
-                    }),
-                    labelResolver: async (value) => value,
-                    allowsMultiselect: true
-                  }),
-                  App.createDUIInputField({
-                    id: "uploader_input",
-                    label: "Group Name",
-                    value: App.createDUIBinding({
-                      get: async () => await getUploaderInput(stateManager),
-                      set: async (newValue) => await stateManager.store("uploader_input", newValue)
-                    })
-                  }),
-                  App.createDUIButton({
-                    id: "add_uploader",
-                    label: "Add Group",
-                    onTap: async () => {
-                      const targetUploader = await getUploaderInput(stateManager);
-                      if (!targetUploader || targetUploader.trim() === "") {
-                        throw new Error("Group name cannot be empty!");
-                      }
-                      const uploadersList = await getUploaders(stateManager);
-                      if (uploadersList.includes(targetUploader)) {
-                        throw new Error(`Group "${targetUploader}" is already in the list!`);
-                      }
-                      uploadersList.push(targetUploader);
-                      await stateManager.store("uploaders", uploadersList);
-                      await stateManager.store("uploader_input", "");
-                    }
-                  }),
-                  App.createDUIButton({
-                    id: "remove_uploader",
-                    label: "Remove Group",
-                    onTap: async () => {
-                      const targetUploader = await getUploaderInput(stateManager);
-                      if (!targetUploader || targetUploader.trim() === "") {
-                        throw new Error("Group name cannot be empty!");
-                      }
-                      const uploadersList = await getUploaders(stateManager);
-                      const index = uploadersList.indexOf(targetUploader);
-                      if (index !== -1) {
-                        uploadersList.splice(index, 1);
-                        await stateManager.store("uploaders", uploadersList);
-                        const selectedList = await getSelectedUploaders(stateManager);
-                        const newSelected = selectedList.filter((s) => s !== targetUploader);
-                        await stateManager.store("uploaders_selected", newSelected);
-                      } else {
-                        throw new Error(`Group "${targetUploader}" is not in the list!`);
-                      }
-                      await stateManager.store("uploader_input", "");
-                    }
-                  })
-                ]);
-              }
-            })
+            createDynamicListSection(stateManager, "uploaders", "Uploaders", "uploaders", "uploaders_selected", "uploader_input", "uploaders_enabled", "uploaders_whitelist", "uploaders_strict")
           ]);
         }
       })
@@ -1069,25 +1115,26 @@ var _Sources = (() => {
       onTap: async () => {
         await stateManager.store("trending_limit", null);
         await stateManager.store("is_nsfw", null);
+        await stateManager.store("one_version_only", null);
         await stateManager.store("uploaders", null);
         await stateManager.store("uploaders_selected", null);
-        await stateManager.store("uploaders_whitelisted", null);
-        await stateManager.store("uploaders_toggled", null);
+        await stateManager.store("uploaders_whitelist", null);
+        await stateManager.store("uploaders_enabled", null);
         await stateManager.store("uploader_input", null);
-        await stateManager.store("strict_name_matching", null);
+        await stateManager.store("uploaders_strict", null);
       }
     }));
   };
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.3.0",
+    version: "1.4.1",
     name: "ComixTo",
     icon: "icon.png",
-    author: "acepilot147",
-    authorWebsite: "https://acepilot147.github.io/pb-extensions/0.8",
-    description: "Comix.to Extension with advanced filters. Fork of AthK extensions for Paperback 0.8 (edited by acepilot147)",
-    contentRating: import_types.ContentRating.EVERYONE,
+    author: "Michiya52",
+    authorWebsite: "https://github.com/Michiya52",
+    description: "Comix.to Extension with advanced uploader filtering. (Inspired by Ace)",
+    contentRating: import_types.ContentRating.MATURE,
     websiteBaseURL: DOMAIN,
     sourceTags: [
       {
@@ -1132,7 +1179,7 @@ var _Sources = (() => {
         isHidden: false,
         rows: async () => keepAlive([
           contentSettings(this.stateManager),
-          groupSettings(this.stateManager),
+          filterSettings(this.stateManager),
           resetSettings(this.stateManager)
         ])
       }));
@@ -1170,13 +1217,18 @@ var _Sources = (() => {
         lastPage = json.result.pagination.last_page;
         page++;
       } while (page <= lastPage);
-      const [isFiltering, isWhitelist, isStrict, savedGroups] = await Promise.all([
-        getUploadersFiltering(this.stateManager),
-        getUploadersWhitelisted(this.stateManager),
-        getStrictNameMatching(this.stateManager),
-        getUploaders(this.stateManager)
-      ]);
-      return this.parser.parseChapters(chapters, isFiltering, isWhitelist, isStrict, savedGroups);
+
+      const filters = {
+        uploaders: {
+            enabled: await this.stateManager.retrieve("uploaders_enabled") ?? false,
+            whitelist: await this.stateManager.retrieve("uploaders_whitelist") ?? false,
+            strict: await this.stateManager.retrieve("uploaders_strict") ?? false,
+            list: await this.stateManager.retrieve("uploaders_selected") ?? []
+        },
+        oneVersionOnly: await this.stateManager.retrieve("one_version_only") ?? false
+      };
+
+      return this.parser.parseChapters(chapters, filters);
     }
     async getChapterDetails(mangaId, chapterId) {
       const request = App.createRequest({
