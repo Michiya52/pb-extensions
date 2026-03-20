@@ -26,7 +26,7 @@ import {
 } from "paperback-extensions-common";
 
 import { parseMangaDetails, parseChapterList, parsePageList, parseMangaList } from "./ComixToParser";
-import { chapterSettings, filterSettings, resetSettings } from "./ComixToSettings";
+import { chapterSettings, filterSettings, resetSettings, contentSettings, getTrendingLimit } from "./ComixToSettings";
 
 const COMIXTO_DOMAIN = "https://comix.to";
 
@@ -70,6 +70,7 @@ export class ComixTo extends Source {
             header: "Source Settings",
             isHidden: false,
             rows: async () => [
+                contentSettings(this.stateManager),
                 chapterSettings(this.stateManager),
                 filterSettings(this.stateManager),
                 resetSettings(this.stateManager)
@@ -138,6 +139,7 @@ export class ComixTo extends Source {
         const showVolume = await this.stateManager.retrieve("show_volume_number") as boolean ?? false;
         const showTitle = await this.stateManager.retrieve("show_title") as boolean ?? false;
         const showUploader = await this.stateManager.retrieve("show_uploader") as boolean ?? false;
+        const removeDuplicates = await this.stateManager.retrieve("remove_duplicates") as boolean ?? true;
 
         const filters = {
             uploaders: {
@@ -149,7 +151,7 @@ export class ComixTo extends Source {
             oneVersionOnly: await this.stateManager.retrieve('one_version_only') as boolean ?? false
         };
 
-        return parseChapterList($, mangaId, sortVotes, { showVolume, showTitle, showUploader }, filters);
+        return parseChapterList($, mangaId, sortVotes, { showVolume, showTitle, showUploader, removeDuplicates }, filters);
     }
 
     async getChapterDetails(mangaId: string, chapterId: string): Promise<ChapterDetails> {
