@@ -36,7 +36,7 @@ export const ComixToInfo: SourceInfo = {
     icon: "icon.png",
     author: "Michiya52",
     authorWebsite: "https://github.com/Michiya52",
-    description: "Extension for Comix.to with advanced filters. (Inspired by Ace)",
+    description: "Extension for Comix.to with advanced filters. (Updated by Michiya52)",
     contentRating: ContentRating.MATURE,
     websiteBaseURL: COMIXTO_DOMAIN,
 };
