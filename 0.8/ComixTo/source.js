@@ -770,7 +770,8 @@ var _Sources = (() => {
             volume: chap.volume,
             group: chap.scanlation_group?.name || "",
             lang: chap.language || "en",
-            region: chap.region || ""
+            region: chap.region || "",
+            time: new Date(chap.created_at || chap.published_at || chap.updated_at || Date.now())
         });
       }
 
@@ -843,7 +844,8 @@ var _Sources = (() => {
                 name: chap.name,
                 langCode: chap.langCode,
                 volume: chap.volume,
-                group: chap.group
+                group: chap.group,
+                time: chap.time
             }));
         }
       }
