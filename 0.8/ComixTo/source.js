@@ -771,7 +771,8 @@ var _Sources = (() => {
             group: chap.scanlation_group?.name || "",
             lang: chap.language || "en",
             region: chap.region || "",
-            time: chap.created_at ? new Date(chap.created_at * 1000) : (chap.updated_at ? new Date(chap.updated_at * 1000) : new Date())
+            time: new Date(chap.updated_at * 1e3),
+            sortingIndex: chap.number
         });
       }
 
@@ -845,7 +846,8 @@ var _Sources = (() => {
                 langCode: chap.langCode,
                 volume: chap.volume,
                 group: chap.group,
-                time: chap.time
+                time: chap.time,
+                sortingIndex: chap.sortingIndex
             }));
         }
       }
