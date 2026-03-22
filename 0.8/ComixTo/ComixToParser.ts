@@ -140,8 +140,8 @@ export const parseChapterList = (
 
     const finalChapters: Chapter[] = [];
 
-    const checkFilterFunc = (val: string | undefined, filter: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] }) => {
-        if (!filter.enabled || filter.list.length === 0) return { pass: true, isMatched: false };
+    const checkFilterFunc = (val: string | undefined, filter: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] } | undefined) => {
+        if (!filter || !filter.enabled || !filter.list || filter.list.length === 0) return { pass: true, isMatched: false };
         if (!val) return { pass: !filter.whitelist, isMatched: false };
 
         const target = val.toLowerCase();
@@ -159,12 +159,12 @@ export const parseChapterList = (
 
         if (filters) {
             // A. Hard Filter: Uploader Blacklist
-            if (filters.uploaders.enabled && !filters.uploaders.whitelist) {
+            if (filters.uploaders && filters.uploaders.enabled && !filters.uploaders.whitelist) {
                 filtered = variants.filter((v: any) => checkFilterFunc(v.group, filters.uploaders).pass);
             }
 
             // B. Soft Filter: Uploader Whitelist (Fallback to all if zero matches)
-            if (filters.uploaders.enabled && filters.uploaders.whitelist) {
+            if (filters.uploaders && filters.uploaders.enabled && filters.uploaders.whitelist) {
                 const whitelisted = filtered.filter((v: any) => checkFilterFunc(v.group, filters.uploaders).isMatched);
                 if (whitelisted.length > 0) {
                     filtered = whitelisted;

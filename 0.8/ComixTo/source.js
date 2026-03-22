@@ -751,7 +751,7 @@ var _Sources = (() => {
     parseChapters(data, filters) {
       const rawChapters = [];
       const checkFilter = (val, filter) => {
-        if (!filter.enabled || filter.list.length === 0) return { pass: true, isMatched: false };
+        if (!filter || !filter.enabled || !filter.list || filter.list.length === 0) return { pass: true, isMatched: false };
         if (!val) return { pass: !filter.whitelist, isMatched: false };
         const target = val.toLowerCase();
         const isMatched = filter.list.some(item => {
@@ -789,11 +789,7 @@ var _Sources = (() => {
             // A. Hard Filter: Blacklist
             filtered = variants.filter(v => {
                 const u = checkFilter(v.group, filters.uploaders);
-                const l = checkFilter(v.lang, filters.languages);
-                const r = checkFilter(v.region, filters.regions);
-                if (filters.uploaders.enabled && !filters.uploaders.whitelist && !u.pass) return false;
-                if (filters.languages.enabled && !filters.languages.whitelist && !l.pass) return false;
-                if (filters.regions.enabled && !filters.regions.whitelist && !r.pass) return false;
+                if (filters.uploaders && filters.uploaders.enabled && !filters.uploaders.whitelist && !u.pass) return false;
                 return true;
             });
 
@@ -801,12 +797,8 @@ var _Sources = (() => {
             if (filtered.length > 0) {
                 const whitelisted = filtered.filter(v => {
                     const u = checkFilter(v.group, filters.uploaders);
-                    const l = checkFilter(v.lang, filters.languages);
-                    const r = checkFilter(v.region, filters.regions);
                     let m = false;
-                    if (filters.uploaders.enabled && filters.uploaders.whitelist && u.isMatched) m = true;
-                    if (filters.languages.enabled && filters.languages.whitelist && l.isMatched) m = true;
-                    if (filters.regions.enabled && filters.regions.whitelist && r.isMatched) m = true;
+                    if (filters.uploaders && filters.uploaders.enabled && filters.uploaders.whitelist && u.isMatched) m = true;
                     return m;
                 });
                 if (whitelisted.length > 0) filtered = whitelisted;
