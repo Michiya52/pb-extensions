@@ -771,7 +771,7 @@ var _Sources = (() => {
             group: chap.scanlation_group?.name || "",
             lang: chap.language || "en",
             region: chap.region || "",
-            time: new Date(chap.created_at || chap.published_at || chap.updated_at || Date.now())
+            time: chap.created_at ? new Date(chap.created_at * 1000) : (chap.updated_at ? new Date(chap.updated_at * 1000) : new Date())
         });
       }
 
