@@ -26,7 +26,7 @@ import {
 } from "paperback-extensions-common";
 
 import { parseMangaDetails, parseChapterList, parsePageList, parseMangaList } from "./ComixToParser";
-import { chapterSettings, contentSettings, resetSettings } from "./ComixToSettings";
+import { chapterSettings, contentSettings, resetSettings, getFilters } from "./ComixToSettings";
 
 const COMIXTO_DOMAIN = "https://comix.to";
 
@@ -73,7 +73,7 @@ export class ComixTo extends Source {
             header: "Source Settings",
             isHidden: false,
             rows: async () => [
-                contentSettings(this.stateManager),
+                contentSettings(this.stateManager, this.requestManager),
                 chapterSettings(this.stateManager),
                 resetSettings(this.stateManager)
             ]
@@ -135,25 +135,10 @@ export class ComixTo extends Source {
         const response = await this.requestManager.schedule(request, 1);
         const $ = (this as any).cheerio.load(response.data);
 
-        // Retrieve settings
         const sortVotes = await this.stateManager.retrieve("sort_upvotes") as boolean ?? false;
-        
-        const showVolume = await this.stateManager.retrieve("show_volume_number") as boolean ?? false;
-        const showTitle = await this.stateManager.retrieve("show_title") as boolean ?? false;
-        const showUploader = await this.stateManager.retrieve("show_uploader") as boolean ?? false;
+        const appFilters = await getFilters(this.stateManager);
 
-        const filters = {
-            uploaders: {
-                enabled: await this.stateManager.retrieve("uploaders_enabled") as boolean ?? false,
-                whitelist: await this.stateManager.retrieve("uploaders_whitelist") as boolean ?? false,
-                strict: await this.stateManager.retrieve("uploaders_strict") as boolean ?? false,
-                list: await this.stateManager.retrieve("uploaders_selected") as string[] ?? []
-            },
-            oneVersionOnly: await this.stateManager.retrieve('one_version_only') as boolean ?? false,
-            removeDuplicates: await this.stateManager.retrieve('remove_duplicates') as boolean ?? true
-        };
-
-        return parseChapterList($, mangaId, sortVotes, { showVolume, showTitle, showUploader }, filters);
+        return parseChapterList($, mangaId, sortVotes, appFilters);
     }
 
     async getChapterDetails(mangaId: string, chapterId: string): Promise<ChapterDetails> {

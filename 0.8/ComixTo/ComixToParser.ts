@@ -95,12 +95,7 @@ export const parseChapterList = (
     $: any,
     mangaId: string,
     sortVotes: boolean = false,
-    chapSettings?: { showVolume: boolean, showTitle: boolean, showUploader: boolean },
-    filters?: {
-        uploaders: { enabled: boolean, whitelist: boolean, strict: boolean, list: string[] },
-        oneVersionOnly: boolean,
-        removeDuplicates: boolean
-    }
+    settings?: any
 ): Chapter[] => {
     const rawChapters: any[] = [];
 
@@ -116,7 +111,7 @@ export const parseChapterList = (
         let volumeNumber: number | undefined = undefined;
         let groupName: string | undefined = undefined;
 
-        if (chapSettings?.showVolume) {
+        if (settings?.showVolume) {
             const volMatch = name.match(/Vol\.?\s*(\d+(\.\d+)?)/i);
             if (volMatch) {
                 volumeNumber = Number(volMatch[1]);
@@ -175,6 +170,7 @@ export const parseChapterList = (
     for (const chapNum in grouped) {
         const variants = grouped[chapNum];
         let filtered = variants;
+        let filters = settings;
 
         if (filters) {
             // A. Hard Filter: Uploader Blacklist
@@ -191,12 +187,12 @@ export const parseChapterList = (
             }
 
             // C. Priority Ranking (v1.3.4) - Sort by uploader preference
-            const uploaderList = filters.uploaders.list.map(u => u.toLowerCase());
+            const uploaderList = filters.uploaders.list.map((u: string) => u.toLowerCase());
             filtered.sort((a: any, b: any) => {
                 const aName = a.group?.toLowerCase() ?? "";
                 const bName = b.group?.toLowerCase() ?? "";
-                let aIdx = uploaderList.findIndex(u => filters.uploaders.strict ? aName === u : aName.includes(u));
-                let bIdx = uploaderList.findIndex(u => filters.uploaders.strict ? bName === u : bName.includes(u));
+                let aIdx = uploaderList.findIndex((u: string) => filters.uploaders.strict ? aName === u : aName.includes(u));
+                let bIdx = uploaderList.findIndex((u: string) => filters.uploaders.strict ? bName === u : bName.includes(u));
                 if (aIdx === -1) aIdx = 9999;
                 if (bIdx === -1) bIdx = 9999;
                 return aIdx - bIdx;
@@ -223,8 +219,8 @@ export const parseChapterList = (
         }
 
         for (const chap of filtered) {
-            const groupTag = (chapSettings?.showUploader && chap.group) ? ` [${chap.group}]` : "";
-            const displayName = (chapSettings && !chapSettings.showTitle) ? `Chapter ${chap.chapNum}${groupTag}` : `${chap.name}${groupTag}`;
+            const groupTag = (settings?.showUploader && chap.group) ? ` [${chap.group}]` : "";
+            const displayName = (settings && !settings.showTitle) ? `Chapter ${chap.chapNum}${groupTag}` : `${chap.name}${groupTag}`;
 
             finalChapters.push(createChapter({
                 id: chap.id,

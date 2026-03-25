@@ -839,10 +839,13 @@ var _Sources = (() => {
         }
 
         for (const chap of filtered) {
+            const groupTag = (filters?.showUploader && chap.group) ? ` [${chap.group}]` : "";
+            const displayName = (filters && !filters.showTitle) ? `Chapter ${chap.chapNum}${groupTag}` : `${chap.name}${groupTag}`;
+
             finalChapters.push(App.createChapter({
                 id: chap.id,
                 chapNum: chap.chapNum,
-                name: chap.name,
+                name: displayName,
                 langCode: chap.langCode,
                 volume: chap.volume,
                 group: chap.group,
@@ -916,272 +919,279 @@ var _Sources = (() => {
   ];
 
   // src/ComixTo/Settings.ts
-  var TRENDING_OPTIONS = [
-    { id: "1", label: "1 day" },
-    { id: "7", label: "7 days" },
-    { id: "30", label: "1 month" },
-    { id: "90", label: "3 months" },
-    { id: "180", label: "6 months" },
-    { id: "365", label: "1 year" }
-  ];
   var uiKeepAlive = [];
   var keepAlive = (obj) => {
     uiKeepAlive.push(obj);
     return obj;
   };
-  var groupSettingsWarmUp = null;
-  var warmUpGroupSettings = (stateManager) => {
-    if (!groupSettingsWarmUp) {
-      groupSettingsWarmUp = (async () => {
-        await getUploadersFiltering(stateManager);
-        await getUploadersWhitelisted(stateManager);
-        await getStrictNameMatching(stateManager);
-        await getUploaders(stateManager);
-        await getSelectedUploaders(stateManager);
-        await getUploaderInput(stateManager);
-      })();
-    }
-    return groupSettingsWarmUp;
+  var DEFAULT_SETTINGS = {
+    show_volume_number: false,
+    show_title: false,
+    show_uploader: false,
+    is_nsfw: true,
+    trending_limit: ["30"],
+    remove_duplicates: true,
+    one_version_only: false,
+    uploaders: [],
+    uploaders_selected: [],
+    uploader_input: "",
+    uploaders_enabled: false,
+    uploaders_whitelist: false,
+    uploaders_strict: false
   };
-  var getIsNsfw = async (stateManager) => {
-    const val = await stateManager.retrieve("is_nsfw");
-    return val !== null ? val : true;
+  var getSetting = async (stateManager, key) => {
+    const val = await stateManager.retrieve(key);
+    return val !== null ? val : DEFAULT_SETTINGS[key];
   };
-  var getTrendingLimit = async (stateManager) => {
-    const val = await stateManager.retrieve("trending_limit");
-    return val ?? ["30"];
+  var getFilters = async (stateManager) => {
+    return {
+      showVolume: await getSetting(stateManager, "show_volume_number"),
+      showTitle: await getSetting(stateManager, "show_title"),
+      showUploader: await getSetting(stateManager, "show_uploader"),
+      uploaders: {
+        enabled: await getSetting(stateManager, "uploaders_enabled"),
+        whitelist: await getSetting(stateManager, "uploaders_whitelist"),
+        strict: await getSetting(stateManager, "uploaders_strict"),
+        list: await getSetting(stateManager, "uploaders_selected")
+      },
+      oneVersionOnly: await getSetting(stateManager, "one_version_only"),
+      removeDuplicates: await getSetting(stateManager, "remove_duplicates")
+    };
   };
-  var getUploadersFiltering = async (stateManager) => await stateManager.retrieve("uploaders_enabled") ?? false;
-  var getUploadersWhitelisted = async (stateManager) => await stateManager.retrieve("uploaders_whitelist") ?? false;
-  var getStrictNameMatching = async (stateManager) => await stateManager.retrieve("uploaders_strict") ?? false;
-  var getUploaders = async (stateManager) => await stateManager.retrieve("uploaders") ?? [];
-  var getUploaderInput = async (stateManager) => await stateManager.retrieve("uploader_input") ?? "";
-  var getSelectedUploaders = async (stateManager) => await stateManager.retrieve("uploaders_selected") ?? [];
 
-  var getShowVolume = async (stateManager) => await stateManager.retrieve("show_volume_number") ?? false;
-  var getShowTitle = async (stateManager) => await stateManager.retrieve("show_title") ?? false;
-  var getShowUploader = async (stateManager) => await stateManager.retrieve("show_uploader") ?? false;
-
-  var contentSettings = (stateManager) => {
-    return keepAlive(App.createDUINavigationButton({
-      id: "content_settings",
-      label: "Extension Settings",
-      form: App.createDUIForm({
-        sections: async () => {
-          await warmUpGroupSettings(stateManager);
-          return keepAlive([
-            // 1. Home Page Settings
-            App.createDUISection({
-              id: "home_settings",
-              header: "Discover Page Settings",
-              footer: "Adjust the time range for trending media on the Discover page.",
-              isHidden: false,
-              rows: async () => keepAlive([
-                App.createDUISelect({
-                  id: "trending_limit",
-                  label: "Trending Timeframe",
-                  options: TRENDING_OPTIONS.map((opt) => opt.id),
-                  value: App.createDUIBinding({
-                    get: async () => await getTrendingLimit(stateManager),
-                    set: async (newValue) => await stateManager.store("trending_limit", newValue)
-                  }),
-                  allowsMultiselect: false,
-                  labelResolver: async (value) => {
-                    return TRENDING_OPTIONS.find((opt) => opt.id === value)?.label ?? value;
-                  }
-                })
-              ])
-            }),
-            // 2. Content Filtering
-            App.createDUISection({
-              id: "nsfw_settings",
-              header: "Content Filtering",
-              isHidden: false,
-              rows: async () => keepAlive([
-                App.createDUISwitch({
-                  id: "is_nsfw",
-                  label: "Show NSFW Content",
-                  value: App.createDUIBinding({
-                    get: async () => await getIsNsfw(stateManager),
-                    set: async (newValue) => await stateManager.store("is_nsfw", newValue)
-                  })
-                })
-              ])
-            }),
-            // 3. Advanced Filtering
-            App.createDUISection({
-              id: "general_filter_settings",
-              header: "Advanced Chapter Filtering",
-              rows: async () => keepAlive([
-                App.createDUISwitch({
-                  id: "one_version_only",
-                  label: "Always Only Show 1 Source",
-                  value: App.createDUIBinding({
-                    get: async () => await stateManager.retrieve("one_version_only") ?? false,
-                    set: async (val) => await stateManager.store("one_version_only", val)
-                  })
-                }),
-                App.createDUISwitch({
-                  id: "remove_duplicates",
-                  label: "Remove Duplicate Chapters",
-                  value: App.createDUIBinding({
-                    get: async () => await stateManager.retrieve("remove_duplicates") ?? true,
-                    set: async (val) => await stateManager.store("remove_duplicates", val)
-                  })
-                })
-              ])
-            }),
-            createDynamicListSection(stateManager, "uploaders", "Uploaders", "uploaders", "uploaders_selected", "uploader_input", "uploaders_enabled", "uploaders_whitelist", "uploaders_strict")
-          ]);
-        }
-      })
-    }));
-  };
   var chapterSettings = (stateManager) => {
     return keepAlive(App.createDUINavigationButton({
       id: "chapter_settings",
       label: "Chapter Display Settings",
       form: App.createDUIForm({
-        sections: async () => keepAlive([
+        sections: async () => [
           App.createDUISection({
             id: "contentchapter",
             header: "Chapter Display",
             isHidden: false,
-            rows: async () => keepAlive([
+            rows: async () => [
               App.createDUISwitch({
                 id: "show_volume_number",
                 label: "Show Chapter Volume",
                 value: App.createDUIBinding({
-                  get: async () => await getShowVolume(stateManager),
-                  set: async (val) => await stateManager.store("show_volume_number", val)
+                  get: async () => await getSetting(stateManager, "show_volume_number"),
+                  set: async (newValue) => await stateManager.store("show_volume_number", newValue)
                 })
               }),
               App.createDUISwitch({
                 id: "show_title",
                 label: "Show Chapter Title",
                 value: App.createDUIBinding({
-                  get: async () => await getShowTitle(stateManager),
-                  set: async (val) => await stateManager.store("show_title", val)
+                  get: async () => await getSetting(stateManager, "show_title"),
+                  set: async (newValue) => await stateManager.store("show_title", newValue)
                 })
               }),
               App.createDUISwitch({
                 id: "show_uploader",
                 label: "Show Uploader",
                 value: App.createDUIBinding({
-                  get: async () => await getShowUploader(stateManager),
-                  set: async (val) => await stateManager.store("show_uploader", val)
+                  get: async () => await getSetting(stateManager, "show_uploader"),
+                  set: async (newValue) => await stateManager.store("show_uploader", newValue)
                 })
               })
-            ])
+            ]
           })
-        ])
+        ]
       })
     }));
   };
-  var createDynamicListSection = (stateManager, id, header, listKey, selectedKey, inputKey, filterKey, whitelistKey, strictKey) => {
+
+  var createDynamicListSection = (stateManager, id, header, listKey, selectedKey, inputKey, filterToggleKey, whitelistToggleKey, strictToggleKey) => {
     return App.createDUISection({
-      id,
-      header,
+      id: id,
+      header: header,
+      isHidden: false,
       rows: async () => {
-        const masterList = await stateManager.retrieve(listKey) ?? [];
-        return keepAlive([
+        const masterList = await getSetting(stateManager, listKey);
+        return [
           App.createDUISwitch({
-            id: `${id}_enabled`,
+            id: `${id}_filter_toggle`,
             label: `Enable ${header} Filtering`,
             value: App.createDUIBinding({
-              get: async () => await stateManager.retrieve(filterKey) ?? false,
-              set: async (val) => await stateManager.store(filterKey, val)
+              get: async () => await getSetting(stateManager, filterToggleKey),
+              set: async (newValue) => await stateManager.store(filterToggleKey, newValue)
             })
           }),
           App.createDUISwitch({
-            id: `${id}_whitelist`,
-            label: `Enable Whitelist Mode`,
+            id: `${id}_whitelist_toggle`,
+            label: "Enable Whitelist Mode",
             value: App.createDUIBinding({
-              get: async () => await stateManager.retrieve(whitelistKey) ?? false,
-              set: async (val) => await stateManager.store(whitelistKey, val)
+              get: async () => await getSetting(stateManager, whitelistToggleKey),
+              set: async (newValue) => await stateManager.store(whitelistToggleKey, newValue)
             })
           }),
           App.createDUISwitch({
-            id: `${id}_strict`,
-            label: `Strict Matching`,
+            id: `${id}_strict_toggle`,
+            label: "Strict Matching",
             value: App.createDUIBinding({
-              get: async () => await stateManager.retrieve(strictKey) ?? false,
-              set: async (val) => await stateManager.store(strictKey, val)
+              get: async () => await getSetting(stateManager, strictToggleKey),
+              set: async (newValue) => await stateManager.store(strictToggleKey, newValue)
             })
           }),
           App.createDUISelect({
-            id: `${id}_list`,
-            label: `Currently Saved ${header}`,
+            id: `${id}_select`,
+            label: `Selected ${header}`,
             options: masterList,
             value: App.createDUIBinding({
-              get: async () => await stateManager.retrieve(selectedKey) ?? [],
-              set: async (val) => await stateManager.store(selectedKey, val)
+              get: async () => await getSetting(stateManager, selectedKey),
+              set: async (newValue) => await stateManager.store(selectedKey, newValue)
             }),
             allowsMultiselect: true,
-            labelResolver: async (v) => v
+            labelResolver: async (val) => val
           }),
           App.createDUIInputField({
             id: `${id}_input`,
-            label: `Add/Remove Name`,
+            label: "Name (Comma-separated)",
             value: App.createDUIBinding({
-              get: async () => await stateManager.retrieve(inputKey) ?? "",
-              set: async (val) => await stateManager.store(inputKey, val)
+              get: async () => await getSetting(stateManager, inputKey),
+              set: async (newValue) => await stateManager.store(inputKey, newValue)
             })
           }),
           App.createDUIButton({
             id: `${id}_add`,
-            label: `Add to List`,
+            label: "Add to List",
             onTap: async () => {
-              const val = await stateManager.retrieve(inputKey);
-              if (!val) return;
-              const list = await stateManager.retrieve(listKey) ?? [];
-              if (!list.includes(val)) {
-                list.push(val);
+              const val = await getSetting(stateManager, inputKey);
+              if (!val || val.trim() === "") return;
+              const newItems = val.split(",").map((s) => s.trim()).filter((s) => s !== "");
+              let list = await getSetting(stateManager, listKey);
+              let selected = await getSetting(stateManager, selectedKey);
+              let changed = false;
+              for (const item of newItems) {
+                if (!list.includes(item)) {
+                  list.push(item);
+                  changed = true;
+                }
+                if (!selected.includes(item)) {
+                  selected.push(item);
+                  changed = true;
+                }
+              }
+              if (changed) {
                 await stateManager.store(listKey, list);
+                await stateManager.store(selectedKey, selected);
               }
               await stateManager.store(inputKey, "");
             }
           }),
           App.createDUIButton({
             id: `${id}_remove`,
-            label: `Remove from List`,
+            label: "Remove from List",
             onTap: async () => {
-              const val = await stateManager.retrieve(inputKey);
-              if (!val) return;
-              let list = await stateManager.retrieve(listKey) ?? [];
-              list = list.filter(x => x !== val);
+              const val = await getSetting(stateManager, inputKey);
+              if (!val || val.trim() === "") return;
+              const removeItems = val.split(",").map((s) => s.trim()).filter((s) => s !== "");
+              let list = await getSetting(stateManager, listKey);
+              let selected = await getSetting(stateManager, selectedKey);
+              list = list.filter((item) => !removeItems.includes(item));
+              selected = selected.filter((item) => !removeItems.includes(item));
               await stateManager.store(listKey, list);
-              let sel = await stateManager.retrieve(selectedKey) ?? [];
-              sel = sel.filter(x => x !== val);
-              await stateManager.store(selectedKey, sel);
+              await stateManager.store(selectedKey, selected);
               await stateManager.store(inputKey, "");
             }
           })
-        ]);
+        ];
       }
     });
   };
 
-  var resetSettings = (stateManager) => {
-    return keepAlive(App.createDUIButton({
-      id: "reset",
-      label: "Reset All Settings to Default",
-      onTap: async () => {
-        await stateManager.store("trending_limit", null);
-        await stateManager.store("is_nsfw", null);
-        await stateManager.store("show_volume_number", null);
-        await stateManager.store("show_title", null);
-        await stateManager.store("show_uploader", null);
-        await stateManager.store("remove_duplicates", null);
-        await stateManager.store("one_version_only", null);
-        await stateManager.store("uploaders", null);
-        await stateManager.store("uploaders_selected", null);
-        await stateManager.store("uploaders_whitelist", null);
-        await stateManager.store("uploaders_enabled", null);
-        await stateManager.store("uploader_input", null);
-        await stateManager.store("uploaders_strict", null);
-      }
+  var contentSettings = (stateManager, requestManager) => {
+    return keepAlive(App.createDUINavigationButton({
+      id: "content_settings",
+      label: "Extension Settings",
+      form: App.createDUIForm({
+        sections: async () => {
+          return [
+            createDynamicListSection(stateManager, "uploaders", "Uploaders", "uploaders", "uploaders_selected", "uploader_input", "uploaders_enabled", "uploaders_whitelist", "uploaders_strict"),
+            App.createDUISection({
+              id: "nsfw_settings",
+              header: "Content Filtering",
+              rows: async () => [
+                App.createDUISwitch({
+                  id: "is_nsfw",
+                  label: "Show NSFW Content",
+                  value: App.createDUIBinding({
+                    get: async () => await getSetting(stateManager, "is_nsfw"),
+                    set: async (newValue) => await stateManager.store("is_nsfw", newValue)
+                  })
+                })
+              ]
+            }),
+            App.createDUISection({
+              id: "home_settings",
+              header: "Discover Page Settings",
+              rows: async () => [
+                App.createDUISelect({
+                  id: "trending_limit",
+                  label: "Trending Timeframe",
+                  options: ["1", "7", "30", "90", "180", "365"],
+                  value: App.createDUIBinding({
+                    get: async () => await getSetting(stateManager, "trending_limit"),
+                    set: async (newValue) => await stateManager.store("trending_limit", newValue)
+                  }),
+                  allowsMultiselect: false,
+                  labelResolver: async (value) => {
+                    const labels = { "1": "1 day", "7": "7 days", "30": "1 month", "90": "3 months", "180": "6 months", "365": "1 year" };
+                    return labels[value] || value;
+                  }
+                })
+              ]
+            }),
+            App.createDUISection({
+              id: "general_settings",
+              header: "Advanced Chapter Filtering",
+              rows: async () => [
+                App.createDUISwitch({
+                  id: "one_version_only",
+                  label: "Always Only Show 1 Source",
+                  value: App.createDUIBinding({
+                    get: async () => await getSetting(stateManager, "one_version_only"),
+                    set: async (newValue) => await stateManager.store("one_version_only", newValue)
+                  })
+                }),
+                App.createDUISwitch({
+                  id: "remove_duplicates",
+                  label: "Remove Duplicate Chapters",
+                  value: App.createDUIBinding({
+                    get: async () => await getSetting(stateManager, "remove_duplicates"),
+                    set: async (newValue) => await stateManager.store("remove_duplicates", newValue)
+                  })
+                })
+              ]
+            }),
+            App.createDUISection({
+                id: "network_settings",
+                header: "Network Settings",
+                rows: async () => [
+                    App.createDUIButton({
+                        id: "cf_bypass_trigger",
+                        label: "Manually Trigger Cloudflare Bypass",
+                        onTap: async () => {
+                            if (requestManager) throw new Error("Cloudflare Bypass Required");
+                        }
+                    })
+                ]
+            })
+          ];
+        }
+      })
     }));
+  };
+
+  var resetSettings = (stateManager) => {
+    return App.createDUIButton({
+      id: "reset",
+      label: "Reset All Settings",
+      onTap: async () => {
+        const promises = Object.keys(DEFAULT_SETTINGS).map((key) => stateManager.store(key, null));
+        await Promise.all(promises);
+      }
+    });
   };
 
   // src/ComixTo/ComixTo.ts
@@ -1279,16 +1289,7 @@ var _Sources = (() => {
         page++;
       } while (page <= lastPage);
 
-      const filters = {
-        uploaders: {
-            enabled: await this.stateManager.retrieve("uploaders_enabled") ?? false,
-            whitelist: await this.stateManager.retrieve("uploaders_whitelist") ?? false,
-            strict: await this.stateManager.retrieve("uploaders_strict") ?? false,
-            list: await this.stateManager.retrieve("uploaders_selected") ?? []
-        },
-        oneVersionOnly: await this.stateManager.retrieve("one_version_only") ?? false,
-        removeDuplicates: await this.stateManager.retrieve("remove_duplicates") ?? true
-      };
+      const filters = await getFilters(this.stateManager);
 
       return this.parser.parseChapters(chapters, filters);
     }
