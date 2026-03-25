@@ -16,6 +16,25 @@ import {
     createPagedResults
 } from "paperback-extensions-common";
 
+const convertTime = (timeAgo: string): Date => {
+    let time: Date;
+    let trimmed = Number((/\d*/.exec(timeAgo) ?? [])[0]);
+    trimmed = (trimmed === 0 && timeAgo.includes('a')) ? 1 : trimmed;
+    if (timeAgo.includes('minutes') || timeAgo.includes('mins') || timeAgo.includes('minute')) {
+        time = new Date(Date.now() - trimmed * 60000);
+    } else if (timeAgo.includes('hours') || timeAgo.includes('hour')) {
+        time = new Date(Date.now() - trimmed * 3600000);
+    } else if (timeAgo.includes('days') || timeAgo.includes('day')) {
+        time = new Date(Date.now() - trimmed * 86400000);
+    } else if (timeAgo.includes('year') || timeAgo.includes('years')) {
+        time = new Date(Date.now() - trimmed * 31556952000);
+    } else {
+        time = new Date(timeAgo);
+    }
+    return time;
+};
+
+
 export const parseMangaList = ($: any, baseUrl: string): PagedResults => {
     const manga: PartialSourceManga[] = [];
     // Generic selectors for checking: .manga-item, .item-summary, .entry
@@ -123,7 +142,7 @@ export const parseChapterList = (
             name: finalName,
             chapNum: chapNum,
             volume: volumeNumber,
-            time: new Date(time),
+            time: convertTime(time),
             votes: votes,
             group: groupName,
             lang: langInfo,

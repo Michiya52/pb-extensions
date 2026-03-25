@@ -771,7 +771,7 @@ var _Sources = (() => {
             group: chap.scanlation_group?.name || "",
             lang: chap.language || "en",
             region: chap.region || "",
-            time: new Date(chap.updated_at * 1e3),
+            time: new Date((chap.created_at || chap.updated_at || 0) * 1e3),
             sortingIndex: chap.number
         });
       }
@@ -1220,6 +1220,9 @@ var _Sources = (() => {
             return request;
           },
           interceptResponse: async (response) => {
+            if (response.status === 403 || response.status === 503) {
+              throw new Error("Cloudflare Bypass Required");
+            }
             return response;
           }
         }

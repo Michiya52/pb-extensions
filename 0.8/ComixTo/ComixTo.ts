@@ -57,6 +57,9 @@ export class ComixTo extends Source {
                 return request;
             },
             interceptResponse: async (response: Response): Promise<Response> => {
+                if (response.status === 403 || response.status === 503) {
+                    throw new Error("Cloudflare Bypass Required");
+                }
                 return response;
             },
         },
@@ -161,5 +164,16 @@ export class ComixTo extends Source {
         const response = await this.requestManager.schedule(request, 1);
         const $ = (this as any).cheerio.load(response.data);
         return parsePageList($, mangaId, chapterId);
+    }
+
+    async getCloudflareBypassRequestAsync(): Promise<Request> {
+        return createRequestObject({
+            url: COMIXTO_DOMAIN,
+            method: "GET",
+            headers: {
+                "Referer": `${COMIXTO_DOMAIN}/`,
+                "User-Agent": await this.requestManager.getDefaultUserAgent(),
+            },
+        });
     }
 }
