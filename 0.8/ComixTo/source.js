@@ -1307,7 +1307,7 @@ var _Sources = (() => {
       return this.parser.parseChapterDetails(json.result, mangaId, chapterId);
     }
     async getHomePageSections(sectionCallback) {
-      const limitArray = await getTrendingLimit(this.stateManager);
+      const limitArray = await getSetting(this.stateManager, "trending_limit");
       const limit = limitArray[0] ?? "30";
       const sections = [
         App.createHomeSection({
@@ -1371,7 +1371,7 @@ var _Sources = (() => {
       const response = await this.requestManager.schedule(request, 1);
       this.checkResponseError(response);
       const json = JSON.parse(response.data ?? "{}");
-      const showNsfw = await getIsNsfw(this.stateManager);
+      const showNsfw = await getSetting(this.stateManager, "is_nsfw");
       if (json.result && json.result.items) {
         section.items = this.parser.parseMangaList(json.result.items, showNsfw);
       }
@@ -1379,7 +1379,7 @@ var _Sources = (() => {
     }
     async getViewMoreItems(homepageSectionId, metadata) {
       const page = metadata?.page ?? 1;
-      const limitArray = await getTrendingLimit(this.stateManager);
+      const limitArray = await getSetting(this.stateManager, "trending_limit");
       const limit = limitArray[0] ?? "30";
       let url = "";
       switch (homepageSectionId) {
@@ -1403,7 +1403,7 @@ var _Sources = (() => {
       const json = JSON.parse(
         response.data ?? "{}"
       );
-      const showNsfw = await getIsNsfw(this.stateManager);
+      const showNsfw = await getSetting(this.stateManager, "is_nsfw");
       const items = this.parser.parseMangaList(json.result.items, showNsfw);
       const hasNext = items.length > 0;
       return App.createPagedResults({
