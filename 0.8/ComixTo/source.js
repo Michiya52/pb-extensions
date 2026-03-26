@@ -379,20 +379,22 @@ var _Sources = (() => {
   var require_exports = __commonJS({
     "node_modules/@paperback/types/lib/generated/_exports.js"(exports) {
       "use strict";
-      var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m, k, k2) {
+      var __createBinding = exports && exports.__createBinding || (Object.create ? function (o, m, k, k2) {
         if (k2 === void 0) k2 = k;
         var desc = Object.getOwnPropertyDescriptor(m, k);
         if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-          desc = { enumerable: true, get: function() {
-            return m[k];
-          } };
+          desc = {
+            enumerable: true, get: function () {
+              return m[k];
+            }
+          };
         }
         Object.defineProperty(o, k2, desc);
-      } : function(o, m, k, k2) {
+      } : function (o, m, k, k2) {
         if (k2 === void 0) k2 = k;
         o[k2] = m[k];
       });
-      var __exportStar = exports && exports.__exportStar || function(m, exports2) {
+      var __exportStar = exports && exports.__exportStar || function (m, exports2) {
         for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports2, p)) __createBinding(exports2, m, p);
       };
       Object.defineProperty(exports, "__esModule", { value: true });
@@ -510,7 +512,7 @@ var _Sources = (() => {
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.BadgeColor = void 0;
       var BadgeColor2;
-      (function(BadgeColor3) {
+      (function (BadgeColor3) {
         BadgeColor3["BLUE"] = "default";
         BadgeColor3["GREEN"] = "success";
         BadgeColor3["GREY"] = "info";
@@ -580,20 +582,22 @@ var _Sources = (() => {
   var require_interfaces = __commonJS({
     "node_modules/@paperback/types/lib/base/interfaces/index.js"(exports) {
       "use strict";
-      var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m, k, k2) {
+      var __createBinding = exports && exports.__createBinding || (Object.create ? function (o, m, k, k2) {
         if (k2 === void 0) k2 = k;
         var desc = Object.getOwnPropertyDescriptor(m, k);
         if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-          desc = { enumerable: true, get: function() {
-            return m[k];
-          } };
+          desc = {
+            enumerable: true, get: function () {
+              return m[k];
+            }
+          };
         }
         Object.defineProperty(o, k2, desc);
-      } : function(o, m, k, k2) {
+      } : function (o, m, k, k2) {
         if (k2 === void 0) k2 = k;
         o[k2] = m[k];
       });
-      var __exportStar = exports && exports.__exportStar || function(m, exports2) {
+      var __exportStar = exports && exports.__exportStar || function (m, exports2) {
         for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports2, p)) __createBinding(exports2, m, p);
       };
       Object.defineProperty(exports, "__esModule", { value: true });
@@ -614,7 +618,7 @@ var _Sources = (() => {
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.ContentRating = exports.SourceIntents = void 0;
       var SourceIntents2;
-      (function(SourceIntents3) {
+      (function (SourceIntents3) {
         SourceIntents3[SourceIntents3["MANGA_CHAPTERS"] = 1] = "MANGA_CHAPTERS";
         SourceIntents3[SourceIntents3["MANGA_TRACKING"] = 2] = "MANGA_TRACKING";
         SourceIntents3[SourceIntents3["HOMEPAGE_SECTIONS"] = 4] = "HOMEPAGE_SECTIONS";
@@ -623,7 +627,7 @@ var _Sources = (() => {
         SourceIntents3[SourceIntents3["SETTINGS_UI"] = 32] = "SETTINGS_UI";
       })(SourceIntents2 = exports.SourceIntents || (exports.SourceIntents = {}));
       var ContentRating2;
-      (function(ContentRating3) {
+      (function (ContentRating3) {
         ContentRating3["EVERYONE"] = "EVERYONE";
         ContentRating3["MATURE"] = "MATURE";
         ContentRating3["ADULT"] = "ADULT";
@@ -638,7 +642,7 @@ var _Sources = (() => {
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.HomeSectionType = void 0;
       var HomeSectionType2;
-      (function(HomeSectionType3) {
+      (function (HomeSectionType3) {
         HomeSectionType3["singleRowNormal"] = "singleRowNormal";
         HomeSectionType3["singleRowLarge"] = "singleRowLarge";
         HomeSectionType3["doubleRow"] = "doubleRow";
@@ -659,20 +663,22 @@ var _Sources = (() => {
   var require_base = __commonJS({
     "node_modules/@paperback/types/lib/base/index.js"(exports) {
       "use strict";
-      var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m, k, k2) {
+      var __createBinding = exports && exports.__createBinding || (Object.create ? function (o, m, k, k2) {
         if (k2 === void 0) k2 = k;
         var desc = Object.getOwnPropertyDescriptor(m, k);
         if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-          desc = { enumerable: true, get: function() {
-            return m[k];
-          } };
+          desc = {
+            enumerable: true, get: function () {
+              return m[k];
+            }
+          };
         }
         Object.defineProperty(o, k2, desc);
-      } : function(o, m, k, k2) {
+      } : function (o, m, k, k2) {
         if (k2 === void 0) k2 = k;
         o[k2] = m[k];
       });
-      var __exportStar = exports && exports.__exportStar || function(m, exports2) {
+      var __exportStar = exports && exports.__exportStar || function (m, exports2) {
         for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports2, p)) __createBinding(exports2, m, p);
       };
       Object.defineProperty(exports, "__esModule", { value: true });
@@ -698,20 +704,22 @@ var _Sources = (() => {
   var require_lib = __commonJS({
     "node_modules/@paperback/types/lib/index.js"(exports) {
       "use strict";
-      var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m, k, k2) {
+      var __createBinding = exports && exports.__createBinding || (Object.create ? function (o, m, k, k2) {
         if (k2 === void 0) k2 = k;
         var desc = Object.getOwnPropertyDescriptor(m, k);
         if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-          desc = { enumerable: true, get: function() {
-            return m[k];
-          } };
+          desc = {
+            enumerable: true, get: function () {
+              return m[k];
+            }
+          };
         }
         Object.defineProperty(o, k2, desc);
-      } : function(o, m, k, k2) {
+      } : function (o, m, k, k2) {
         if (k2 === void 0) k2 = k;
         o[k2] = m[k];
       });
-      var __exportStar = exports && exports.__exportStar || function(m, exports2) {
+      var __exportStar = exports && exports.__exportStar || function (m, exports2) {
         for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports2, p)) __createBinding(exports2, m, p);
       };
       Object.defineProperty(exports, "__esModule", { value: true });
@@ -744,6 +752,7 @@ var _Sources = (() => {
           rating: data.rated_avg ? data.rated_avg / 2 : 0,
           hentai: data.is_nsfw,
           tags: []
+          // Detailed tags usually require a separate fetch or mapping from term_ids
         })
       });
     }
@@ -754,23 +763,24 @@ var _Sources = (() => {
         if (!val) return { pass: !filter.whitelist, isMatched: false };
         const target = val.toLowerCase();
         const isMatched = filter.list.some(item => {
-            const listItem = item.toLowerCase();
-            return filter.strict ? target === listItem : target.includes(listItem);
+          const listItem = item.toLowerCase();
+          return filter.strict ? target === listItem : target.includes(listItem);
         });
         return { pass: filter.whitelist ? isMatched : !isMatched, isMatched };
       };
 
       for (const chap of data) {
         rawChapters.push({
-            id: chap.chapter_id.toString(),
-            chapNum: chap.number,
-            name: chap.name ? `${chap.name}` : `Chapter ${chap.number}`,
-            langCode: chap.language || "en",
-            volume: chap.volume,
-            group: chap.scanlation_group?.name || "",
-            lang: chap.language || "en",
-            region: chap.region || "",
-            time: new Date((chap.created_at || chap.updated_at || 0) * 1e3)
+          id: chap.chapter_id.toString(),
+          chapNum: chap.number,
+          name: chap.name ? `${chap.name}` : `Chapter ${chap.number}`,
+          langCode: chap.language || "en",
+          volume: chap.volume,
+          group: chap.scanlation_group?.name || "",
+          lang: chap.language || "en",
+          region: chap.region || "",
+          time: new Date((chap.created_at || chap.updated_at || 0) * 1e3),
+          sortingIndex: chap.number
         });
       }
 
@@ -786,60 +796,70 @@ var _Sources = (() => {
         let filtered = variants;
 
         if (filters) {
-            // A. Hard Filter: Blacklist
-            filtered = variants.filter(v => {
-                const u = checkFilter(v.group, filters.uploaders);
-                const l = checkFilter(v.lang, filters.languages);
-                const r = checkFilter(v.region, filters.regions);
-                if (filters.uploaders && filters.uploaders.enabled && !filters.uploaders.whitelist && !u.pass) return false;
-                if (filters.languages && filters.languages.enabled && !filters.languages.whitelist && !l.pass) return false;
-                if (filters.regions && filters.regions.enabled && !filters.regions.whitelist && !r.pass) return false;
-                return true;
+          // A. Hard Filter: Blacklist
+          filtered = variants.filter(v => {
+            const u = checkFilter(v.group, filters.uploaders);
+            if (filters.uploaders && filters.uploaders.enabled && !filters.uploaders.whitelist && !u.pass) return false;
+            return true;
+          });
+
+          // B. Soft Filter: Whitelist
+          if (filtered.length > 0) {
+            const whitelisted = filtered.filter(v => {
+              const u = checkFilter(v.group, filters.uploaders);
+              let m = false;
+              if (filters.uploaders && filters.uploaders.enabled && filters.uploaders.whitelist && u.isMatched) m = true;
+              return m;
             });
+            if (whitelisted.length > 0) filtered = whitelisted;
+          }
 
-            // B. Soft Filter: Whitelist
-            if (filtered.length > 0) {
-                const whitelisted = filtered.filter(v => {
-                    const u = checkFilter(v.group, filters.uploaders);
-                    const l = checkFilter(v.lang, filters.languages);
-                    const r = checkFilter(v.region, filters.regions);
-                    let m = false;
-                    if (filters.uploaders && filters.uploaders.enabled && filters.uploaders.whitelist && u.isMatched) m = true;
-                    if (filters.languages && filters.languages.enabled && filters.languages.whitelist && l.isMatched) m = true;
-                    if (filters.regions && filters.regions.enabled && filters.regions.whitelist && r.isMatched) m = true;
-                    return m;
-                });
-                if (whitelisted.length > 0) filtered = whitelisted;
+          // C. Priority Ranking (v1.3.4)
+          const uLoaderList = (filters.uploaders.list || []).map(u => u.toLowerCase());
+          filtered.sort((a, b) => {
+            const aName = (a.group || "").toLowerCase();
+            const bName = (b.group || "").toLowerCase();
+            let aIdx = uLoaderList.findIndex(u => filters.uploaders.strict ? aName === u : aName.includes(u));
+            let bIdx = uLoaderList.findIndex(u => filters.uploaders.strict ? bName === u : bName.includes(u));
+            if (aIdx === -1) aIdx = 9999;
+            if (bIdx === -1) bIdx = 9999;
+            return aIdx - bIdx;
+          });
+
+          // D. Deduplication (v1.6)
+          if (filters.removeDuplicates && filtered.length > 1) {
+            const unique = [];
+            const seen = new Set();
+            for (const chap of filtered) {
+              const key = `${chap.chapNum}-${chap.langCode}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                unique.push(chap);
+              }
             }
+            filtered = unique;
+          }
 
-            // C. Priority Ranking
-            const uLoaderList = (filters.uploaders?.list || []).map(u => u.toLowerCase());
-            filtered.sort((a, b) => {
-                const aName = (a.group || "").toLowerCase();
-                const bName = (b.group || "").toLowerCase();
-                let aIdx = uLoaderList.findIndex(u => filters.uploaders?.strict ? aName === u : aName.includes(u));
-                let bIdx = uLoaderList.findIndex(u => filters.uploaders?.strict ? bName === u : bName.includes(u));
-                if (aIdx === -1) aIdx = 9999;
-                if (bIdx === -1) bIdx = 9999;
-                return aIdx - bIdx;
-            });
-
-            // D. One Version per Chapter logic
-            if (filters.oneVersionOnly && filtered.length > 1) {
-                filtered = [filtered[0]];
-            }
+          // E. One Version per Chapter logic
+          if (filters.oneVersionOnly && filtered.length > 1) {
+            filtered = [filtered[0]];
+          }
         }
 
         for (const chap of filtered) {
-            finalChapters.push(App.createChapter({
-                id: chap.id,
-                chapNum: chap.chapNum,
-                name: chap.name,
-                langCode: chap.langCode,
-                volume: chap.volume,
-                group: chap.group,
-                time: chap.time
-            }));
+          const groupTag = (filters?.showUploader && chap.group) ? ` [${chap.group}]` : "";
+          const displayName = (filters && !filters.showTitle) ? `Chapter ${chap.chapNum}${groupTag}` : `${chap.name}${groupTag}`;
+
+          finalChapters.push(App.createChapter({
+            id: chap.id,
+            chapNum: chap.chapNum,
+            name: displayName,
+            langCode: chap.langCode,
+            volume: chap.volume,
+            group: chap.group,
+            time: chap.time,
+            sortingIndex: chap.sortingIndex
+          }));
         }
       }
       return finalChapters;
@@ -869,6 +889,7 @@ var _Sources = (() => {
       }
       return mangaList;
     }
+    // Helper to organize raw API terms into Paperback TagSections
     parseTagSections(genres, themes, formats, demographics) {
       const createSection = (id, label, items) => {
         return App.createTagSection({
@@ -1153,6 +1174,19 @@ var _Sources = (() => {
                   })
                 })
               ]
+            }),
+            App.createDUISection({
+              id: "network_settings",
+              header: "Network Settings",
+              rows: async () => [
+                App.createDUIButton({
+                  id: "cf_bypass_trigger",
+                  label: "Manually Trigger Cloudflare Bypass",
+                  onTap: async () => {
+                    throw new Error("Cloudflare Bypass Required");
+                  }
+                })
+              ]
             })
           ];
         }
@@ -1201,12 +1235,15 @@ var _Sources = (() => {
           interceptRequest: async (request) => {
             request.headers = {
               ...request.headers ?? {},
-              "Referer": `${DOMAIN}`,
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+              "Referer": `${DOMAIN}/`,
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             };
             return request;
           },
           interceptResponse: async (response) => {
+            if (response.status === 403 || response.status === 503) {
+              throw new Error("Cloudflare Bypass Required");
+            }
             return response;
           }
         }
@@ -1388,17 +1425,13 @@ var _Sources = (() => {
     // -- Advanced Search --
     async getSearchTags() {
       const fetchTags = async (type) => {
-        try {
-          const req = App.createRequest({
-            url: `${API_BASE}/terms?type=${type}&limit=100`,
-            method: "GET"
-          });
-          const res = await this.requestManager.schedule(req, 1);
-          const json = JSON.parse(res.data ?? "{}");
-          return json.result?.items ?? [];
-        } catch (e) {
-          return [];
-        }
+        const req = App.createRequest({
+          url: `${API_BASE}/terms?type=${type}&limit=100`,
+          method: "GET"
+        });
+        const res = await this.requestManager.schedule(req, 1);
+        const json = JSON.parse(res.data ?? "{}");
+        return json.result?.items ?? [];
       };
       const [genres, themes, formats, demographics] = await Promise.all([
         fetchTags("genre"),
@@ -1500,7 +1533,7 @@ var _Sources = (() => {
         response.data ?? "{}"
       );
       const showNsfw = await getIsNsfw(this.stateManager);
-      const items = json.result?.items ? this.parser.parseMangaList(json.result.items, showNsfw) : [];
+      const items = this.parser.parseMangaList(json.result.items, showNsfw);
       let nextPage = void 0;
       if (json.result.pagination && json.result.pagination.last_page > page) {
         nextPage = { page: page + 1 };
@@ -1517,8 +1550,8 @@ var _Sources = (() => {
         url: DOMAIN,
         method: "GET",
         headers: {
-          "Referer": `${DOMAIN}`,
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+          "Referer": `${DOMAIN}/`,
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
       });
     }
@@ -1530,4 +1563,4 @@ var _Sources = (() => {
   };
   return __toCommonJS(ComixTo_exports);
 })();
-this.Sources = _Sources; if (typeof exports === 'object' && typeof module !== 'undefined') {module.exports.Sources = this.Sources;}
+this.Sources = _Sources; if (typeof exports === 'object' && typeof module !== 'undefined') { module.exports.Sources = this.Sources; }
