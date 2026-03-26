@@ -744,7 +744,6 @@ var _Sources = (() => {
           rating: data.rated_avg ? data.rated_avg / 2 : 0,
           hentai: data.is_nsfw,
           tags: []
-          // Detailed tags usually require a separate fetch or mapping from term_ids
         })
       });
     }
@@ -771,8 +770,7 @@ var _Sources = (() => {
             group: chap.scanlation_group?.name || "",
             lang: chap.language || "en",
             region: chap.region || "",
-            time: new Date((chap.created_at || chap.updated_at || 0) * 1e3),
-            sortingIndex: chap.number
+            time: new Date((chap.created_at || chap.updated_at || 0) * 1e3)
         });
       }
 
@@ -791,7 +789,11 @@ var _Sources = (() => {
             // A. Hard Filter: Blacklist
             filtered = variants.filter(v => {
                 const u = checkFilter(v.group, filters.uploaders);
+                const l = checkFilter(v.lang, filters.languages);
+                const r = checkFilter(v.region, filters.regions);
                 if (filters.uploaders && filters.uploaders.enabled && !filters.uploaders.whitelist && !u.pass) return false;
+                if (filters.languages && filters.languages.enabled && !filters.languages.whitelist && !l.pass) return false;
+                if (filters.regions && filters.regions.enabled && !filters.regions.whitelist && !r.pass) return false;
                 return true;
             });
 
@@ -799,58 +801,44 @@ var _Sources = (() => {
             if (filtered.length > 0) {
                 const whitelisted = filtered.filter(v => {
                     const u = checkFilter(v.group, filters.uploaders);
+                    const l = checkFilter(v.lang, filters.languages);
+                    const r = checkFilter(v.region, filters.regions);
                     let m = false;
                     if (filters.uploaders && filters.uploaders.enabled && filters.uploaders.whitelist && u.isMatched) m = true;
+                    if (filters.languages && filters.languages.enabled && filters.languages.whitelist && l.isMatched) m = true;
+                    if (filters.regions && filters.regions.enabled && filters.regions.whitelist && r.isMatched) m = true;
                     return m;
                 });
                 if (whitelisted.length > 0) filtered = whitelisted;
             }
 
-            // C. Priority Ranking (v1.3.4)
-            const uLoaderList = (filters.uploaders.list || []).map(u => u.toLowerCase());
+            // C. Priority Ranking
+            const uLoaderList = (filters.uploaders?.list || []).map(u => u.toLowerCase());
             filtered.sort((a, b) => {
                 const aName = (a.group || "").toLowerCase();
                 const bName = (b.group || "").toLowerCase();
-                let aIdx = uLoaderList.findIndex(u => filters.uploaders.strict ? aName === u : aName.includes(u));
-                let bIdx = uLoaderList.findIndex(u => filters.uploaders.strict ? bName === u : bName.includes(u));
+                let aIdx = uLoaderList.findIndex(u => filters.uploaders?.strict ? aName === u : aName.includes(u));
+                let bIdx = uLoaderList.findIndex(u => filters.uploaders?.strict ? bName === u : bName.includes(u));
                 if (aIdx === -1) aIdx = 9999;
                 if (bIdx === -1) bIdx = 9999;
                 return aIdx - bIdx;
             });
 
-            // D. Deduplication (v1.6)
-            if (filters.removeDuplicates && filtered.length > 1) {
-                const unique = [];
-                const seen = new Set();
-                for (const chap of filtered) {
-                    const key = `${chap.chapNum}-${chap.langCode}`;
-                    if (!seen.has(key)) {
-                        seen.add(key);
-                        unique.push(chap);
-                    }
-                }
-                filtered = unique;
-            }
-
-            // E. One Version per Chapter logic
+            // D. One Version per Chapter logic
             if (filters.oneVersionOnly && filtered.length > 1) {
                 filtered = [filtered[0]];
             }
         }
 
         for (const chap of filtered) {
-            const groupTag = (filters?.showUploader && chap.group) ? ` [${chap.group}]` : "";
-            const displayName = (filters && !filters.showTitle) ? `Chapter ${chap.chapNum}${groupTag}` : `${chap.name}${groupTag}`;
-
             finalChapters.push(App.createChapter({
                 id: chap.id,
                 chapNum: chap.chapNum,
-                name: displayName,
+                name: chap.name,
                 langCode: chap.langCode,
                 volume: chap.volume,
                 group: chap.group,
-                time: chap.time,
-                sortingIndex: chap.sortingIndex
+                time: chap.time
             }));
         }
       }
@@ -881,7 +869,6 @@ var _Sources = (() => {
       }
       return mangaList;
     }
-    // Helper to organize raw API terms into Paperback TagSections
     parseTagSections(genres, themes, formats, demographics) {
       const createSection = (id, label, items) => {
         return App.createTagSection({
