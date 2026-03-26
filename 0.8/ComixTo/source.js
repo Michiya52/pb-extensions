@@ -1215,7 +1215,7 @@ var _Sources = (() => {
             request.headers = {
               ...request.headers ?? {},
               "Referer": `${DOMAIN}/`,
-              "User-Agent": await this.requestManager.getDefaultUserAgent()
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             };
             return request;
           },
@@ -1401,13 +1401,17 @@ var _Sources = (() => {
     // -- Advanced Search --
     async getSearchTags() {
       const fetchTags = async (type) => {
-        const req = App.createRequest({
-          url: `${API_BASE}/terms?type=${type}&limit=100`,
-          method: "GET"
-        });
-        const res = await this.requestManager.schedule(req, 1);
-        const json = JSON.parse(res.data ?? "{}");
-        return json.result?.items ?? [];
+        try {
+          const req = App.createRequest({
+            url: `${API_BASE}/terms?type=${type}&limit=100`,
+            method: "GET"
+          });
+          const res = await this.requestManager.schedule(req, 1);
+          const json = JSON.parse(res.data ?? "{}");
+          return json.result?.items ?? [];
+        } catch (e) {
+          return [];
+        }
       };
       const [genres, themes, formats, demographics] = await Promise.all([
         fetchTags("genre"),
@@ -1509,7 +1513,7 @@ var _Sources = (() => {
         response.data ?? "{}"
       );
       const showNsfw = await getIsNsfw(this.stateManager);
-      const items = this.parser.parseMangaList(json.result.items, showNsfw);
+      const items = json.result?.items ? this.parser.parseMangaList(json.result.items, showNsfw) : [];
       let nextPage = void 0;
       if (json.result.pagination && json.result.pagination.last_page > page) {
         nextPage = { page: page + 1 };
@@ -1527,7 +1531,7 @@ var _Sources = (() => {
         method: "GET",
         headers: {
           "Referer": `${DOMAIN}/`,
-          "User-Agent": await this.requestManager.getDefaultUserAgent()
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
       });
     }
