@@ -959,6 +959,9 @@ var _Sources = (() => {
     };
   };
 
+  var getIsNsfw = async (stateManager) => {
+    return await getSetting(stateManager, "is_nsfw");
+  };
   var chapterSettings = (stateManager) => {
     return keepAlive(App.createDUINavigationButton({
       id: "chapter_settings",
@@ -1172,7 +1175,7 @@ var _Sources = (() => {
                         id: "cf_bypass_trigger",
                         label: "Manually Trigger Cloudflare Bypass",
                         onTap: async () => {
-                            if (requestManager) throw new Error("Cloudflare Bypass Required");
+                            throw new Error("Cloudflare Bypass Required");
                         }
                     })
                 ]
@@ -1225,7 +1228,7 @@ var _Sources = (() => {
             request.headers = {
               ...request.headers ?? {},
               "Referer": `${DOMAIN}/`,
-              "User-Agent": await this.requestManager.getDefaultUserAgent()
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             };
             return request;
           },
@@ -1540,7 +1543,7 @@ var _Sources = (() => {
         method: "GET",
         headers: {
           "Referer": `${DOMAIN}/`,
-          "User-Agent": await this.requestManager.getDefaultUserAgent()
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
       });
     }
