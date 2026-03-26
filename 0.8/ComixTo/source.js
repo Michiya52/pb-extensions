@@ -896,7 +896,10 @@ var _Sources = (() => {
           id,
           label,
           tags: items.map(
-            (x) => App.createTag({ id: `${id}-${x.term_id}`, label: x.title })
+            (x) => App.createTag({ 
+              id: `${id}-${x.id || x.term_id || x.termId}`, 
+              label: x.name || x.label || x.title || "Unknown" 
+            })
           )
         });
       };
