@@ -1199,9 +1199,9 @@ var _Sources = (() => {
     icon: "icon.png",
     author: "Michiya52",
     authorWebsite: "https://github.com/Michiya52",
-    description: "Comix.to Extension with advanced uploader filtering. (Inspired by Ace)",
+    description: "Extension for Comix.to with advanced filters. (Updated by Michiya52)",
     contentRating: import_types.ContentRating.MATURE,
-    websiteBaseURL: DOMAIN,
+    websiteBaseURL: `${DOMAIN}/`,
     sourceTags: [
       {
         text: "English",
@@ -1424,39 +1424,7 @@ var _Sources = (() => {
         fetchTags("demographic")
       ]);
       const sections = [];
-      sections.push(
-        App.createTagSection({
-          id: "type",
-          label: "Content Type",
-          tags: CONTENT_TYPES.map(
-            (x) => App.createTag({ id: `type-${x.id}`, label: x.label })
-          )
-        })
-      );
-      sections.push(
-        App.createTagSection({
-          id: "status",
-          label: "Status",
-          tags: PUBLICATION_STATUS.map(
-            (x) => App.createTag({ id: `status-${x.id}`, label: x.label })
-          )
-        })
-      );
-      sections.push(
-        ...this.parser.parseTagSections(genres, themes, formats, demographics)
-      );
-      sections.push(
-        App.createTagSection({
-          id: "mode",
-          label: "Genre Inclusion Mode (default- AND)",
-          tags: [
-            App.createTag({
-              id: "logic-mode",
-              label: "Green=AND | Red=OR"
-            })
-          ]
-        })
-      );
+      sections.push(...this.parser.parseTagSections(genres, themes, formats, demographics));
       return sections;
     }
     async getSearchResults(query, metadata) {
@@ -1465,23 +1433,9 @@ var _Sources = (() => {
       if (query.title) {
         url += `&keyword=${encodeURIComponent(query.title)}`;
       }
-      let genresMode = "and";
-      if (query.includedTags && query.includedTags.some((t) => t.id === "logic-mode")) {
-        genresMode = "and";
-      }
-      if (query.excludedTags && query.excludedTags.some((t) => t.id === "logic-mode")) {
-        genresMode = "or";
-      }
-      url += `&genres_mode=${genresMode}`;
-      const allTags = [...query.includedTags ?? []].filter(
-        (t) => t.id !== "logic-mode"
-      );
-      const excludedTags = [...query.excludedTags ?? []].filter(
-        (t) => t.id !== "logic-mode"
-      );
+      const allTags = query.includedTags ?? [];
+      const excludedTags = query.excludedTags ?? [];
       const genreIds = [];
-      const typeIds = [];
-      const statusIds = [];
       const demographicIds = [];
       for (const tag of allTags) {
         if (tag.id.startsWith("genre-")) {
@@ -1492,15 +1446,9 @@ var _Sources = (() => {
           genreIds.push(tag.id.replace("format-", ""));
         } else if (tag.id.startsWith("demographic-")) {
           demographicIds.push(tag.id.replace("demographic-", ""));
-        } else if (tag.id.startsWith("type-")) {
-          typeIds.push(tag.id.replace("type-", ""));
-        } else if (tag.id.startsWith("status-")) {
-          statusIds.push(tag.id.replace("status-", ""));
         }
       }
       for (const id of genreIds) url += `&genres[]=${id}`;
-      for (const id of typeIds) url += `&types[]=${id}`;
-      for (const id of statusIds) url += `&statuses[]=${id}`;
       for (const id of demographicIds) url += `&demographics[]=${id}`;
       if (excludedTags.length > 0) {
         for (const tag of excludedTags) {
