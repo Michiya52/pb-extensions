@@ -964,9 +964,7 @@ var _Sources = (() => {
     uploader_input: "",
     uploaders_enabled: false,
     uploaders_whitelist: false,
-    uploaders_strict: false,
-    uploaders_remove_selected: [],
-    uploaders_move_selected: []
+    uploaders_strict: false
   };
   var getSetting = async (stateManager, key) => {
     try {
@@ -1070,12 +1068,7 @@ var _Sources = (() => {
       isHidden: false,
       rows: async () => {
         const masterList = await getSetting(stateManager, listKey);
-        const safeList = Array.isArray(masterList) ? [...masterList] : [];
-        const priorityText = safeList.length > 0
-          ? safeList.map((name, i) => `${i + 1}. ${name}`).join("\n")
-          : "No uploaders added yet";
-        const rows = [
-          // --- Filter Mode Toggles ---
+        return [
           App.createDUISwitch({
             id: `${id}_filter_toggle`,
             label: `Enable ${header} Filtering`,
@@ -1100,11 +1093,10 @@ var _Sources = (() => {
               set: async (newValue) => await stateManager.store(strictToggleKey, newValue)
             })
           }),
-          // --- Active Uploaders (which are used for filtering) ---
           App.createDUISelect({
             id: `${id}_select`,
-            label: `Active ${header}`,
-            options: safeList,
+            label: `Selected ${header}`,
+            options: masterList,
             value: App.createDUIBinding({
               get: async () => await getSetting(stateManager, selectedKey),
               set: async (newValue) => await stateManager.store(selectedKey, newValue)
@@ -1112,29 +1104,9 @@ var _Sources = (() => {
             allowsMultiselect: true,
             labelResolver: async (val) => val
           }),
-          // --- Priority Order Display ---
-          App.createDUILabel({
-            id: `${id}_priority_label`,
-            label: "Priority Order (1 = highest)"
-          }),
-          App.createDUIMultilineLabel({
-            id: `${id}_priority_display`,
-            label: "Current Priority",
-            value: App.createDUIBinding({
-              get: async () => {
-                const list = await getSetting(stateManager, listKey);
-                const safe = Array.isArray(list) ? list : [];
-                return safe.length > 0
-                  ? safe.map((name, i) => `${i + 1}. ${name}`).join("\n")
-                  : "No uploaders added yet";
-              },
-              set: async () => {}
-            })
-          }),
-          // --- Add Uploaders ---
           App.createDUIInputField({
             id: `${id}_input`,
-            label: "Add Uploaders (Comma-separated)",
+            label: "Name (Comma-separated)",
             value: App.createDUIBinding({
               get: async () => await getSetting(stateManager, inputKey),
               set: async (newValue) => await stateManager.store(inputKey, newValue)
@@ -1174,100 +1146,28 @@ var _Sources = (() => {
               }
             }
           }),
-          // --- Remove Uploaders (Pick to Remove) ---
-          App.createDUISelect({
-            id: `${id}_remove_select`,
-            label: "Select Uploaders to Remove",
-            options: safeList,
-            value: App.createDUIBinding({
-              get: async () => await getSetting(stateManager, "uploaders_remove_selected"),
-              set: async (newValue) => await stateManager.store("uploaders_remove_selected", newValue)
-            }),
-            allowsMultiselect: true,
-            labelResolver: async (val) => val
-          }),
           App.createDUIButton({
             id: `${id}_remove`,
-            label: "Remove Selected",
+            label: "Remove from List",
             onTap: async () => {
               try {
-                const removeItems = await getSetting(stateManager, "uploaders_remove_selected");
-                if (!Array.isArray(removeItems) || removeItems.length === 0) return;
+                const val = await getSetting(stateManager, inputKey);
+                if (!val || String(val).trim() === "") return;
+                const removeItems = String(val).split(",").map((s) => s.trim()).filter((s) => s !== "");
+                if (removeItems.length === 0) return;
                 const currentList = await getSetting(stateManager, listKey);
                 const currentSelected = await getSetting(stateManager, selectedKey);
                 const list = (Array.isArray(currentList) ? [...currentList] : []).filter((item) => !removeItems.includes(item));
                 const selected = (Array.isArray(currentSelected) ? [...currentSelected] : []).filter((item) => !removeItems.includes(item));
                 await stateManager.store(listKey, list);
                 await stateManager.store(selectedKey, selected);
-                await stateManager.store("uploaders_remove_selected", []);
-              } catch (e) {
-                // Silently handle errors to prevent crash
-              }
-            }
-          }),
-          // --- Reorder Priority ---
-          App.createDUISelect({
-            id: `${id}_move_select`,
-            label: "Select Uploader to Reorder",
-            options: safeList,
-            value: App.createDUIBinding({
-              get: async () => await getSetting(stateManager, "uploaders_move_selected"),
-              set: async (newValue) => await stateManager.store("uploaders_move_selected", newValue)
-            }),
-            allowsMultiselect: false,
-            labelResolver: async (val) => {
-              const list = await getSetting(stateManager, listKey);
-              const safe = Array.isArray(list) ? list : [];
-              const idx = safe.indexOf(val);
-              return idx >= 0 ? `#${idx + 1} - ${val}` : val;
-            }
-          }),
-          App.createDUIButton({
-            id: `${id}_move_up`,
-            label: "▲ Move Up (Higher Priority)",
-            onTap: async () => {
-              try {
-                const moveSelection = await getSetting(stateManager, "uploaders_move_selected");
-                const itemToMove = Array.isArray(moveSelection) ? moveSelection[0] : moveSelection;
-                if (!itemToMove) return;
-                const currentList = await getSetting(stateManager, listKey);
-                const list = Array.isArray(currentList) ? [...currentList] : [];
-                const idx = list.indexOf(itemToMove);
-                if (idx <= 0) return;
-                // Swap with the item above
-                const temp = list[idx - 1];
-                list[idx - 1] = list[idx];
-                list[idx] = temp;
-                await stateManager.store(listKey, list);
-              } catch (e) {
-                // Silently handle errors to prevent crash
-              }
-            }
-          }),
-          App.createDUIButton({
-            id: `${id}_move_down`,
-            label: "▼ Move Down (Lower Priority)",
-            onTap: async () => {
-              try {
-                const moveSelection = await getSetting(stateManager, "uploaders_move_selected");
-                const itemToMove = Array.isArray(moveSelection) ? moveSelection[0] : moveSelection;
-                if (!itemToMove) return;
-                const currentList = await getSetting(stateManager, listKey);
-                const list = Array.isArray(currentList) ? [...currentList] : [];
-                const idx = list.indexOf(itemToMove);
-                if (idx < 0 || idx >= list.length - 1) return;
-                // Swap with the item below
-                const temp = list[idx + 1];
-                list[idx + 1] = list[idx];
-                list[idx] = temp;
-                await stateManager.store(listKey, list);
+                await stateManager.store(inputKey, "");
               } catch (e) {
                 // Silently handle errors to prevent crash
               }
             }
           })
         ];
-        return rows;
       }
     });
   };

@@ -7,8 +7,6 @@ import {
     createDUIInputField,
     createDUIButton,
     createDUISelect,
-    createDUILabel,
-    createDUIMultilineLabel,
     DUINavigationButton,
     SourceStateManager,
     DUISection,
@@ -16,6 +14,7 @@ import {
 } from 'paperback-extensions-common';
 
 // --- Stability Utilities ---
+// Bounded keepAlive cache to prevent memory leaks
 const UI_KEEP_ALIVE_MAX = 50;
 const uiKeepAlive: any[] = [];
 const keepAlive = <T>(obj: T): T => {
@@ -39,9 +38,7 @@ export const DEFAULT_SETTINGS = {
     uploader_input: '',
     uploaders_enabled: false,
     uploaders_whitelist: false,
-    uploaders_strict: false,
-    uploaders_remove_selected: [] as string[],
-    uploaders_move_selected: [] as string[]
+    uploaders_strict: false
 };
 
 export const getSetting = async <K extends keyof typeof DEFAULT_SETTINGS>(
@@ -51,6 +48,7 @@ export const getSetting = async <K extends keyof typeof DEFAULT_SETTINGS>(
     try {
         const val = await stateManager.retrieve(key);
         if (val === null || val === undefined) return DEFAULT_SETTINGS[key];
+        // Return array copies to prevent mutation-by-reference
         if (Array.isArray(val)) return [...val] as typeof DEFAULT_SETTINGS[K];
         return val as typeof DEFAULT_SETTINGS[K];
     } catch (e) {
@@ -156,9 +154,7 @@ const createDynamicListSection = (
         isHidden: false,
         rows: async () => {
             const masterList = await getSetting(stateManager, listKey) as string[];
-            const safeList = Array.isArray(masterList) ? [...masterList] : [];
-            const rows = [
-                // --- Filter Mode Toggles ---
+            return [
                 createDUISwitch({
                     id: `${id}_filter_toggle`,
                     label: `Enable ${header} Filtering`,
@@ -183,11 +179,10 @@ const createDynamicListSection = (
                         set: async (newValue: boolean) => await stateManager.store(strictToggleKey, newValue)
                     })
                 }),
-                // --- Active Uploaders ---
                 createDUISelect({
                     id: `${id}_select`,
-                    label: `Active ${header}`,
-                    options: safeList,
+                    label: `Selected ${header}`,
+                    options: masterList,
                     value: createDUIBinding({
                         get: async () => await getSetting(stateManager, selectedKey) as string[],
                         set: async (newValue: string[]) => await stateManager.store(selectedKey, newValue)
@@ -195,29 +190,9 @@ const createDynamicListSection = (
                     allowsMultiselect: true,
                     labelResolver: async (val: string) => val
                 }),
-                // --- Priority Order Display ---
-                createDUILabel({
-                    id: `${id}_priority_label`,
-                    label: 'Priority Order (1 = highest)'
-                }),
-                createDUIMultilineLabel({
-                    id: `${id}_priority_display`,
-                    label: 'Current Priority',
-                    value: createDUIBinding({
-                        get: async () => {
-                            const list = await getSetting(stateManager, listKey) as string[];
-                            const safe = Array.isArray(list) ? list : [];
-                            return safe.length > 0
-                                ? safe.map((name: string, i: number) => `${i + 1}. ${name}`).join('\n')
-                                : 'No uploaders added yet';
-                        },
-                        set: async () => {}
-                    })
-                }),
-                // --- Add Uploaders ---
                 createDUIInputField({
                     id: `${id}_input`,
-                    label: 'Add Uploaders (Comma-separated)',
+                    label: 'Name (Comma-separated)',
                     value: createDUIBinding({
                         get: async () => await getSetting(stateManager, inputKey) as string,
                         set: async (newValue: string) => await stateManager.store(inputKey, newValue)
@@ -257,98 +232,28 @@ const createDynamicListSection = (
                         }
                     }
                 }),
-                // --- Remove Uploaders (Pick to Remove) ---
-                createDUISelect({
-                    id: `${id}_remove_select`,
-                    label: 'Select Uploaders to Remove',
-                    options: safeList,
-                    value: createDUIBinding({
-                        get: async () => await getSetting(stateManager, 'uploaders_remove_selected') as string[],
-                        set: async (newValue: string[]) => await stateManager.store('uploaders_remove_selected', newValue)
-                    }),
-                    allowsMultiselect: true,
-                    labelResolver: async (val: string) => val
-                }),
                 createDUIButton({
                     id: `${id}_remove`,
-                    label: 'Remove Selected',
+                    label: 'Remove from List',
                     onTap: async () => {
                         try {
-                            const removeItems = await getSetting(stateManager, 'uploaders_remove_selected') as string[];
-                            if (!Array.isArray(removeItems) || removeItems.length === 0) return;
+                            const val = await getSetting(stateManager, inputKey) as string;
+                            if (!val || String(val).trim() === '') return;
+                            const removeItems = String(val).split(',').map(s => s.trim()).filter(s => s !== '');
+                            if (removeItems.length === 0) return;
                             const currentList = await getSetting(stateManager, listKey) as string[];
                             const currentSelected = await getSetting(stateManager, selectedKey) as string[];
                             const list = (Array.isArray(currentList) ? [...currentList] : []).filter(item => !removeItems.includes(item));
                             const selected = (Array.isArray(currentSelected) ? [...currentSelected] : []).filter(item => !removeItems.includes(item));
                             await stateManager.store(listKey, list);
                             await stateManager.store(selectedKey, selected);
-                            await stateManager.store('uploaders_remove_selected', []);
-                        } catch (e) {
-                            // Silently handle errors to prevent crash
-                        }
-                    }
-                }),
-                // --- Reorder Priority ---
-                createDUISelect({
-                    id: `${id}_move_select`,
-                    label: 'Select Uploader to Reorder',
-                    options: safeList,
-                    value: createDUIBinding({
-                        get: async () => await getSetting(stateManager, 'uploaders_move_selected') as string[],
-                        set: async (newValue: string[]) => await stateManager.store('uploaders_move_selected', newValue)
-                    }),
-                    allowsMultiselect: false,
-                    labelResolver: async (val: string) => {
-                        const list = await getSetting(stateManager, listKey) as string[];
-                        const safe = Array.isArray(list) ? list : [];
-                        const idx = safe.indexOf(val);
-                        return idx >= 0 ? `#${idx + 1} - ${val}` : val;
-                    }
-                }),
-                createDUIButton({
-                    id: `${id}_move_up`,
-                    label: '▲ Move Up (Higher Priority)',
-                    onTap: async () => {
-                        try {
-                            const moveSelection = await getSetting(stateManager, 'uploaders_move_selected') as string[];
-                            const itemToMove = Array.isArray(moveSelection) ? moveSelection[0] : moveSelection;
-                            if (!itemToMove) return;
-                            const currentList = await getSetting(stateManager, listKey) as string[];
-                            const list = Array.isArray(currentList) ? [...currentList] : [];
-                            const idx = list.indexOf(itemToMove as string);
-                            if (idx <= 0) return;
-                            const temp = list[idx - 1]!;
-                            list[idx - 1] = list[idx]!;
-                            list[idx] = temp;
-                            await stateManager.store(listKey, list);
-                        } catch (e) {
-                            // Silently handle errors to prevent crash
-                        }
-                    }
-                }),
-                createDUIButton({
-                    id: `${id}_move_down`,
-                    label: '▼ Move Down (Lower Priority)',
-                    onTap: async () => {
-                        try {
-                            const moveSelection = await getSetting(stateManager, 'uploaders_move_selected') as string[];
-                            const itemToMove = Array.isArray(moveSelection) ? moveSelection[0] : moveSelection;
-                            if (!itemToMove) return;
-                            const currentList = await getSetting(stateManager, listKey) as string[];
-                            const list = Array.isArray(currentList) ? [...currentList] : [];
-                            const idx = list.indexOf(itemToMove as string);
-                            if (idx < 0 || idx >= list.length - 1) return;
-                            const temp = list[idx + 1]!;
-                            list[idx + 1] = list[idx]!;
-                            list[idx] = temp;
-                            await stateManager.store(listKey, list);
+                            await stateManager.store(inputKey, '');
                         } catch (e) {
                             // Silently handle errors to prevent crash
                         }
                     }
                 })
             ];
-            return rows;
         }
     });
 };
