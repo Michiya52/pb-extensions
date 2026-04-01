@@ -169,58 +169,71 @@ export const parseChapterList = (
 
     for (const chapNum in grouped) {
         const variants = grouped[chapNum];
-        let filtered = variants;
+        let filtered = [...variants];
         let filters = settings;
 
         if (filters) {
-            // A. Hard Filter: Uploader Blacklist
-            if (filters.uploaders && filters.uploaders.enabled && !filters.uploaders.whitelist) {
-                filtered = variants.filter((v: any) => checkFilterFunc(v.group, filters.uploaders).pass);
-            }
+            try {
+                const uploaderFilter = filters.uploaders || null;
+                const hasUploaderFilter = uploaderFilter && uploaderFilter.enabled && Array.isArray(uploaderFilter.list) && uploaderFilter.list.length > 0;
 
-            // B. Soft Filter: Uploader Whitelist (Fallback to all if zero matches)
-            if (filters.uploaders && filters.uploaders.enabled && filters.uploaders.whitelist) {
-                const whitelisted = filtered.filter((v: any) => checkFilterFunc(v.group, filters.uploaders).isMatched);
-                if (whitelisted.length > 0) {
-                    filtered = whitelisted;
+                // A. Hard Filter: Uploader Blacklist
+                if (hasUploaderFilter && !uploaderFilter.whitelist) {
+                    filtered = filtered.filter((v: any) => checkFilterFunc(v.group, uploaderFilter).pass);
                 }
-            }
 
-            // C. Priority Ranking (v1.3.4) - Sort by uploader preference
-            const uploaderList = filters.uploaders.list.map((u: string) => u.toLowerCase());
-            filtered.sort((a: any, b: any) => {
-                const aName = a.group?.toLowerCase() ?? "";
-                const bName = b.group?.toLowerCase() ?? "";
-                let aIdx = uploaderList.findIndex((u: string) => filters.uploaders.strict ? aName === u : aName.includes(u));
-                let bIdx = uploaderList.findIndex((u: string) => filters.uploaders.strict ? bName === u : bName.includes(u));
-                if (aIdx === -1) aIdx = 9999;
-                if (bIdx === -1) bIdx = 9999;
-                return aIdx - bIdx;
-            });
-
-            // D. Deduplication (v1.6)
-            if (filters.removeDuplicates && filtered.length > 1) {
-                const unique: any[] = [];
-                const seen = new Set();
-                for (const chap of filtered) {
-                    const key = `${chap.chapNum}-${chap.lang}`;
-                    if (!seen.has(key)) {
-                        seen.add(key);
-                        unique.push(chap);
+                // B. Soft Filter: Uploader Whitelist (Fallback to all if zero matches)
+                if (hasUploaderFilter && uploaderFilter.whitelist && filtered.length > 0) {
+                    const whitelisted = filtered.filter((v: any) => checkFilterFunc(v.group, uploaderFilter).isMatched);
+                    if (whitelisted.length > 0) {
+                        filtered = whitelisted;
                     }
                 }
-                filtered = unique;
-            }
 
-            // E. One Version per Chapter logic
-            if (filters.oneVersionOnly && filtered.length > 1) {
-                filtered = [filtered[0]];
+                // C. Priority Ranking (v1.3.4) - Sort by uploader preference
+                if (hasUploaderFilter) {
+                    const uploaderList = uploaderFilter.list.map((u: string) => u.toLowerCase());
+                    const isStrict = !!uploaderFilter.strict;
+                    filtered.sort((a: any, b: any) => {
+                        const aName = a.group?.toLowerCase() ?? "";
+                        const bName = b.group?.toLowerCase() ?? "";
+                        let aIdx = uploaderList.findIndex((u: string) => isStrict ? aName === u : aName.includes(u));
+                        let bIdx = uploaderList.findIndex((u: string) => isStrict ? bName === u : bName.includes(u));
+                        if (aIdx === -1) aIdx = 9999;
+                        if (bIdx === -1) bIdx = 9999;
+                        return aIdx - bIdx;
+                    });
+                }
+
+                // D. Deduplication (v1.6)
+                if (!!filters.removeDuplicates && filtered.length > 1) {
+                    const unique: any[] = [];
+                    const seen = new Set();
+                    for (const chap of filtered) {
+                        const key = `${chap.chapNum}-${chap.lang}`;
+                        if (!seen.has(key)) {
+                            seen.add(key);
+                            unique.push(chap);
+                        }
+                    }
+                    filtered = unique;
+                }
+
+                // E. One Version per Chapter logic
+                if (!!filters.oneVersionOnly && filtered.length > 1) {
+                    filtered = [filtered[0]];
+                }
+            } catch (filterError) {
+                // If filtering fails, fall back to unfiltered variants
+                filtered = [...variants];
             }
         }
 
         for (const chap of filtered) {
-            const groupTag = (settings?.showUploader && chap.group) ? ` [${chap.group}]` : "";
-            const displayName = (settings && !settings.showTitle) ? `Chapter ${chap.chapNum}${groupTag}` : `${chap.name}${groupTag}`;
+            const showUploader = !!(settings && settings.showUploader);
+            const groupTag = (showUploader && chap.group) ? ` [${chap.group}]` : "";
+            const showTitle = !!(settings && settings.showTitle);
+            const displayName = showTitle ? `${chap.name}${groupTag}` : `Chapter ${chap.chapNum}${groupTag}`;
 
             finalChapters.push(createChapter({
                 id: chap.id,

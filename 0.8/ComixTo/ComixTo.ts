@@ -31,7 +31,7 @@ import { chapterSettings, contentSettings, resetSettings, getFilters } from "./C
 const COMIXTO_DOMAIN = "https://comix.to";
 
 export const ComixToInfo: SourceInfo = {
-    version: "1.4.1",
+    version: "1.4.2",
     name: "Comix.to",
     icon: "icon.png",
     author: "Michiya52",
@@ -73,7 +73,7 @@ export class ComixTo extends Source {
             header: "Source Settings",
             isHidden: false,
             rows: async () => [
-                contentSettings(this.stateManager, this.requestManager),
+                contentSettings(this.stateManager),
                 chapterSettings(this.stateManager),
                 resetSettings(this.stateManager)
             ]

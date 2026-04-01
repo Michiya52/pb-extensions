@@ -793,62 +793,74 @@ var _Sources = (() => {
       const finalChapters = [];
       for (const chapNum in grouped) {
         const variants = grouped[chapNum];
-        let filtered = variants;
+        let filtered = [...variants];
 
         if (filters) {
-          // A. Hard Filter: Blacklist
-          filtered = variants.filter(v => {
-            const u = checkFilter(v.group, filters.uploaders);
-            if (filters.uploaders && filters.uploaders.enabled && !filters.uploaders.whitelist && !u.pass) return false;
-            return true;
-          });
+          try {
+            const uploaderFilter = filters.uploaders || null;
+            const hasUploaderFilter = uploaderFilter && uploaderFilter.enabled && Array.isArray(uploaderFilter.list) && uploaderFilter.list.length > 0;
 
-          // B. Soft Filter: Whitelist
-          if (filtered.length > 0) {
-            const whitelisted = filtered.filter(v => {
-              const u = checkFilter(v.group, filters.uploaders);
-              let m = false;
-              if (filters.uploaders && filters.uploaders.enabled && filters.uploaders.whitelist && u.isMatched) m = true;
-              return m;
-            });
-            if (whitelisted.length > 0) filtered = whitelisted;
-          }
-
-          // C. Priority Ranking (v1.3.4)
-          const uLoaderList = (filters.uploaders.list || []).map(u => u.toLowerCase());
-          filtered.sort((a, b) => {
-            const aName = (a.group || "").toLowerCase();
-            const bName = (b.group || "").toLowerCase();
-            let aIdx = uLoaderList.findIndex(u => filters.uploaders.strict ? aName === u : aName.includes(u));
-            let bIdx = uLoaderList.findIndex(u => filters.uploaders.strict ? bName === u : bName.includes(u));
-            if (aIdx === -1) aIdx = 9999;
-            if (bIdx === -1) bIdx = 9999;
-            return aIdx - bIdx;
-          });
-
-          // D. Deduplication (v1.6)
-          if (filters.removeDuplicates && filtered.length > 1) {
-            const unique = [];
-            const seen = new Set();
-            for (const chap of filtered) {
-              const key = `${chap.chapNum}-${chap.langCode}`;
-              if (!seen.has(key)) {
-                seen.add(key);
-                unique.push(chap);
-              }
+            // A. Hard Filter: Blacklist
+            if (hasUploaderFilter && !uploaderFilter.whitelist) {
+              filtered = filtered.filter(v => {
+                const u = checkFilter(v.group, uploaderFilter);
+                return u.pass;
+              });
             }
-            filtered = unique;
-          }
 
-          // E. One Version per Chapter logic
-          if (filters.oneVersionOnly && filtered.length > 1) {
-            filtered = [filtered[0]];
+            // B. Soft Filter: Whitelist
+            if (hasUploaderFilter && uploaderFilter.whitelist && filtered.length > 0) {
+              const whitelisted = filtered.filter(v => {
+                const u = checkFilter(v.group, uploaderFilter);
+                return u.isMatched;
+              });
+              if (whitelisted.length > 0) filtered = whitelisted;
+            }
+
+            // C. Priority Ranking (v1.3.4)
+            if (hasUploaderFilter) {
+              const uLoaderList = uploaderFilter.list.map(u => u.toLowerCase());
+              const isStrict = !!uploaderFilter.strict;
+              filtered.sort((a, b) => {
+                const aName = (a.group || "").toLowerCase();
+                const bName = (b.group || "").toLowerCase();
+                let aIdx = uLoaderList.findIndex(u => isStrict ? aName === u : aName.includes(u));
+                let bIdx = uLoaderList.findIndex(u => isStrict ? bName === u : bName.includes(u));
+                if (aIdx === -1) aIdx = 9999;
+                if (bIdx === -1) bIdx = 9999;
+                return aIdx - bIdx;
+              });
+            }
+
+            // D. Deduplication (v1.6)
+            if (!!filters.removeDuplicates && filtered.length > 1) {
+              const unique = [];
+              const seen = new Set();
+              for (const chap of filtered) {
+                const key = `${chap.chapNum}-${chap.langCode}`;
+                if (!seen.has(key)) {
+                  seen.add(key);
+                  unique.push(chap);
+                }
+              }
+              filtered = unique;
+            }
+
+            // E. One Version per Chapter logic
+            if (!!filters.oneVersionOnly && filtered.length > 1) {
+              filtered = [filtered[0]];
+            }
+          } catch (filterError) {
+            // If filtering fails, fall back to unfiltered variants
+            filtered = [...variants];
           }
         }
 
         for (const chap of filtered) {
-          const groupTag = (filters?.showUploader && chap.group) ? ` [${chap.group}]` : "";
-          const displayName = (filters && !filters.showTitle) ? `Chapter ${chap.chapNum}${groupTag}` : `${chap.name}${groupTag}`;
+          const showUploader = !!(filters && filters.showUploader);
+          const groupTag = (showUploader && chap.group) ? ` [${chap.group}]` : "";
+          const showTitle = !!(filters && filters.showTitle);
+          const displayName = showTitle ? `${chap.name}${groupTag}` : `Chapter ${chap.chapNum}${groupTag}`;
 
           finalChapters.push(App.createChapter({
             id: chap.id,
@@ -930,9 +942,13 @@ var _Sources = (() => {
   ];
 
   // src/ComixTo/Settings.ts
+  var UI_KEEP_ALIVE_MAX = 50;
   var uiKeepAlive = [];
   var keepAlive = (obj) => {
     uiKeepAlive.push(obj);
+    if (uiKeepAlive.length > UI_KEEP_ALIVE_MAX) {
+      uiKeepAlive.splice(0, uiKeepAlive.length - UI_KEEP_ALIVE_MAX);
+    }
     return obj;
   };
   var DEFAULT_SETTINGS = {
@@ -951,8 +967,15 @@ var _Sources = (() => {
     uploaders_strict: false
   };
   var getSetting = async (stateManager, key) => {
-    const val = await stateManager.retrieve(key);
-    return val !== null ? val : DEFAULT_SETTINGS[key];
+    try {
+      const val = await stateManager.retrieve(key);
+      if (val === null || val === void 0) return DEFAULT_SETTINGS[key];
+      // Ensure arrays are returned as copies to prevent mutation-by-reference
+      if (Array.isArray(val)) return [...val];
+      return val;
+    } catch (e) {
+      return DEFAULT_SETTINGS[key];
+    }
   };
   var getFilters = async (stateManager) => {
     return {
@@ -976,7 +999,7 @@ var _Sources = (() => {
   var chapterSettings = (stateManager) => {
     return keepAlive(App.createDUINavigationButton({
       id: "chapter_settings",
-      label: "Chapter Display Settings",
+      label: "Chapter Settings",
       form: App.createDUIForm({
         sections: async () => [
           App.createDUISection({
@@ -1006,6 +1029,29 @@ var _Sources = (() => {
                 value: App.createDUIBinding({
                   get: async () => await getSetting(stateManager, "show_uploader"),
                   set: async (newValue) => await stateManager.store("show_uploader", newValue)
+                })
+              })
+            ]
+          }),
+          App.createDUISection({
+            id: "chapter_filtering",
+            header: "Chapter Filtering",
+            isHidden: false,
+            rows: async () => [
+              App.createDUISwitch({
+                id: "remove_duplicates",
+                label: "Remove Duplicate Chapters",
+                value: App.createDUIBinding({
+                  get: async () => await getSetting(stateManager, "remove_duplicates"),
+                  set: async (newValue) => await stateManager.store("remove_duplicates", newValue)
+                })
+              }),
+              App.createDUISwitch({
+                id: "one_version_only",
+                label: "Always Only Show 1 Source",
+                value: App.createDUIBinding({
+                  get: async () => await getSetting(stateManager, "one_version_only"),
+                  set: async (newValue) => await stateManager.store("one_version_only", newValue)
                 })
               })
             ]
@@ -1070,43 +1116,55 @@ var _Sources = (() => {
             id: `${id}_add`,
             label: "Add to List",
             onTap: async () => {
-              const val = await getSetting(stateManager, inputKey);
-              if (!val || val.trim() === "") return;
-              const newItems = val.split(",").map((s) => s.trim()).filter((s) => s !== "");
-              let list = await getSetting(stateManager, listKey);
-              let selected = await getSetting(stateManager, selectedKey);
-              let changed = false;
-              for (const item of newItems) {
-                if (!list.includes(item)) {
-                  list.push(item);
-                  changed = true;
+              try {
+                const val = await getSetting(stateManager, inputKey);
+                if (!val || String(val).trim() === "") return;
+                const newItems = String(val).split(",").map((s) => s.trim()).filter((s) => s !== "");
+                if (newItems.length === 0) return;
+                const currentList = await getSetting(stateManager, listKey);
+                const currentSelected = await getSetting(stateManager, selectedKey);
+                const list = Array.isArray(currentList) ? [...currentList] : [];
+                const selected = Array.isArray(currentSelected) ? [...currentSelected] : [];
+                let changed = false;
+                for (const item of newItems) {
+                  if (!list.includes(item)) {
+                    list.push(item);
+                    changed = true;
+                  }
+                  if (!selected.includes(item)) {
+                    selected.push(item);
+                    changed = true;
+                  }
                 }
-                if (!selected.includes(item)) {
-                  selected.push(item);
-                  changed = true;
+                if (changed) {
+                  await stateManager.store(listKey, list);
+                  await stateManager.store(selectedKey, selected);
                 }
+                await stateManager.store(inputKey, "");
+              } catch (e) {
+                // Silently handle errors to prevent crash
               }
-              if (changed) {
-                await stateManager.store(listKey, list);
-                await stateManager.store(selectedKey, selected);
-              }
-              await stateManager.store(inputKey, "");
             }
           }),
           App.createDUIButton({
             id: `${id}_remove`,
             label: "Remove from List",
             onTap: async () => {
-              const val = await getSetting(stateManager, inputKey);
-              if (!val || val.trim() === "") return;
-              const removeItems = val.split(",").map((s) => s.trim()).filter((s) => s !== "");
-              let list = await getSetting(stateManager, listKey);
-              let selected = await getSetting(stateManager, selectedKey);
-              list = list.filter((item) => !removeItems.includes(item));
-              selected = selected.filter((item) => !removeItems.includes(item));
-              await stateManager.store(listKey, list);
-              await stateManager.store(selectedKey, selected);
-              await stateManager.store(inputKey, "");
+              try {
+                const val = await getSetting(stateManager, inputKey);
+                if (!val || String(val).trim() === "") return;
+                const removeItems = String(val).split(",").map((s) => s.trim()).filter((s) => s !== "");
+                if (removeItems.length === 0) return;
+                const currentList = await getSetting(stateManager, listKey);
+                const currentSelected = await getSetting(stateManager, selectedKey);
+                const list = (Array.isArray(currentList) ? [...currentList] : []).filter((item) => !removeItems.includes(item));
+                const selected = (Array.isArray(currentSelected) ? [...currentSelected] : []).filter((item) => !removeItems.includes(item));
+                await stateManager.store(listKey, list);
+                await stateManager.store(selectedKey, selected);
+                await stateManager.store(inputKey, "");
+              } catch (e) {
+                // Silently handle errors to prevent crash
+              }
             }
           })
         ];
@@ -1114,7 +1172,7 @@ var _Sources = (() => {
     });
   };
 
-  var contentSettings = (stateManager, requestManager) => {
+  var contentSettings = (stateManager) => {
     return keepAlive(App.createDUINavigationButton({
       id: "content_settings",
       label: "Extension Settings",
@@ -1155,28 +1213,6 @@ var _Sources = (() => {
                   }
                 })
               ]
-            }),
-            App.createDUISection({
-              id: "general_settings",
-              header: "Advanced Chapter Filtering",
-              rows: async () => [
-                App.createDUISwitch({
-                  id: "one_version_only",
-                  label: "Always Only Show 1 Source",
-                  value: App.createDUIBinding({
-                    get: async () => await getSetting(stateManager, "one_version_only"),
-                    set: async (newValue) => await stateManager.store("one_version_only", newValue)
-                  })
-                }),
-                App.createDUISwitch({
-                  id: "remove_duplicates",
-                  label: "Remove Duplicate Chapters",
-                  value: App.createDUIBinding({
-                    get: async () => await getSetting(stateManager, "remove_duplicates"),
-                    set: async (newValue) => await stateManager.store("remove_duplicates", newValue)
-                  })
-                })
-              ]
             })
           ];
         }
@@ -1189,15 +1225,20 @@ var _Sources = (() => {
       id: "reset",
       label: "Reset All Settings",
       onTap: async () => {
-        const promises = Object.keys(DEFAULT_SETTINGS).map((key) => stateManager.store(key, null));
-        await Promise.all(promises);
+        try {
+          for (const key of Object.keys(DEFAULT_SETTINGS)) {
+            await stateManager.store(key, DEFAULT_SETTINGS[key]);
+          }
+        } catch (e) {
+          // Silently handle reset errors
+        }
       }
     });
   };
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.4.1",
+    version: "1.4.2",
     name: "ComixTo",
     icon: "icon.png",
     author: "Michiya52",
@@ -1242,16 +1283,16 @@ var _Sources = (() => {
     }
     // -- Settings Menu --
     async getSourceMenu() {
-      return keepAlive(App.createDUISection({
+      return App.createDUISection({
         id: "main",
         header: "Source Settings",
         isHidden: false,
-        rows: async () => keepAlive([
+        rows: async () => [
           contentSettings(this.stateManager),
           chapterSettings(this.stateManager),
           resetSettings(this.stateManager)
-        ])
-      }));
+        ]
+      });
     }
     getMangaShareUrl(mangaId) {
       return `${DOMAIN}/title/${mangaId}`;

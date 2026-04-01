@@ -14,21 +14,15 @@ import {
 } from 'paperback-extensions-common';
 
 // --- Stability Utilities ---
+// Bounded keepAlive cache to prevent memory leaks
+const UI_KEEP_ALIVE_MAX = 50;
 const uiKeepAlive: any[] = [];
 const keepAlive = <T>(obj: T): T => {
     uiKeepAlive.push(obj);
-    return obj;
-};
-
-let settingsWarmUp: Promise<void> | null = null;
-const warmUpSettings = (stateManager: SourceStateManager) => {
-    if (!settingsWarmUp) {
-        settingsWarmUp = (async () => {
-            await stateManager.retrieve('uploaders');
-            await stateManager.retrieve('uploader_input');
-        })();
+    if (uiKeepAlive.length > UI_KEEP_ALIVE_MAX) {
+        uiKeepAlive.splice(0, uiKeepAlive.length - UI_KEEP_ALIVE_MAX);
     }
-    return settingsWarmUp;
+    return obj;
 };
 
 export const DEFAULT_SETTINGS = {
@@ -51,8 +45,15 @@ export const getSetting = async <K extends keyof typeof DEFAULT_SETTINGS>(
     stateManager: SourceStateManager,
     key: K
 ): Promise<typeof DEFAULT_SETTINGS[K]> => {
-    const val = await stateManager.retrieve(key);
-    return val !== null ? (val as typeof DEFAULT_SETTINGS[K]) : DEFAULT_SETTINGS[key];
+    try {
+        const val = await stateManager.retrieve(key);
+        if (val === null || val === undefined) return DEFAULT_SETTINGS[key];
+        // Return array copies to prevent mutation-by-reference
+        if (Array.isArray(val)) return [...val] as typeof DEFAULT_SETTINGS[K];
+        return val as typeof DEFAULT_SETTINGS[K];
+    } catch (e) {
+        return DEFAULT_SETTINGS[key];
+    }
 };
 
 export const getFilters = async (stateManager: SourceStateManager) => {
@@ -74,7 +75,7 @@ export const getFilters = async (stateManager: SourceStateManager) => {
 export const chapterSettings = (stateManager: SourceStateManager): DUINavigationButton => {
     return keepAlive(createDUINavigationButton({
         id: 'chapter_settings',
-        label: 'Chapter Display Settings',
+        label: 'Chapter Settings',
         form: createDUIForm({
             sections: async () => [
                 createDUISection({
@@ -104,6 +105,29 @@ export const chapterSettings = (stateManager: SourceStateManager): DUINavigation
                             value: createDUIBinding({
                                 get: async () => await getSetting(stateManager, 'show_uploader'),
                                 set: async (newValue: boolean) => await stateManager.store('show_uploader', newValue)
+                            })
+                        })
+                    ]
+                }),
+                createDUISection({
+                    id: 'chapter_filtering',
+                    header: 'Chapter Filtering',
+                    isHidden: false,
+                    rows: async () => [
+                        createDUISwitch({
+                            id: 'remove_duplicates',
+                            label: 'Remove Duplicate Chapters',
+                            value: createDUIBinding({
+                                get: async () => await getSetting(stateManager, 'remove_duplicates'),
+                                set: async (newValue: boolean) => await stateManager.store('remove_duplicates', newValue)
+                            })
+                        }),
+                        createDUISwitch({
+                            id: 'one_version_only',
+                            label: 'Always Only Show 1 Source',
+                            value: createDUIBinding({
+                                get: async () => await getSetting(stateManager, 'one_version_only'),
+                                set: async (newValue: boolean) => await stateManager.store('one_version_only', newValue)
                             })
                         })
                     ]
@@ -178,45 +202,55 @@ const createDynamicListSection = (
                     id: `${id}_add`,
                     label: 'Add to List',
                     onTap: async () => {
-                        const val = await getSetting(stateManager, inputKey) as string;
-                        if (!val || val.trim() === '') return;
-                        const newItems = val.split(',').map(s => s.trim()).filter(s => s !== '');
-                        let list = await getSetting(stateManager, listKey) as string[];
-                        let selected = await getSetting(stateManager, selectedKey) as string[];
-                        let changed = false;
-                        for (const item of newItems) {
-                            if (!list.includes(item)) {
-                                list.push(item);
-                                changed = true;
+                        try {
+                            const val = await getSetting(stateManager, inputKey) as string;
+                            if (!val || String(val).trim() === '') return;
+                            const newItems = String(val).split(',').map(s => s.trim()).filter(s => s !== '');
+                            if (newItems.length === 0) return;
+                            const currentList = await getSetting(stateManager, listKey) as string[];
+                            const currentSelected = await getSetting(stateManager, selectedKey) as string[];
+                            const list = Array.isArray(currentList) ? [...currentList] : [];
+                            const selected = Array.isArray(currentSelected) ? [...currentSelected] : [];
+                            let changed = false;
+                            for (const item of newItems) {
+                                if (!list.includes(item)) {
+                                    list.push(item);
+                                    changed = true;
+                                }
+                                if (!selected.includes(item)) {
+                                    selected.push(item);
+                                    changed = true;
+                                }
                             }
-                            if (!selected.includes(item)) {
-                                selected.push(item);
-                                changed = true;
+                            if (changed) {
+                                await stateManager.store(listKey, list);
+                                await stateManager.store(selectedKey, selected);
                             }
+                            await stateManager.store(inputKey, '');
+                        } catch (e) {
+                            // Silently handle errors to prevent crash
                         }
-                        if (changed) {
-                            await stateManager.store(listKey, list);
-                            await stateManager.store(selectedKey, selected);
-                        }
-                        await stateManager.store(inputKey, '');
                     }
                 }),
                 createDUIButton({
                     id: `${id}_remove`,
                     label: 'Remove from List',
                     onTap: async () => {
-                        const val = await getSetting(stateManager, inputKey) as string;
-                        if (!val || val.trim() === '') return;
-                        const removeItems = val.split(',').map(s => s.trim()).filter(s => s !== '');
-                        let list = await getSetting(stateManager, listKey) as string[];
-                        let selected = await getSetting(stateManager, selectedKey) as string[];
-                        
-                        list = list.filter(item => !removeItems.includes(item));
-                        selected = selected.filter(item => !removeItems.includes(item));
-                        
-                        await stateManager.store(listKey, list);
-                        await stateManager.store(selectedKey, selected);
-                        await stateManager.store(inputKey, '');
+                        try {
+                            const val = await getSetting(stateManager, inputKey) as string;
+                            if (!val || String(val).trim() === '') return;
+                            const removeItems = String(val).split(',').map(s => s.trim()).filter(s => s !== '');
+                            if (removeItems.length === 0) return;
+                            const currentList = await getSetting(stateManager, listKey) as string[];
+                            const currentSelected = await getSetting(stateManager, selectedKey) as string[];
+                            const list = (Array.isArray(currentList) ? [...currentList] : []).filter(item => !removeItems.includes(item));
+                            const selected = (Array.isArray(currentSelected) ? [...currentSelected] : []).filter(item => !removeItems.includes(item));
+                            await stateManager.store(listKey, list);
+                            await stateManager.store(selectedKey, selected);
+                            await stateManager.store(inputKey, '');
+                        } catch (e) {
+                            // Silently handle errors to prevent crash
+                        }
                     }
                 })
             ];
@@ -224,13 +258,12 @@ const createDynamicListSection = (
     });
 };
 
-export const contentSettings = (stateManager: SourceStateManager, requestManager?: any): DUINavigationButton => {
+export const contentSettings = (stateManager: SourceStateManager): DUINavigationButton => {
     return keepAlive(createDUINavigationButton({
         id: 'content_settings',
         label: 'Extension Settings',
         form: createDUIForm({
             sections: async () => {
-                await warmUpSettings(stateManager);
                 return [
                     createDynamicListSection(stateManager, 'uploaders', 'Uploaders', 'uploaders', 'uploaders_selected', 'uploader_input', 'uploaders_enabled', 'uploaders_whitelist', 'uploaders_strict'),
                     createDUISection({
@@ -266,45 +299,6 @@ export const contentSettings = (stateManager: SourceStateManager, requestManager
                                 }
                             })
                         ]
-                    }),
-                    createDUISection({
-                        id: 'general_settings',
-                        header: 'Advanced Chapter Filtering',
-                        rows: async () => [
-                            createDUISwitch({
-                                id: 'one_version_only',
-                                label: 'Always Only Show 1 Source',
-                                value: createDUIBinding({
-                                    get: async () => await getSetting(stateManager, 'one_version_only'),
-                                    set: async (newValue: boolean) => await stateManager.store('one_version_only', newValue)
-                                })
-                            }),
-                            createDUISwitch({
-                                id: 'remove_duplicates',
-                                label: 'Remove Duplicate Chapters',
-                                value: createDUIBinding({
-                                    get: async () => await getSetting(stateManager, 'remove_duplicates'),
-                                    set: async (newValue: boolean) => await stateManager.store('remove_duplicates', newValue)
-                                })
-                            })
-                        ]
-                    }),
-                    createDUISection({
-                        id: 'network_settings',
-                        header: 'Network Settings',
-                        rows: async () => [
-                            createDUIButton({
-                                id: 'cf_bypass_trigger',
-                                label: 'Manually Trigger Cloudflare Bypass',
-                                onTap: async () => {
-                                    if (requestManager) {
-                                        // createRequestObject is not imported here but available globally usually, wait we should import it or use a callback
-                                        // Actually since we don't have createRequestObject imported here we can just throw to force it
-                                        throw new Error("Cloudflare Bypass Required");
-                                    }
-                                }
-                            })
-                        ]
                     })
                 ];
             }
@@ -317,8 +311,13 @@ export const resetSettings = (stateManager: SourceStateManager): DUIButton => {
         id: 'reset',
         label: 'Reset All Settings',
         onTap: async () => {
-            const promises = Object.keys(DEFAULT_SETTINGS).map(key => stateManager.store(key, null));
-            await Promise.all(promises);
+            try {
+                for (const key of Object.keys(DEFAULT_SETTINGS)) {
+                    await stateManager.store(key, (DEFAULT_SETTINGS as any)[key]);
+                }
+            } catch (e) {
+                // Silently handle reset errors
+            }
         }
     });
 };
