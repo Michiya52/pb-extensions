@@ -199,24 +199,12 @@ const createDynamicListSection = (
                 createDUILabel({
                     id: `${id}_priority_label`,
                     label: 'Priority Order (1 = highest)',
-                    value: createDUIBinding({
-                        get: async () => '',
-                        set: async () => { }
-                    })
+                    value: ''
                 }),
-                createDUIMultilineLabel({
+                createDUILabel({
                     id: `${id}_priority_display`,
                     label: 'Current Priority',
-                    value: createDUIBinding({
-                        get: async () => {
-                            const list = await getSetting(stateManager, listKey) as string[];
-                            const safe = Array.isArray(list) ? list : [];
-                            return safe.length > 0
-                                ? safe.map((name: string, i: number) => `${i + 1}. ${name}`).join('\n')
-                                : 'No uploaders added yet';
-                        },
-                        set: async () => { }
-                    })
+                    value: 'See selector below'
                 }),
                 // --- Add Uploaders ---
                 createDUIInputField({

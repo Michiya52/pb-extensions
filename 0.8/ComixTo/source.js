@@ -1116,24 +1116,12 @@ var _Sources = (() => {
           App.createDUILabel({
             id: `${id}_priority_label`,
             label: "Priority Order (1 = highest)",
-            value: App.createDUIBinding({
-              get: async () => "",
-              set: async () => { }
-            })
+            value: ""
           }),
-          App.createDUIMultilineLabel({
+          App.createDUILabel({
             id: `${id}_priority_display`,
             label: "Current Priority",
-            value: App.createDUIBinding({
-              get: async () => {
-                const list = await getSetting(stateManager, listKey);
-                const safe = Array.isArray(list) ? list : [];
-                return safe.length > 0
-                  ? safe.map((name, i) => `${i + 1}. ${name}`).join("\n")
-                  : "No uploaders added yet";
-              },
-              set: async () => { }
-            })
+            value: "See selector below"
           }),
           // --- Add Uploaders ---
           App.createDUIInputField({
