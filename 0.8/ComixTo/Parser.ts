@@ -1,4 +1,4 @@
-import { normalizeString, parseRelativeTime } from "./Common";
+import { normalizeString, parseRelativeTime, isRatingAllowed } from "./Common";
 
 const NO_POSTER = "https://comix.to/images/no-poster.png";
 
@@ -215,7 +215,7 @@ export class Parser {
 
     parseMangaList(
         items: any[],
-        showNsfw: boolean,
+        maxRating: string,
         filteredTermIds: Set<number> = new Set(),
         tagWhitelistMode: boolean = false,
         typeFilter: Set<string> = new Set(),
@@ -224,7 +224,7 @@ export class Parser {
         const mangaList: any[] = [];
 
         for (const item of items) {
-            if (!showNsfw && isNsfw(item.contentRating)) {
+            if (!isRatingAllowed(item.content_rating || item.contentRating, maxRating)) {
                 continue;
             }
 

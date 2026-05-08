@@ -51,3 +51,19 @@ export const ORDER_OPTIONS = [
     { id: "views_total", label: "Total Views" },
     { id: "follows_total", label: "Most Follows" },
 ];
+
+export const CONTENT_RATINGS = [
+    { id: "safe", label: "Safe" },
+    { id: "suggestive", label: "Suggestive" },
+    { id: "erotica", label: "Erotica" },
+    { id: "pornographic", label: "Pornographic" },
+];
+
+export function isRatingAllowed(rating: string | null | undefined, maxRating: string): boolean {
+    const ratingIdx = CONTENT_RATINGS.findIndex((r) => r.id === rating);
+    const maxIdx = CONTENT_RATINGS.findIndex((r) => r.id === maxRating);
+    if (ratingIdx === -1) return false;
+    if (maxIdx === -1) return true;
+    return ratingIdx <= maxIdx;
+}
+

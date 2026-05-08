@@ -22,13 +22,14 @@ import { Parser } from "./Parser";
 import { API_BASE, DOMAIN, CONTENT_TYPES, PUBLICATION_STATUS, ORDER_OPTIONS, normalizeString } from "./Common";
 import { signUrl } from "./ComixHash";
 import {
+    getFilters,
+    getContentRatingMax,
+    getTrendingLimit,
+    tagFilterSettings,
     contentSettings,
     chapterSettings,
-    tagFilterSettings,
     resetSettings,
-    getIsNsfw,
-    getTrendingLimit,
-    getFilters,
+    warmUpTagCache,
     getTagFilterEnabled,
     getTagBlacklist,
     getTagWhitelistMode,
@@ -37,7 +38,7 @@ import {
 } from "./Settings";
 
 export const ComixToInfo: SourceInfo = {
-    version: "1.5.4",
+    version: "1.5.5",
     name: "ComixTo",
     icon: "icon.png",
     author: "Michiya52",
@@ -204,7 +205,8 @@ export class ComixTo extends Source {
         sectionCallback: (section: HomeSection) => void
     ): Promise<void> {
         const limitArray = await getTrendingLimit(this.stateManager);
-        const limit = limitArray[0] ?? "30";
+        const days = limitArray[0] ?? "30";
+        const maxRating = await getContentRatingMax(this.stateManager);
 
         const sections = [
             App.createHomeSection({
@@ -226,6 +228,12 @@ export class ComixTo extends Source {
                 type: HomeSectionType.singleRowNormal,
             }),
             App.createHomeSection({
+                id: "follows_new",
+                title: "Most Follows · New Comics",
+                containsMoreItems: true,
+                type: HomeSectionType.singleRowLarge,
+            }),
+            App.createHomeSection({
                 id: "follows",
                 title: "Most Followed",
                 containsMoreItems: true,
@@ -237,7 +245,7 @@ export class ComixTo extends Source {
 
         promises.push(
             this.fetchHomeData(
-                `${API_BASE}/manga?type=trending&days=${limit}&limit=15&includes[]=author`,
+                `${API_BASE}/manga/top?type=trending&days=${days}&limit=15&content_rating=${maxRating}`,
                 sections[0],
                 sectionCallback
             )
@@ -258,8 +266,15 @@ export class ComixTo extends Source {
         );
         promises.push(
             this.fetchHomeData(
-                `${API_BASE}/manga?order[follows_total]=desc&limit=15&includes[]=author`,
+                `${API_BASE}/manga/top?type=follows&days=${days}&limit=15&content_rating=${maxRating}`,
                 sections[3],
+                sectionCallback
+            )
+        );
+        promises.push(
+            this.fetchHomeData(
+                `${API_BASE}/manga?order[follows_total]=desc&limit=15&includes[]=author`,
+                sections[4],
                 sectionCallback
             )
         );
@@ -277,16 +292,17 @@ export class ComixTo extends Source {
         this.checkResponseError(response);
         const json = JSON.parse(response.data ?? "{}");
 
-        const [showNsfw, { filteredTermIds, tagWhitelistMode, tagAndMode, typeFilter }] =
+        const [maxRating, { filteredTermIds, tagWhitelistMode, tagAndMode, typeFilter }] =
             await Promise.all([
-                getIsNsfw(this.stateManager),
+                getContentRatingMax(this.stateManager),
                 this.getTagFilterState(),
             ]);
 
-        if (json.result && json.result.items) {
+        const items = Array.isArray(json.result) ? json.result : json.result?.items;
+        if (items) {
             section.items = this.parser.parseMangaList(
-                json.result.items,
-                showNsfw,
+                items,
+                maxRating,
                 filteredTermIds,
                 tagWhitelistMode,
                 typeFilter,
@@ -302,12 +318,19 @@ export class ComixTo extends Source {
     ): Promise<PagedResults> {
         const page = metadata?.page ?? 1;
         const limitArray = await getTrendingLimit(this.stateManager);
-        const limit = limitArray[0] ?? "30";
+        const days = limitArray[0] ?? "30";
+        const maxRating = await getContentRatingMax(this.stateManager);
 
         let url = "";
+        let isTopEndpoint = false;
         switch (homepageSectionId) {
             case "trending":
-                url = `${API_BASE}/manga?type=trending&days=${limit}&limit=20&page=${page}&includes[]=author`;
+                url = `${API_BASE}/manga/top?type=trending&days=${days}&limit=50&content_rating=${maxRating}`;
+                isTopEndpoint = true;
+                break;
+            case "follows_new":
+                url = `${API_BASE}/manga/top?type=follows&days=${days}&limit=50&content_rating=${maxRating}`;
+                isTopEndpoint = true;
                 break;
             case "follows":
                 url = `${API_BASE}/manga?order[follows_total]=desc&limit=20&page=${page}&includes[]=author`;
@@ -327,25 +350,23 @@ export class ComixTo extends Source {
         this.checkResponseError(response);
         const json = JSON.parse(response.data ?? "{}");
 
-        const [showNsfw, { filteredTermIds, tagWhitelistMode, tagAndMode, typeFilter }] =
-            await Promise.all([
-                getIsNsfw(this.stateManager),
-                this.getTagFilterState(),
-            ]);
+        const { filteredTermIds, tagWhitelistMode, tagAndMode, typeFilter } = await this.getTagFilterState();
 
+        const rawItems = Array.isArray(json.result) ? json.result : json.result?.items ?? [];
         const items = this.parser.parseMangaList(
-            json.result.items,
-            showNsfw,
+            rawItems,
+            maxRating,
             filteredTermIds,
             tagWhitelistMode,
             typeFilter,
             tagAndMode
         );
-        const hasNext = items.length > 0;
+
+        const nextPage = isTopEndpoint ? undefined : (items.length > 0 ? { page: page + 1 } : undefined);
 
         return App.createPagedResults({
             results: items,
-            metadata: hasNext ? { page: page + 1 } : undefined,
+            metadata: nextPage,
         });
     }
 
@@ -432,19 +453,12 @@ export class ComixTo extends Source {
         const orderTag = (query.includedTags ?? []).find((t: any) =>
             t.id.startsWith("order-")
         );
-        const hasExplicitOrder = orderTag != null;
-
-        let url = `${API_BASE}/manga?page=${page}&limit=20`;
-
-        if (hasExplicitOrder) {
-            const orderKey = orderTag!.id.replace("order-", "");
-            url += `&order[${orderKey}]=desc`;
-        } else if (!query.title) {
-            url += `&order[relevance]=desc`;
-        }
+        const orderKey = orderTag ? orderTag.id.replace("order-", "") : "relevance";
+        
+        let url = `${API_BASE}/manga?order[${orderKey}]=desc&page=${page}&limit=20`;
 
         if (query.title) {
-            url += `&keyword=${encodeURIComponent(normalizeString(query.title))}`;
+            url += `&keyword=${encodeURIComponent(normalizeString(query.title)).replace(/%20/g, "+")}`;
         }
 
         let genresMode = "and";
@@ -508,15 +522,15 @@ export class ComixTo extends Source {
         this.checkResponseError(response);
         const json = JSON.parse(response.data ?? "{}");
 
-        const [showNsfw, { filteredTermIds, tagWhitelistMode, tagAndMode, typeFilter }] =
+        const [maxRating, { filteredTermIds, tagWhitelistMode, tagAndMode, typeFilter }] =
             await Promise.all([
-                getIsNsfw(this.stateManager),
+                getContentRatingMax(this.stateManager),
                 this.getTagFilterState(),
             ]);
 
         const items = this.parser.parseMangaList(
             json.result.items,
-            showNsfw,
+            maxRating,
             filteredTermIds,
             tagWhitelistMode,
             typeFilter,
@@ -548,23 +562,24 @@ export class ComixTo extends Source {
     }
 
     checkResponseError(response: any): void {
+        const data = response.data ?? "";
+        const preview = data.substring(0, 300).replace(/\s+/g, " ");
+        const headers = response.headers ?? {};
+        const ct = headers["Content-Type"] ?? headers["content-type"] ?? "?";
+        const server = headers["Server"] ?? headers["server"] ?? "?";
+        const cfRay = headers["Cf-Ray"] ?? headers["cf-ray"] ?? "?";
+        const reqUrl = response.request?.url ?? "?";
+
         if (response.status === 403 || response.status === 503) {
+            console.log(`[checkErr] BLOCKED status=${response.status} ct=${ct} server=${server} cf-ray=${cfRay} url=${reqUrl} preview="${preview}"`);
             throw new Error("Cloudflare Bypass Required");
         }
         if (response.status < 200 || response.status >= 300) {
-            const preview = (response.data ?? "").substring(0, 300);
-            console.log(
-                `[ComixTo] HTTP ${response.status} — response preview: ${preview}`
-            );
-            throw new Error(
-                `HTTP ${response.status}: Unexpected response from server`
-            );
+            console.log(`[checkErr] HTTP-FAIL status=${response.status} ct=${ct} url=${reqUrl} preview="${preview}"`);
+            throw new Error(`HTTP ${response.status}: Unexpected response from server`);
         }
-        const data = response.data ?? "";
         if (data.trimStart().startsWith("<")) {
-            console.log(
-                `[ComixTo] WARNING: Response looks like HTML, not JSON. Preview: ${data.substring(0, 300)}`
-            );
+            console.log(`[checkErr] HTML-BODY status=${response.status} ct=${ct} server=${server} cf-ray=${cfRay} url=${reqUrl} preview="${preview}"`);
             throw new Error("Cloudflare Bypass Required");
         }
     }
