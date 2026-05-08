@@ -798,14 +798,14 @@ var _Sources = (() => {
       return App.createSourceManga({
         id: mangaId,
         mangaInfo: App.createMangaInfo({
-          titles: [data.title, ...data.altTitles ?? []],
-          image: data.poster?.large || data.poster?.medium || NO_POSTER,
+          titles: [data.title, ...data.alternative_titles ?? data.altTitles ?? []],
+          image: data.poster || NO_POSTER,
           status: data.status,
-          desc: data.synopsis,
-          author: data.authors?.map((a) => a.title).join(", ") ?? "",
-          artist: data.artists?.map((a) => a.title).join(", ") ?? "",
-          rating: data.ratedAvg ? data.ratedAvg / 2 : 0,
-          hentai: isNsfw(data.contentRating),
+          desc: data.description || data.synopsis,
+          author: (data.authors || data.author) ? (Array.isArray(data.authors) ? data.authors.map((a) => a.title).join(", ") : (data.author?.title || data.authors?.title || "")) : "",
+          artist: (data.artists || data.artist) ? (Array.isArray(data.artists) ? data.artists.map((a) => a.title).join(", ") : (data.artist?.title || data.artists?.title || "")) : "",
+          rating: data.rating ?? (data.ratedAvg ? data.ratedAvg / 2 : 0),
+          hentai: isNsfw(data.content_rating || data.contentRating),
           tags: sections
         })
       });
@@ -813,15 +813,15 @@ var _Sources = (() => {
     parseChapters(data, filters) {
       const rawChapters = [];
       for (const chap of data) {
-        const groupName = chap.group?.name || "";
+        const groupName = chap.scanlation_group?.name || "";
         rawChapters.push({
-          id: chap.id.toString(),
+          id: (chap.chapter_id || chap.id).toString(),
           chapNum: chap.number,
           name: chap.name ? `${chap.name}` : `Chapter ${chap.number}`,
           langCode: chap.language || "en",
           volume: chap.volume,
           group: groupName,
-          time: parseRelativeTime(chap.createdAtFormatted),
+          time: chap.updated_at ? new Date(chap.updated_at * 1e3) : new Date(),
           sortingIndex: chap.number
         });
       }
@@ -925,7 +925,7 @@ var _Sources = (() => {
     parseMangaList(items, showNsfw, filteredTermIds = /* @__PURE__ */ new Set(), tagWhitelistMode = false, typeFilter = /* @__PURE__ */ new Set(), tagAndMode = false) {
       const mangaList = [];
       for (const item of items) {
-        if (!showNsfw && isNsfw(item.contentRating)) {
+        if (!showNsfw && isNsfw(item.content_rating || item.contentRating)) {
           continue;
         }
         if (filteredTermIds.size > 0 || typeFilter.size > 0) {
@@ -952,10 +952,10 @@ var _Sources = (() => {
         }
         mangaList.push(
           App.createPartialSourceManga({
-            mangaId: item.hid,
-            image: item.poster?.large || item.poster?.medium || NO_POSTER,
+            mangaId: (item.manga_id || item.id || item.hid).toString(),
+            image: item.poster || NO_POSTER,
             title: item.title,
-            subtitle: item.latestChapter ? `Ch. ${item.latestChapter}` : void 0
+            subtitle: item.latest_chapter ? `Ch. ${item.latest_chapter}` : (item.latestChapter ? `Ch. ${item.latestChapter}` : void 0)
           })
         );
       }
@@ -1727,7 +1727,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.5.3",
+    version: "1.5.4",
     name: "ComixTo",
     icon: "icon.png",
     author: "Michiya52",
