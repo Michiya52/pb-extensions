@@ -766,6 +766,19 @@ var _Sources = (() => {
     { id: "discontinued", label: "Discontinued" },
     { id: "not_yet_released", label: "Not Yet Released" }
   ];
+  var CONTENT_RATINGS = [
+    { id: "safe", label: "Safe" },
+    { id: "suggestive", label: "Suggestive" },
+    { id: "erotica", label: "Erotica" },
+    { id: "pornographic", label: "Pornographic" }
+  ];
+  function isRatingAllowed(rating, maxRating) {
+    const ratingIdx = CONTENT_RATINGS.findIndex((r) => r.id === rating);
+    const maxIdx = CONTENT_RATINGS.findIndex((r) => r.id === maxRating);
+    if (ratingIdx === -1) return false;
+    if (maxIdx === -1) return true;
+    return ratingIdx <= maxIdx;
+  }
   var ORDER_OPTIONS = [
     { id: "relevance", label: "Best Match" },
     { id: "chapter_updated_at", label: "Updated Date" },
@@ -776,21 +789,6 @@ var _Sources = (() => {
     { id: "views_total", label: "Total Views" },
     { id: "follows_total", label: "Most Follows" }
   ];
-
-  var CONTENT_RATINGS = [
-    { id: "safe", label: "Safe" },
-    { id: "suggestive", label: "Suggestive" },
-    { id: "erotica", label: "Erotica" },
-    { id: "pornographic", label: "Pornographic" }
-  ];
-
-  function isRatingAllowed(rating, maxRating) {
-    const ratingIdx = CONTENT_RATINGS.findIndex((r) => r.id === rating);
-    const maxIdx = CONTENT_RATINGS.findIndex((r) => r.id === maxRating);
-    if (ratingIdx === -1) return false;
-    if (maxIdx === -1) return true;
-    return ratingIdx <= maxIdx;
-  }
 
   // src/ComixTo/Parser.ts
   var NO_POSTER = "https://comix.to/images/no-poster.png";
@@ -813,120 +811,115 @@ var _Sources = (() => {
       return App.createSourceManga({
         id: mangaId,
         mangaInfo: App.createMangaInfo({
-          titles: [data.title, ...data.alternative_titles ?? data.altTitles ?? []],
-          image: data.poster?.large || data.poster?.medium || data.poster || NO_POSTER,
+          titles: [data.title, ...data.altTitles ?? []],
+          image: data.poster?.large || data.poster?.medium || NO_POSTER,
           status: data.status,
-          desc: data.description || data.synopsis,
-          author: (data.authors || data.author) ? (Array.isArray(data.authors) ? data.authors.map((a) => a.title).join(", ") : (data.author?.title || data.authors?.title || "")) : "",
-          artist: (data.artists || data.artist) ? (Array.isArray(data.artists) ? data.artists.map((a) => a.title).join(", ") : (data.artist?.title || data.artists?.title || "")) : "",
-          rating: data.rating ?? (data.ratedAvg ? data.ratedAvg / 2 : 0),
-          hentai: isNsfw(data.content_rating || data.contentRating),
+          desc: data.synopsis,
+          author: data.authors?.map((a) => a.title).join(", ") ?? "",
+          artist: data.artists?.map((a) => a.title).join(", ") ?? "",
+          rating: data.ratedAvg ? data.ratedAvg / 2 : 0,
+          hentai: isNsfw(data.contentRating),
           tags: sections
         })
       });
     }
-    parseChapters(data, filters) {
+    parseChapters(data, isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly) {
       const rawChapters = [];
       for (const chap of data) {
-        const groupName = chap.scanlation_group?.name || "";
+        const groupName = chap.group?.name || "";
         rawChapters.push({
-          id: (chap.chapter_id || chap.id).toString(),
+          id: chap.id.toString(),
           chapNum: chap.number,
-          name: chap.name ? `${chap.name}` : `Chapter ${chap.number}`,
+          name: chap.name,
           langCode: chap.language || "en",
           volume: chap.volume,
           group: groupName,
-          time: chap.updated_at ? new Date(chap.updated_at * 1e3) : new Date(),
+          time: parseRelativeTime(chap.createdAtFormatted),
           sortingIndex: chap.number
         });
       }
+
       const grouped = rawChapters.reduce((acc, chap) => {
         if (!acc[chap.chapNum]) acc[chap.chapNum] = [];
         acc[chap.chapNum].push(chap);
         return acc;
       }, {});
+
       const finalChapters = [];
+
       for (const chapNum in grouped) {
         const variants = grouped[chapNum];
         let filtered = [...variants];
-        if (filters) {
-          try {
-            const uploaderFilter = filters.uploaders || null;
-            const hasUploaderFilter = uploaderFilter && uploaderFilter.enabled && Array.isArray(uploaderFilter.list) && uploaderFilter.list.length > 0;
-            // A. Hard Filter: Blacklist
-            if (hasUploaderFilter && !uploaderFilter.whitelist) {
-              filtered = filtered.filter((v) => {
-                const normalizedGroup = normalizeString(v.group || "").toLowerCase();
-                const isMatched = uploaderFilter.list.some((item) => {
-                  const normalizedItem = normalizeString(item).toLowerCase();
-                  return uploaderFilter.strict ? normalizedGroup === normalizedItem : normalizedGroup.includes(normalizedItem);
-                });
-                return !isMatched;
+
+        if (isFiltering && savedGroups && savedGroups.length > 0) {
+          if (!isWhitelist) {
+            filtered = filtered.filter((v) => {
+              const normalizedGroup = normalizeString(v.group || "").toLowerCase();
+              const isMatched = savedGroups.some((item) => {
+                const normalizedItem = normalizeString(item).toLowerCase();
+                return isStrict ? normalizedGroup === normalizedItem : normalizedGroup.includes(normalizedItem);
               });
-            }
-            // B. Soft Filter: Whitelist
-            if (hasUploaderFilter && uploaderFilter.whitelist && filtered.length > 0) {
-              const whitelisted = filtered.filter((v) => {
-                const normalizedGroup = normalizeString(v.group || "").toLowerCase();
-                return uploaderFilter.list.some((item) => {
-                  const normalizedItem = normalizeString(item).toLowerCase();
-                  return uploaderFilter.strict ? normalizedGroup === normalizedItem : normalizedGroup.includes(normalizedItem);
-                });
-              });
-              if (whitelisted.length > 0) filtered = whitelisted;
-            }
-            // C. Priority Ranking
-            if (hasUploaderFilter) {
-              const uploaderList = uploaderFilter.list.map((u) => normalizeString(u).toLowerCase());
-              const isStrict = !!uploaderFilter.strict;
-              filtered.sort((a, b) => {
-                const aName = normalizeString(a.group || "").toLowerCase();
-                const bName = normalizeString(b.group || "").toLowerCase();
-                let aIdx = uploaderList.findIndex((u) => isStrict ? aName === u : aName.includes(u));
-                let bIdx = uploaderList.findIndex((u) => isStrict ? bName === u : bName.includes(u));
-                if (aIdx === -1) aIdx = 9999;
-                if (bIdx === -1) bIdx = 9999;
-                return aIdx - bIdx;
-              });
-            }
-            // D. Deduplication
-            if (!!filters.removeDuplicates && filtered.length > 1) {
-              const unique = [];
-              const seen = new Set();
-              for (const chap of filtered) {
-                const key = `${chap.chapNum}-${chap.langCode}`;
-                if (!seen.has(key)) {
-                  seen.add(key);
-                  unique.push(chap);
-                }
-              }
-              filtered = unique;
-            }
-            // E. One Version per Chapter
-            if (!!filters.oneVersionOnly && filtered.length > 1) {
-              filtered = [filtered[0]];
-            }
-          } catch (filterError) {
-            filtered = [...variants];
+              return !isMatched;
+            });
           }
+
+          if (isWhitelist && filtered.length > 0) {
+            const whitelisted = filtered.filter((v) => {
+              const normalizedGroup = normalizeString(v.group || "").toLowerCase();
+              return savedGroups.some((item) => {
+                const normalizedItem = normalizeString(item).toLowerCase();
+                return isStrict ? normalizedGroup === normalizedItem : normalizedGroup.includes(normalizedItem);
+              });
+            });
+            if (whitelisted.length > 0) filtered = whitelisted;
+          }
+
+          const uploaderList = savedGroups.map((u) => normalizeString(u).toLowerCase());
+          filtered.sort((a, b) => {
+            const aName = normalizeString(a.group || "").toLowerCase();
+            const bName = normalizeString(b.group || "").toLowerCase();
+            let aIdx = uploaderList.findIndex((u) => isStrict ? aName === u : aName.includes(u));
+            let bIdx = uploaderList.findIndex((u) => isStrict ? bName === u : bName.includes(u));
+            if (aIdx === -1) aIdx = 9999;
+            if (bIdx === -1) bIdx = 9999;
+            return aIdx - bIdx;
+          });
         }
+
+        if (filtered.length > 1) {
+          const unique = [];
+          const seen = new Set();
+          for (const chap of filtered) {
+            const key = `${chap.chapNum}-${chap.langCode}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              unique.push(chap);
+            }
+          }
+          filtered = unique;
+        }
+
+        if (oneVersionOnly && filtered.length > 1) {
+          filtered = [filtered[0]];
+        }
+
         for (const chap of filtered) {
-          const showUploader = !!(filters && filters.showUploader);
-          const groupTag = showUploader && chap.group ? ` [${chap.group}]` : "";
-          const showTitle = !!(filters && filters.showTitle);
-          const displayName = showTitle ? `${chap.name}${groupTag}` : `Chapter ${chap.chapNum}${groupTag}`;
-          finalChapters.push(App.createChapter({
-            id: chap.id,
-            chapNum: chap.chapNum,
-            name: displayName,
-            langCode: chap.langCode,
-            volume: chap.volume,
-            group: chap.group,
-            time: chap.time,
-            sortingIndex: chap.sortingIndex
-          }));
+          const displayName = showTitle && chap.name ? `${chap.name}` : `Chapter ${chap.chapNum}`;
+          finalChapters.push(
+            App.createChapter({
+              id: chap.id,
+              chapNum: chap.chapNum,
+              name: displayName,
+              langCode: chap.langCode,
+              volume: chap.volume,
+              group: chap.group,
+              time: chap.time,
+              sortingIndex: chap.sortingIndex
+            })
+          );
         }
       }
+
       return finalChapters;
     }
     parseChapterDetails(data, mangaId, chapterId) {
@@ -940,7 +933,7 @@ var _Sources = (() => {
     parseMangaList(items, maxRating, filteredTermIds = /* @__PURE__ */ new Set(), tagWhitelistMode = false, typeFilter = /* @__PURE__ */ new Set(), tagAndMode = false) {
       const mangaList = [];
       for (const item of items) {
-        if (!isRatingAllowed(item.content_rating || item.contentRating, maxRating)) {
+        if (!isRatingAllowed(item.contentRating, maxRating)) {
           continue;
         }
         if (filteredTermIds.size > 0 || typeFilter.size > 0) {
@@ -1036,35 +1029,35 @@ var _Sources = (() => {
     return out.replace(/\+/g, "-").replace(/\//g, "_");
   }
   var KEYS = [
-    "13YDu67uDgFczo3DnuTIURqas4lfMEPADY6Jaeqky+w=",
+    "JxTcdyiA5GZxnbrmthXBQfU2IMTKcY1+3nNhbq98Sgo=",
     // 0  RC4 key  round 1
-    "yEy7wBfBc+gsYPiQL/4Dfd0pIBZFzMwrtlRQGwMXy3Q=",
+    "3PordjODbhqla382Cxapmo/1JiABJQcjiJj1+48gTJ4=",
     // 1  mutKey   round 1
-    "yrP+EVA1Dw==",
+    "OaKvnI5ARA==",
     // 2  prefKey  round 1
-    "vZ23RT7pbSlxwiygkHd1dhToIku8SNHPC6V36L4cnwM=",
+    "MHNBHYWA7lvy867fXgvGcJwWDk79KqUJUVFsh3RwnnI=",
     // 3  RC4 key  round 2
-    "QX0sLahOByWLcWGnv6l98vQudWqdRI3DOXBdit9bxCE=",
+    "8i0Cru/VJBSVB2Y1GcMDVpzx2WepOcfnWdd81yxICl4=",
     // 4  mutKey   round 2
-    "WJwgqCmf",
+    "Fyskubz8VvA=",
     // 5  prefKey  round 2
-    "BkWI8feqSlDZKMq6awfzWlUypl88nz65KVRmpH0RWIc=",
+    "B46L1x+UeWP+19cRpQ+OZvdLAK9EHID8g3mSgn57tew=",
     // 6  RC4 key  round 3
-    "v7EIpiQQjd2BGuJzMbBA0qPWDSS+wTJRQ7uGzZ6rJKs=",
+    "DTSTmUt6LpDUw9r1lSQqyb3YlFTzruT8tk8wUGkwehQ=",
     // 7  mutKey   round 3
-    "1SUReYlCRA==",
+    "vY/meeI=",
     // 8  prefKey  round 3
-    "RougjiFHkSKs20DZ6BWXiWwQUGZXtseZIyQWKz5eG34=",
+    "7xWfIF5THL5LAnRgAARg+4mjWHPU9n3PQwvzbaMNi+Q=",
     // 9  RC4 key  round 4
-    "LL97cwoDoG5cw8QmhI+KSWzfW+8VehIh+inTxnVJ2ps=",
+    "bewtiTuV+HJk56xxkf2iCljLgruCpBmN9BgE8i6gc9M=",
     // 10 mutKey   round 4
-    "52iDqjzlqe8=",
+    "/Xcb2zAu8AU=",
     // 11 prefKey  round 4
-    "U9LRYFL2zXU4TtALIYDj+lCATRk/EJtH7/y7qYYNlh8=",
+    "WgeCQ3T8R51uTwVSiVa7Zy0dN6JOg6Z5JleMS+HV8Aw=",
     // 12 RC4 key  round 5
-    "e/GtffFDTvnw7LBRixAD+iGixjqTq9kIZ1m0Hj+s6fY=",
+    "yXayUVFrrcW56jQCEfZzuCidjpnWKjTDUNT7XeX9i7k=",
     // 13 mutKey   round 5
-    "xb2XwHNB"
+    "tSLco2w="
     // 14 prefKey  round 5
   ];
   function getKeyBytes(index) {
@@ -1099,256 +1092,208 @@ var _Sources = (() => {
     }
     return out;
   }
-  function mutS(e) {
-    return (e + 143) % 256;
-  }
-  function mutL(e) {
-    return (e >>> 1 | e << 7) & 255;
-  }
-  function mutC(e) {
-    return (e + 115) % 256;
-  }
-  function mutM(e) {
-    return (e ^ 177) & 255;
-  }
-  function mutF(e) {
-    return (e - 188 + 256) % 256;
-  }
-  function mutG(e) {
-    return (e << 2 | e >>> 6) & 255;
-  }
-  function mutH(e) {
-    return (e - 42 + 256) % 256;
-  }
-  function mutDollar(e) {
-    return (e << 4 | e >>> 4) & 255;
-  }
-  function mutB(e) {
-    return (e - 12 + 256) % 256;
-  }
-  function mutUnderscore(e) {
-    return (e - 20 + 256) % 256;
-  }
-  function mutY(e) {
-    return (e >>> 1 | e << 7) & 255;
-  }
-  function mutK(e) {
-    return (e - 241 + 256) % 256;
-  }
+  var rotL1 = (e) => 255 & (e << 1 | e >>> 7);
+  var rotR2 = (e) => 255 & (e >>> 2 | e << 6);
+  var nibSwap = (e) => 255 & (e << 4 | e >>> 4);
   function getMutKey(mk, idx) {
     return mk.length > 0 && idx % 32 < mk.length ? mk[idx % 32] : 0;
   }
-  function round1(data) {
-    const enc = rc4(getKeyBytes(0), data);
-    const mutKey = getKeyBytes(1);
-    const prefKey = getKeyBytes(2);
+  function mutate(data, mutKey, prefKey, prefLimit, round) {
     const out = [];
-    for (let i = 0; i < enc.length; i++) {
-      if (i < 7 && i < prefKey.length) out.push(prefKey[i]);
-      let v = enc[i] ^ getMutKey(mutKey, i);
-      switch (i % 10) {
-        case 0:
-        case 9:
-          v = mutC(v);
-          break;
+    for (let o = 0; o < data.length; o++) {
+      if (o < prefLimit && o < prefKey.length) out.push(prefKey[o]);
+      let n = data[o] ^ getMutKey(mutKey, o);
+      switch (round) {
         case 1:
-          v = mutB(v);
+          switch (o % 10) {
+            case 0:
+              n = rotL1(n);
+              break;
+            case 1:
+              n = 37 ^ n;
+              break;
+            case 2:
+              n = 81 ^ n;
+              break;
+            case 3:
+              n = 147 ^ n;
+              break;
+            case 4:
+              n = rotR2(n);
+              break;
+            case 5:
+            case 8:
+              n = nibSwap(n);
+              break;
+            case 6:
+              n = 218 ^ n;
+              break;
+            case 7:
+              n = (n + 159) % 256;
+              break;
+            case 9:
+              n = 180 ^ n;
+              break;
+          }
           break;
         case 2:
-          v = mutY(v);
+          switch (o % 10) {
+            case 0:
+            case 9:
+              n = 180 ^ n;
+              break;
+            case 1:
+              n = rotL1(n);
+              break;
+            case 2:
+              n = 147 ^ n;
+              break;
+            case 3:
+              n = rotL1(n);
+              break;
+            case 4:
+              n = rotR2(n);
+              break;
+            case 5:
+              n = nibSwap(n);
+              break;
+            case 6:
+            case 8:
+              n = (n + 159) % 256;
+              break;
+            case 7:
+              n = (n + 34) % 256;
+              break;
+          }
           break;
         case 3:
-          v = mutDollar(v);
+          switch (o % 10) {
+            case 0:
+              n = 81 ^ n;
+              break;
+            case 1:
+              n = nibSwap(n);
+              break;
+            case 2:
+            case 9:
+              n = nibSwap(n);
+              break;
+            case 3:
+              n = 37 ^ n;
+              break;
+            case 4:
+              n = (n + 159) % 256;
+              break;
+            case 5:
+              n = rotL1(n);
+              break;
+            case 6:
+              n = 180 ^ n;
+              break;
+            case 7:
+              n = (n + 34) % 256;
+              break;
+            case 8:
+              n = rotR2(n);
+              break;
+          }
           break;
         case 4:
-        case 6:
-          v = mutH(v);
+          switch (o % 10) {
+            case 0:
+            case 7:
+              n = 218 ^ n;
+              break;
+            case 1:
+            case 4:
+              n = rotL1(n);
+              break;
+            case 2:
+              n = rotL1(n);
+              break;
+            case 3:
+              n = (n + 159) % 256;
+              break;
+            case 5:
+            case 8:
+              n = 180 ^ n;
+              break;
+            case 6:
+              n = 147 ^ n;
+              break;
+            case 9:
+              n = 37 ^ n;
+              break;
+          }
           break;
         case 5:
-          v = mutS(v);
-          break;
-        case 7:
-          v = mutK(v);
-          break;
-        case 8:
-          v = mutL(v);
+          switch (o % 10) {
+            case 0:
+              n = nibSwap(n);
+              break;
+            case 1:
+            case 3:
+              n = 147 ^ n;
+              break;
+            case 2:
+              n = (n + 34) % 256;
+              break;
+            case 4:
+            case 9:
+              n = 218 ^ n;
+              break;
+            case 5:
+            case 7:
+              n = rotL1(n);
+              break;
+            case 6:
+              n = 180 ^ n;
+              break;
+            case 8:
+              n = rotR2(n);
+              break;
+          }
           break;
       }
-      out.push(v & 255);
+      out.push(n & 255);
     }
     return out;
   }
-  function round2(data) {
-    const enc = rc4(getKeyBytes(3), data);
-    const mutKey = getKeyBytes(4);
-    const prefKey = getKeyBytes(5);
-    const out = [];
-    for (let i = 0; i < enc.length; i++) {
-      if (i < 6 && i < prefKey.length) out.push(prefKey[i]);
-      let v = enc[i] ^ getMutKey(mutKey, i);
-      switch (i % 10) {
-        case 0:
-        case 8:
-          v = mutC(v);
-          break;
-        case 1:
-          v = mutB(v);
-          break;
-        case 2:
-        case 6:
-          v = mutDollar(v);
-          break;
-        case 3:
-          v = mutH(v);
-          break;
-        case 4:
-        case 9:
-          v = mutS(v);
-          break;
-        case 5:
-          v = mutK(v);
-          break;
-        case 7:
-          v = mutUnderscore(v);
-          break;
-      }
-      out.push(v & 255);
-    }
-    return out;
+  function round1(d) {
+    return rc4(getKeyBytes(0), mutate(d, getKeyBytes(1), getKeyBytes(2), 7, 1));
   }
-  function round3(data) {
-    const enc = rc4(getKeyBytes(6), data);
-    const mutKey = getKeyBytes(7);
-    const prefKey = getKeyBytes(8);
-    const out = [];
-    for (let i = 0; i < enc.length; i++) {
-      if (i < 7 && i < prefKey.length) out.push(prefKey[i]);
-      let v = enc[i] ^ getMutKey(mutKey, i);
-      switch (i % 10) {
-        case 0:
-          v = mutC(v);
-          break;
-        case 1:
-          v = mutF(v);
-          break;
-        case 2:
-        case 8:
-          v = mutS(v);
-          break;
-        case 3:
-          v = mutG(v);
-          break;
-        case 4:
-          v = mutY(v);
-          break;
-        case 5:
-          v = mutM(v);
-          break;
-        case 6:
-          v = mutDollar(v);
-          break;
-        case 7:
-          v = mutK(v);
-          break;
-        case 9:
-          v = mutB(v);
-          break;
-      }
-      out.push(v & 255);
-    }
-    return out;
+  function round2(d) {
+    return rc4(getKeyBytes(3), mutate(d, getKeyBytes(4), getKeyBytes(5), 8, 2));
   }
-  function round4(data) {
-    const enc = rc4(getKeyBytes(9), data);
-    const mutKey = getKeyBytes(10);
-    const prefKey = getKeyBytes(11);
-    const out = [];
-    for (let i = 0; i < enc.length; i++) {
-      if (i < 8 && i < prefKey.length) out.push(prefKey[i]);
-      let v = enc[i] ^ getMutKey(mutKey, i);
-      switch (i % 10) {
-        case 0:
-          v = mutB(v);
-          break;
-        case 1:
-        case 9:
-          v = mutM(v);
-          break;
-        case 2:
-        case 7:
-          v = mutL(v);
-          break;
-        case 3:
-        case 5:
-          v = mutS(v);
-          break;
-        case 4:
-        case 6:
-          v = mutUnderscore(v);
-          break;
-        case 8:
-          v = mutY(v);
-          break;
-      }
-      out.push(v & 255);
-    }
-    return out;
+  function round3(d) {
+    return rc4(getKeyBytes(6), mutate(d, getKeyBytes(7), getKeyBytes(8), 5, 3));
   }
-  function round5(data) {
-    const enc = rc4(getKeyBytes(12), data);
-    const mutKey = getKeyBytes(13);
-    const prefKey = getKeyBytes(14);
-    const out = [];
-    for (let i = 0; i < enc.length; i++) {
-      if (i < 6 && i < prefKey.length) out.push(prefKey[i]);
-      let v = enc[i] ^ getMutKey(mutKey, i);
-      switch (i % 10) {
-        case 0:
-          v = mutUnderscore(v);
-          break;
-        case 1:
-        case 7:
-          v = mutS(v);
-          break;
-        case 2:
-          v = mutC(v);
-          break;
-        case 3:
-        case 5:
-          v = mutM(v);
-          break;
-        case 4:
-          v = mutB(v);
-          break;
-        case 6:
-          v = mutF(v);
-          break;
-        case 8:
-          v = mutDollar(v);
-          break;
-        case 9:
-          v = mutG(v);
-          break;
-      }
-      out.push(v & 255);
-    }
-    return out;
+  function round4(d) {
+    return rc4(getKeyBytes(9), mutate(d, getKeyBytes(10), getKeyBytes(11), 8, 4));
   }
-  function generateHash(path) {
-    const encoded = encodeURIComponent(path).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
-    let data = [];
-    for (let i = 0; i < encoded.length; i++) {
-      data.push(encoded.charCodeAt(i) & 255);
-    }
-    data = round1(data);
-    data = round2(data);
-    data = round3(data);
-    data = round4(data);
-    data = round5(data);
-    return b64UrlEncode(data);
+  function round5(d) {
+    return rc4(getKeyBytes(12), mutate(d, getKeyBytes(13), getKeyBytes(14), 5, 5));
   }
+  function generateHash(rawPath) {
+    const path = rawPath.replace(/^https?:\/\/[^/]+/, "").split("?")[0].replace(/^\/api\/v1/, "");
+    const encoded = encodeURIComponent(path);
+    let bytes = new Array(encoded.length);
+    for (let i = 0; i < encoded.length; i++) bytes[i] = encoded.charCodeAt(i) & 255;
+    bytes = round1(bytes);
+    bytes = round2(bytes);
+    bytes = round3(bytes);
+    bytes = round4(bytes);
+    bytes = round5(bytes);
+    return b64UrlEncode(bytes);
+  }
+  var SIGNED_PATTERNS = [
+    /^\/manga\/[^/]+\/chapters\b/,
+    /^\/manga\/[^/]+\/chapter-indexes\b/,
+    /^\/chapters\/[^/]+(?:\?|$)/
+  ];
   function signUrl(url) {
-    const path = url.replace("https://comix.to/api/v2", "").split("?")[0];
+    const path = url.replace("https://comix.to/api/v1", "").split("?")[0];
+    if (!SIGNED_PATTERNS.some((re) => re.test(path))) return url;
     const token = generateHash(path);
     const sep = url.includes("?") ? "&" : "?";
     return `${url}${sep}_=${token}`;
@@ -1375,6 +1320,8 @@ var _Sources = (() => {
         await getUploadersFiltering(stateManager);
         await getUploadersWhitelisted(stateManager);
         await getStrictNameMatching(stateManager);
+        await getOneVersionOnly(stateManager);
+        await getShowChapterTitles(stateManager);
         await getUploaders(stateManager);
         await getSelectedUploaders(stateManager);
         await getUploaderInput(stateManager);
@@ -1399,6 +1346,12 @@ var _Sources = (() => {
   var getStrictNameMatching = async (stateManager) => {
     return await stateManager.retrieve("strict_name_matching") ?? false;
   };
+  var getOneVersionOnly = async (stateManager) => {
+    return await stateManager.retrieve("one_version_only") ?? false;
+  };
+  var getShowChapterTitles = async (stateManager) => {
+    return await stateManager.retrieve("show_chapter_titles") ?? true;
+  };
   var getUploaders = async (stateManager) => {
     return await stateManager.retrieve("uploaders") ?? [];
   };
@@ -1407,36 +1360,6 @@ var _Sources = (() => {
   };
   var getSelectedUploaders = async (stateManager) => {
     return await stateManager.retrieve("uploaders_selected") ?? [];
-  };
-  var getShowVolume = async (stateManager) => {
-    return await stateManager.retrieve("show_volume_number") ?? false;
-  };
-  var getShowTitle = async (stateManager) => {
-    return await stateManager.retrieve("show_title") ?? false;
-  };
-  var getShowUploader = async (stateManager) => {
-    return await stateManager.retrieve("show_uploader") ?? false;
-  };
-  var getRemoveDuplicates = async (stateManager) => {
-    return await stateManager.retrieve("remove_duplicates") ?? true;
-  };
-  var getOneVersionOnly = async (stateManager) => {
-    return await stateManager.retrieve("one_version_only") ?? false;
-  };
-  var getFilters = async (stateManager) => {
-    return {
-      showVolume: await getShowVolume(stateManager),
-      showTitle: await getShowTitle(stateManager),
-      showUploader: await getShowUploader(stateManager),
-      uploaders: {
-        enabled: await getUploadersFiltering(stateManager),
-        whitelist: await getUploadersWhitelisted(stateManager),
-        strict: await getStrictNameMatching(stateManager),
-        list: await getUploaders(stateManager)
-      },
-      oneVersionOnly: await getOneVersionOnly(stateManager),
-      removeDuplicates: await getRemoveDuplicates(stateManager)
-    };
   };
   var contentSettings = (stateManager) => {
     return keepAlive(App.createDUINavigationButton({
@@ -1492,58 +1415,129 @@ var _Sources = (() => {
       })
     }));
   };
-  var chapterSettings = (stateManager) => {
+  var groupSettings = (stateManager) => {
     return keepAlive(App.createDUINavigationButton({
-      id: "chapter_settings",
-      label: "Chapter & Group Settings",
+      id: "group_settings",
+      label: "Scanlation Group Settings",
       form: App.createDUIForm({
         sections: async () => {
           await warmUpGroupSettings(stateManager);
-          const uploaders = await getUploaders(stateManager);
           return keepAlive([
             App.createDUISection({
-              id: "contentchapter",
-              header: "Chapter Display",
-              isHidden: false,
-              rows: async () => keepAlive([
-                App.createDUISwitch({ id: "show_volume_number", label: "Show Chapter Volume", value: App.createDUIBinding({ get: async () => await getShowVolume(stateManager), set: async (newValue) => await stateManager.store("show_volume_number", newValue) }) }),
-                App.createDUISwitch({ id: "show_title", label: "Show Chapter Title", value: App.createDUIBinding({ get: async () => await getShowTitle(stateManager), set: async (newValue) => await stateManager.store("show_title", newValue) }) }),
-                App.createDUISwitch({ id: "show_uploader", label: "Show Uploader", value: App.createDUIBinding({ get: async () => await getShowUploader(stateManager), set: async (newValue) => await stateManager.store("show_uploader", newValue) }) })
-              ])
-            }),
-            App.createDUISection({
-              id: "chapter_filtering",
-              header: "Chapter Filtering",
-              isHidden: false,
-              rows: async () => keepAlive([
-                App.createDUISwitch({ id: "remove_duplicates", label: "Remove Duplicate Chapters", value: App.createDUIBinding({ get: async () => await getRemoveDuplicates(stateManager), set: async (newValue) => await stateManager.store("remove_duplicates", newValue) }) }),
-                App.createDUISwitch({ id: "one_version_only", label: "Always Only Show 1 Source", value: App.createDUIBinding({ get: async () => await getOneVersionOnly(stateManager), set: async (newValue) => await stateManager.store("one_version_only", newValue) }) })
-              ])
-            }),
-            App.createDUISection({
               id: "filtering_settings",
-              header: "Scanlation Group Filtering",
+              header: "Filtering Settings",
               footer: "By default, listed groups are excluded from chapter lists (blacklist mode). Turn off Strict Matching to catch partial names.",
               isHidden: false,
               rows: async () => keepAlive([
-                App.createDUISwitch({ id: "toggle_uploaders_filtering", label: "Enable Group Filtering", value: App.createDUIBinding({ get: async () => await getUploadersFiltering(stateManager), set: async (newValue) => await stateManager.store("uploaders_toggled", newValue) }) }),
-                App.createDUISwitch({ id: "uploaders_switch", label: "Enable Whitelist Mode", value: App.createDUIBinding({ get: async () => await getUploadersWhitelisted(stateManager), set: async (newValue) => await stateManager.store("uploaders_whitelisted", newValue) }) }),
-                App.createDUISwitch({ id: "strict_name_matching", label: "Strict Group Name Matching", value: App.createDUIBinding({ get: async () => await getStrictNameMatching(stateManager), set: async (newValue) => await stateManager.store("strict_name_matching", newValue) }) })
+                App.createDUISwitch({
+                  id: "toggle_uploaders_filtering",
+                  label: "Enable Group Filtering",
+                  value: App.createDUIBinding({
+                    get: async () => await getUploadersFiltering(stateManager),
+                    set: async (newValue) => await stateManager.store("uploaders_toggled", newValue)
+                  })
+                }),
+                App.createDUISwitch({
+                  id: "uploaders_switch",
+                  label: "Enable Whitelist Mode",
+                  value: App.createDUIBinding({
+                    get: async () => await getUploadersWhitelisted(stateManager),
+                    set: async (newValue) => await stateManager.store("uploaders_whitelisted", newValue)
+                  })
+                }),
+                App.createDUISwitch({
+                  id: "strict_name_matching",
+                  label: "Strict Group Name Matching",
+                  value: App.createDUIBinding({
+                    get: async () => await getStrictNameMatching(stateManager),
+                    set: async (newValue) => await stateManager.store("strict_name_matching", newValue)
+                  })
+                }),
+                App.createDUISwitch({
+                  id: "one_version_only",
+                  label: "Remove Duplicate Chapters",
+                  value: App.createDUIBinding({
+                    get: async () => await getOneVersionOnly(stateManager),
+                    set: async (newValue) => await stateManager.store("one_version_only", newValue)
+                  })
+                }),
+                App.createDUISwitch({
+                  id: "show_chapter_titles",
+                  label: "Show Chapter Titles",
+                  value: App.createDUIBinding({
+                    get: async () => await getShowChapterTitles(stateManager),
+                    set: async (newValue) => await stateManager.store("show_chapter_titles", newValue)
+                  })
+                })
               ])
             }),
             App.createDUISection({
               id: "manage_groups",
               header: "Manage Groups",
               isHidden: false,
-              rows: async () => keepAlive([
-                App.createDUISelect({ id: "uploaders_list", label: "Currently Saved Groups", options: uploaders, value: App.createDUIBinding({ get: async () => await getSelectedUploaders(stateManager), set: async (newValue) => await stateManager.store("uploaders_selected", newValue) }), labelResolver: async (value) => value, allowsMultiselect: true }),
-                App.createDUIInputField({ id: "uploader_input", label: "Group Name", value: App.createDUIBinding({ get: async () => await getUploaderInput(stateManager), set: async (newValue) => await stateManager.store("uploader_input", newValue) }) }),
-                App.createDUIButton({ id: "add_uploader", label: "Add Group", onTap: async () => { const t = await getUploaderInput(stateManager); if (!t || t.trim() === "") throw new Error("Group name cannot be empty!"); const l = await getUploaders(stateManager); if (l.includes(t)) throw new Error(`Group "${t}" is already in the list!`); l.push(t); await stateManager.store("uploaders", l); await stateManager.store("uploader_input", ""); } }),
-                App.createDUIButton({ id: "remove_uploader", label: "Remove Group", onTap: async () => { const t = await getUploaderInput(stateManager); if (!t || t.trim() === "") throw new Error("Group name cannot be empty!"); const l = await getUploaders(stateManager); const i = l.indexOf(t); if (i !== -1) { l.splice(i, 1); await stateManager.store("uploaders", l); const s = await getSelectedUploaders(stateManager); await stateManager.store("uploaders_selected", s.filter((x) => x !== t)); } else { throw new Error(`Group "${t}" is not in the list!`); } await stateManager.store("uploader_input", ""); } }),
-                App.createDUISelect({ id: "uploaders_move_select", label: "Select Group to Reorder", options: uploaders, value: App.createDUIBinding({ get: async () => (await stateManager.retrieve("uploaders_move_selected")) ?? [], set: async (newValue) => await stateManager.store("uploaders_move_selected", newValue) }), allowsMultiselect: false, labelResolver: async (val) => { const list = await getUploaders(stateManager); const idx = list.indexOf(val); return idx >= 0 ? `#${idx + 1} - ${val}` : val; } }),
-                App.createDUIButton({ id: "move_up", label: "\u25b2 Move Up (Higher Priority)", onTap: async () => { const sel = (await stateManager.retrieve("uploaders_move_selected")) ?? []; const item = Array.isArray(sel) ? sel[0] : sel; if (!item) return; const list = await getUploaders(stateManager); const idx = list.indexOf(item); if (idx <= 0) return; const tmp = list[idx - 1]; list[idx - 1] = list[idx]; list[idx] = tmp; await stateManager.store("uploaders", list); } }),
-                App.createDUIButton({ id: "move_down", label: "\u25bc Move Down (Lower Priority)", onTap: async () => { const sel = (await stateManager.retrieve("uploaders_move_selected")) ?? []; const item = Array.isArray(sel) ? sel[0] : sel; if (!item) return; const list = await getUploaders(stateManager); const idx = list.indexOf(item); if (idx < 0 || idx >= list.length - 1) return; const tmp = list[idx + 1]; list[idx + 1] = list[idx]; list[idx] = tmp; await stateManager.store("uploaders", list); } })
-              ])
+              rows: async () => {
+                const uploaders = await getUploaders(stateManager);
+                return keepAlive([
+                  App.createDUISelect({
+                    id: "uploaders_list",
+                    label: "Currently Saved Groups",
+                    options: uploaders,
+                    value: App.createDUIBinding({
+                      get: async () => await getSelectedUploaders(stateManager),
+                      set: async (newValue) => await stateManager.store("uploaders_selected", newValue)
+                    }),
+                    labelResolver: async (value) => value,
+                    allowsMultiselect: true
+                  }),
+                  App.createDUIInputField({
+                    id: "uploader_input",
+                    label: "Group Name",
+                    value: App.createDUIBinding({
+                      get: async () => await getUploaderInput(stateManager),
+                      set: async (newValue) => await stateManager.store("uploader_input", newValue)
+                    })
+                  }),
+                  App.createDUIButton({
+                    id: "add_uploader",
+                    label: "Add Group",
+                    onTap: async () => {
+                      const targetUploader = await getUploaderInput(stateManager);
+                      if (!targetUploader || targetUploader.trim() === "") {
+                        throw new Error("Group name cannot be empty!");
+                      }
+                      const uploadersList = await getUploaders(stateManager);
+                      if (uploadersList.includes(targetUploader)) {
+                        throw new Error(`Group "${targetUploader}" is already in the list!`);
+                      }
+                      uploadersList.push(targetUploader);
+                      await stateManager.store("uploaders", uploadersList);
+                      await stateManager.store("uploader_input", "");
+                    }
+                  }),
+                  App.createDUIButton({
+                    id: "remove_uploader",
+                    label: "Remove Group",
+                    onTap: async () => {
+                      const targetUploader = await getUploaderInput(stateManager);
+                      if (!targetUploader || targetUploader.trim() === "") {
+                        throw new Error("Group name cannot be empty!");
+                      }
+                      const uploadersList = await getUploaders(stateManager);
+                      const index = uploadersList.indexOf(targetUploader);
+                      if (index !== -1) {
+                        uploadersList.splice(index, 1);
+                        await stateManager.store("uploaders", uploadersList);
+                        const selectedList = await getSelectedUploaders(stateManager);
+                        const newSelected = selectedList.filter((s) => s !== targetUploader);
+                        await stateManager.store("uploaders_selected", newSelected);
+                      } else {
+                        throw new Error(`Group "${targetUploader}" is not in the list!`);
+                      }
+                      await stateManager.store("uploader_input", "");
+                    }
+                  })
+                ]);
+              }
             })
           ]);
         }
@@ -1587,7 +1581,7 @@ var _Sources = (() => {
           const fetchTerms = async (type) => {
             const req = App.createRequest({
               // /tags/search caps at limit=50 in v1; >50 returns 422.
-              url: signUrl(`${API_BASE}/terms?type=${type}&limit=100`),
+              url: signUrl(`${API_BASE}/tags/search?type=${type}&limit=50`),
               method: "GET"
             });
             const res = await requestManager.schedule(req, 1);
@@ -1722,6 +1716,7 @@ var _Sources = (() => {
       label: "Reset All Settings to Default",
       onTap: async () => {
         await stateManager.store("trending_limit", null);
+        await stateManager.store("is_nsfw", null);
         await stateManager.store("content_rating_max", null);
         await stateManager.store("uploaders", null);
         await stateManager.store("uploaders_selected", null);
@@ -1735,12 +1730,6 @@ var _Sources = (() => {
         await stateManager.store("tag_whitelist_mode", null);
         await stateManager.store("tag_and_mode", null);
         await stateManager.store("type_filter", null);
-        await stateManager.store("show_volume_number", null);
-        await stateManager.store("show_title", null);
-        await stateManager.store("show_uploader", null);
-        await stateManager.store("remove_duplicates", null);
-        await stateManager.store("one_version_only", null);
-        await stateManager.store("uploaders_move_selected", null);
         resetTagCacheWarmUp();
       }
     }));
@@ -1748,12 +1737,12 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.5.7",
+    version: "1.5.3",
     name: "ComixTo",
     icon: "icon.png",
-    author: "Michiya52",
-    authorWebsite: "https://michiya52.github.io/pb-extensions/0.8",
-    description: "Comix.to Extension with advanced filters. Fork of AthK extensions for Paperback 0.8 (Updated by Michiya52)",
+    author: "acepilot147",
+    authorWebsite: "https://acepilot147.github.io/pb-extensions/0.8",
+    description: "Comix.to Extension with advanced filters. Fork of AthK extensions for Paperback 0.8 (edited by acepilot147)",
     contentRating: import_types.ContentRating.EVERYONE,
     websiteBaseURL: DOMAIN,
     sourceTags: [
@@ -1764,7 +1753,7 @@ var _Sources = (() => {
     ],
     intents: import_types.SourceIntents.MANGA_CHAPTERS | import_types.SourceIntents.HOMEPAGE_SECTIONS | import_types.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED | import_types.SourceIntents.SETTINGS_UI
   };
-  var ComixTo = class extends import_types.Source {
+  var ComixTo = class _ComixTo extends import_types.Source {
     constructor() {
       super(...arguments);
       this.parser = new Parser();
@@ -1787,6 +1776,20 @@ var _Sources = (() => {
         }
       });
     }
+    static {
+      // -- Remote logging (temporary; remove after diagnosing the new "Cloudflare" false positive) --
+      this.LOG_SERVER = "http://192.168.0.215:9090/log";
+    }
+    remoteLog(message) {
+      const req = App.createRequest({
+        url: _ComixTo.LOG_SERVER,
+        method: "POST",
+        data: message
+      });
+      this.requestManager.schedule(req, 1).then(() => {
+      }, () => {
+      });
+    }
     // -- Capabilities --
     async supportsTagExclusion() {
       return true;
@@ -1799,7 +1802,7 @@ var _Sources = (() => {
         isHidden: false,
         rows: async () => keepAlive([
           contentSettings(this.stateManager),
-          chapterSettings(this.stateManager),
+          groupSettings(this.stateManager),
           tagFilterSettings(this.stateManager, this.requestManager),
           resetSettings(this.stateManager)
         ])
@@ -1853,11 +1856,18 @@ var _Sources = (() => {
         );
         if (json.status !== "ok") throw new Error(`Failed to fetch chapters (page ${page}) (API ${json.status}: ${json.message ?? "no message"})`);
         chapters.push(...json.result.items);
-        lastPage = json.result.pagination?.last_page ?? json.result.meta?.lastPage ?? 1;
+        lastPage = json.result.meta?.lastPage ?? 1;
         page++;
       } while (page <= lastPage);
-      const appFilters = await getFilters(this.stateManager);
-      return this.parser.parseChapters(chapters, appFilters);
+      const [isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly] = await Promise.all([
+        getUploadersFiltering(this.stateManager),
+        getUploadersWhitelisted(this.stateManager),
+        getStrictNameMatching(this.stateManager),
+        getUploaders(this.stateManager),
+        getShowChapterTitles(this.stateManager),
+        getOneVersionOnly(this.stateManager)
+      ]);
+      return this.parser.parseChapters(chapters, isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly);
     }
     async getChapterDetails(mangaId, chapterId) {
       const request = App.createRequest({
@@ -1879,7 +1889,7 @@ var _Sources = (() => {
       const sections = [
         App.createHomeSection({
           id: "trending",
-          title: "Popular (Trending)",
+          title: "Most Recent Popular",
           containsMoreItems: true,
           type: import_types.HomeSectionType.featured
         }),
@@ -1897,7 +1907,7 @@ var _Sources = (() => {
         }),
         App.createHomeSection({
           id: "follows_new",
-          title: "Most Follows · New Comics",
+          title: "Most Follows \xB7 New Comics",
           containsMoreItems: true,
           type: import_types.HomeSectionType.singleRowLarge
         }),
@@ -1992,9 +2002,7 @@ var _Sources = (() => {
       const request = App.createRequest({ url: signUrl(url), method: "GET" });
       const response = await this.requestManager.schedule(request, 1);
       this.checkResponseError(response);
-      const json = JSON.parse(
-        response.data ?? "{}"
-      );
+      const json = JSON.parse(response.data ?? "{}");
       const { filteredTermIds, tagWhitelistMode, tagAndMode, typeFilter } = await this.getTagFilterState();
       const rawItems = Array.isArray(json.result) ? json.result : json.result?.items ?? [];
       const items = this.parser.parseMangaList(rawItems, maxRating, filteredTermIds, tagWhitelistMode, typeFilter, tagAndMode);
@@ -2010,7 +2018,7 @@ var _Sources = (() => {
         try {
           const req = App.createRequest({
             // /tags/search caps at limit=50 in v1; >50 returns 422.
-            url: signUrl(`${API_BASE}/terms?type=${type}&limit=100`),
+            url: signUrl(`${API_BASE}/tags/search?type=${type}&limit=50`),
             method: "GET"
           });
           const res = await this.requestManager.schedule(req, 1);
@@ -2136,8 +2144,7 @@ var _Sources = (() => {
       ]);
       const items = this.parser.parseMangaList(json.result.items, maxRating, filteredTermIds, tagWhitelistMode, typeFilter, tagAndMode);
       let nextPage = void 0;
-      const lastSearchPage = json.result.pagination?.last_page ?? json.result.meta?.lastPage ?? null;
-      if (lastSearchPage && lastSearchPage > page) {
+      if (json.result.meta?.lastPage && json.result.meta.lastPage > page) {
         nextPage = { page: page + 1 };
       } else if (items.length >= 20) {
         nextPage = { page: page + 1 };
@@ -2166,15 +2173,15 @@ var _Sources = (() => {
       const cfRay = headers["Cf-Ray"] ?? headers["cf-ray"] ?? "?";
       const reqUrl = response.request?.url ?? "?";
       if (response.status === 403 || response.status === 503) {
-        console.log(`[checkErr] BLOCKED status=${response.status} ct=${ct} server=${server} cf-ray=${cfRay} url=${reqUrl} preview="${preview}"`);
+        this.remoteLog(`[checkErr] BLOCKED status=${response.status} ct=${ct} server=${server} cf-ray=${cfRay} url=${reqUrl} preview="${preview}"`);
         throw new Error("Cloudflare Bypass Required");
       }
       if (response.status < 200 || response.status >= 300) {
-        console.log(`[checkErr] HTTP-FAIL status=${response.status} ct=${ct} url=${reqUrl} preview="${preview}"`);
+        this.remoteLog(`[checkErr] HTTP-FAIL status=${response.status} ct=${ct} url=${reqUrl} preview="${preview}"`);
         throw new Error(`HTTP ${response.status}: Unexpected response from server`);
       }
       if (data.trimStart().startsWith("<")) {
-        console.log(`[checkErr] HTML-BODY status=${response.status} ct=${ct} server=${server} cf-ray=${cfRay} url=${reqUrl} preview="${preview}"`);
+        this.remoteLog(`[checkErr] HTML-BODY status=${response.status} ct=${ct} server=${server} cf-ray=${cfRay} url=${reqUrl} preview="${preview}"`);
         throw new Error("Cloudflare Bypass Required");
       }
     }
