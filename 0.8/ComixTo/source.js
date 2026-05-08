@@ -814,7 +814,7 @@ var _Sources = (() => {
         id: mangaId,
         mangaInfo: App.createMangaInfo({
           titles: [data.title, ...data.alternative_titles ?? data.altTitles ?? []],
-          image: data.poster || NO_POSTER,
+          image: data.poster?.large || data.poster?.medium || data.poster || NO_POSTER,
           status: data.status,
           desc: data.description || data.synopsis,
           author: (data.authors || data.author) ? (Array.isArray(data.authors) ? data.authors.map((a) => a.title).join(", ") : (data.author?.title || data.authors?.title || "")) : "",
@@ -967,10 +967,10 @@ var _Sources = (() => {
         }
         mangaList.push(
           App.createPartialSourceManga({
-            mangaId: (item.manga_id || item.id || item.hid).toString(),
-            image: item.poster || NO_POSTER,
+            mangaId: item.hid,
+            image: item.poster?.large || item.poster?.medium || NO_POSTER,
             title: item.title,
-            subtitle: item.latest_chapter ? `Ch. ${item.latest_chapter}` : (item.latestChapter ? `Ch. ${item.latestChapter}` : void 0)
+            subtitle: item.latestChapter ? `Ch. ${item.latestChapter}` : void 0
           })
         );
       }
@@ -1748,7 +1748,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.5.5",
+    version: "1.5.6",
     name: "ComixTo",
     icon: "icon.png",
     author: "Michiya52",
@@ -1834,7 +1834,7 @@ var _Sources = (() => {
       const response = await this.requestManager.schedule(request, 1);
       this.checkResponseError(response);
       const json = JSON.parse(response.data ?? "{}");
-      if (json.status !== 200) throw new Error("Failed to fetch manga details");
+      if (json.status !== "ok") throw new Error(`Failed to fetch manga details (API ${json.status}: ${json.message ?? "no message"})`);
       return this.parser.parseMangaDetails(json.result, mangaId);
     }
     async getChapters(mangaId) {
@@ -1851,7 +1851,7 @@ var _Sources = (() => {
         const json = JSON.parse(
           response.data ?? "{}"
         );
-        if (json.status !== 200) break;
+        if (json.status !== "ok") throw new Error(`Failed to fetch chapters (page ${page}) (API ${json.status}: ${json.message ?? "no message"})`);
         chapters.push(...json.result.items);
         lastPage = json.result.pagination?.last_page ?? json.result.meta?.lastPage ?? 1;
         page++;
@@ -1869,7 +1869,7 @@ var _Sources = (() => {
       const json = JSON.parse(
         response.data ?? "{}"
       );
-      if (json.status !== 200) throw new Error("Failed to fetch chapter pages");
+      if (json.status !== "ok") throw new Error(`Failed to fetch chapter pages (API ${json.status}: ${json.message ?? "no message"})`);
       return this.parser.parseChapterDetails(json.result, mangaId, chapterId);
     }
     async getHomePageSections(sectionCallback) {
