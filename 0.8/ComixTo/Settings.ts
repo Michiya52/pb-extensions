@@ -242,15 +242,18 @@ export const contentSettings = (stateManager: any): any => {
     );
 };
 
-// --- Chapter Settings (restored from v1.4.2) ---
+// --- Chapter & Group Settings (merged into single page) ---
 export const chapterSettings = (stateManager: any): any => {
     return keepAlive(
         App.createDUINavigationButton({
             id: "chapter_settings",
-            label: "Chapter Settings",
+            label: "Chapter & Group Settings",
             form: App.createDUIForm({
-                sections: async () =>
-                    keepAlive([
+                sections: async () => {
+                    await warmUpGroupSettings(stateManager);
+                    const uploaders = await getUploaders(stateManager);
+                    return keepAlive([
+                        // Section 1: Chapter Display
                         App.createDUISection({
                             id: "contentchapter",
                             header: "Chapter Display",
@@ -286,6 +289,7 @@ export const chapterSettings = (stateManager: any): any => {
                                     }),
                                 ]),
                         }),
+                        // Section 2: Chapter Filtering
                         App.createDUISection({
                             id: "chapter_filtering",
                             header: "Chapter Filtering",
@@ -312,25 +316,10 @@ export const chapterSettings = (stateManager: any): any => {
                                     }),
                                 ]),
                         }),
-                    ]),
-            }),
-        })
-    );
-};
-
-// --- Group Settings (Scanlation Group Settings) ---
-export const groupSettings = (stateManager: any): any => {
-    return keepAlive(
-        App.createDUINavigationButton({
-            id: "group_settings",
-            label: "Scanlation Group Settings",
-            form: App.createDUIForm({
-                sections: async () => {
-                    await warmUpGroupSettings(stateManager);
-                    return keepAlive([
+                        // Section 3: Group Filtering Settings
                         App.createDUISection({
                             id: "filtering_settings",
-                            header: "Filtering Settings",
+                            header: "Scanlation Group Filtering",
                             footer: "By default, listed groups are excluded from chapter lists (blacklist mode). Turn off Strict Matching to catch partial names.",
                             isHidden: false,
                             rows: async () =>
@@ -342,10 +331,7 @@ export const groupSettings = (stateManager: any): any => {
                                             get: async () =>
                                                 await getUploadersFiltering(stateManager),
                                             set: async (newValue: boolean) =>
-                                                await stateManager.store(
-                                                    "uploaders_toggled",
-                                                    newValue
-                                                ),
+                                                await stateManager.store("uploaders_toggled", newValue),
                                         }),
                                     }),
                                     App.createDUISwitch({
@@ -355,10 +341,7 @@ export const groupSettings = (stateManager: any): any => {
                                             get: async () =>
                                                 await getUploadersWhitelisted(stateManager),
                                             set: async (newValue: boolean) =>
-                                                await stateManager.store(
-                                                    "uploaders_whitelisted",
-                                                    newValue
-                                                ),
+                                                await stateManager.store("uploaders_whitelisted", newValue),
                                         }),
                                     }),
                                     App.createDUISwitch({
@@ -368,21 +351,18 @@ export const groupSettings = (stateManager: any): any => {
                                             get: async () =>
                                                 await getStrictNameMatching(stateManager),
                                             set: async (newValue: boolean) =>
-                                                await stateManager.store(
-                                                    "strict_name_matching",
-                                                    newValue
-                                                ),
+                                                await stateManager.store("strict_name_matching", newValue),
                                         }),
                                     }),
                                 ]),
                         }),
+                        // Section 4: Manage Groups
                         App.createDUISection({
                             id: "manage_groups",
                             header: "Manage Groups",
                             isHidden: false,
-                            rows: async () => {
-                                const uploaders = await getUploaders(stateManager);
-                                return keepAlive([
+                            rows: async () =>
+                                keepAlive([
                                     App.createDUISelect({
                                         id: "uploaders_list",
                                         label: "Currently Saved Groups",
@@ -391,10 +371,7 @@ export const groupSettings = (stateManager: any): any => {
                                             get: async () =>
                                                 await getSelectedUploaders(stateManager),
                                             set: async (newValue: string[]) =>
-                                                await stateManager.store(
-                                                    "uploaders_selected",
-                                                    newValue
-                                                ),
+                                                await stateManager.store("uploaders_selected", newValue),
                                         }),
                                         labelResolver: async (value: string) => value,
                                         allowsMultiselect: true,
@@ -406,38 +383,23 @@ export const groupSettings = (stateManager: any): any => {
                                             get: async () =>
                                                 await getUploaderInput(stateManager),
                                             set: async (newValue: string) =>
-                                                await stateManager.store(
-                                                    "uploader_input",
-                                                    newValue
-                                                ),
+                                                await stateManager.store("uploader_input", newValue),
                                         }),
                                     }),
                                     App.createDUIButton({
                                         id: "add_uploader",
                                         label: "Add Group",
                                         onTap: async () => {
-                                            const targetUploader =
-                                                await getUploaderInput(stateManager);
-                                            if (
-                                                !targetUploader ||
-                                                targetUploader.trim() === ""
-                                            ) {
-                                                throw new Error(
-                                                    "Group name cannot be empty!"
-                                                );
+                                            const targetUploader = await getUploaderInput(stateManager);
+                                            if (!targetUploader || targetUploader.trim() === "") {
+                                                throw new Error("Group name cannot be empty!");
                                             }
-                                            const uploadersList =
-                                                await getUploaders(stateManager);
+                                            const uploadersList = await getUploaders(stateManager);
                                             if (uploadersList.includes(targetUploader)) {
-                                                throw new Error(
-                                                    `Group "${targetUploader}" is already in the list!`
-                                                );
+                                                throw new Error(`Group "${targetUploader}" is already in the list!`);
                                             }
                                             uploadersList.push(targetUploader);
-                                            await stateManager.store(
-                                                "uploaders",
-                                                uploadersList
-                                            );
+                                            await stateManager.store("uploaders", uploadersList);
                                             await stateManager.store("uploader_input", "");
                                         },
                                     }),
@@ -445,44 +407,26 @@ export const groupSettings = (stateManager: any): any => {
                                         id: "remove_uploader",
                                         label: "Remove Group",
                                         onTap: async () => {
-                                            const targetUploader =
-                                                await getUploaderInput(stateManager);
-                                            if (
-                                                !targetUploader ||
-                                                targetUploader.trim() === ""
-                                            ) {
-                                                throw new Error(
-                                                    "Group name cannot be empty!"
-                                                );
+                                            const targetUploader = await getUploaderInput(stateManager);
+                                            if (!targetUploader || targetUploader.trim() === "") {
+                                                throw new Error("Group name cannot be empty!");
                                             }
-                                            const uploadersList =
-                                                await getUploaders(stateManager);
-                                            const index =
-                                                uploadersList.indexOf(targetUploader);
+                                            const uploadersList = await getUploaders(stateManager);
+                                            const index = uploadersList.indexOf(targetUploader);
                                             if (index !== -1) {
                                                 uploadersList.splice(index, 1);
-                                                await stateManager.store(
-                                                    "uploaders",
-                                                    uploadersList
-                                                );
-                                                const selectedList =
-                                                    await getSelectedUploaders(stateManager);
+                                                await stateManager.store("uploaders", uploadersList);
+                                                const selectedList = await getSelectedUploaders(stateManager);
                                                 const newSelected = selectedList.filter(
                                                     (s: string) => s !== targetUploader
                                                 );
-                                                await stateManager.store(
-                                                    "uploaders_selected",
-                                                    newSelected
-                                                );
+                                                await stateManager.store("uploaders_selected", newSelected);
                                             } else {
-                                                throw new Error(
-                                                    `Group "${targetUploader}" is not in the list!`
-                                                );
+                                                throw new Error(`Group "${targetUploader}" is not in the list!`);
                                             }
                                             await stateManager.store("uploader_input", "");
                                         },
                                     }),
-                                    // --- Priority Reorder (restored from v1.4.2) ---
                                     App.createDUISelect({
                                         id: "uploaders_move_select",
                                         label: "Select Group to Reorder",
@@ -532,8 +476,7 @@ export const groupSettings = (stateManager: any): any => {
                                             await stateManager.store("uploaders", list);
                                         },
                                     }),
-                                ]);
-                            },
+                                ]),
                         }),
                     ]);
                 },

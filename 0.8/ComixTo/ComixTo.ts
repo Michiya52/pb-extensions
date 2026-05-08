@@ -24,7 +24,6 @@ import { signUrl } from "./ComixHash";
 import {
     contentSettings,
     chapterSettings,
-    groupSettings,
     tagFilterSettings,
     resetSettings,
     getIsNsfw,
@@ -100,7 +99,6 @@ export class ComixTo extends Source {
                     keepAlive([
                         contentSettings(this.stateManager),
                         chapterSettings(this.stateManager),
-                        groupSettings(this.stateManager),
                         tagFilterSettings(this.stateManager, this.requestManager),
                         resetSettings(this.stateManager),
                     ]),
