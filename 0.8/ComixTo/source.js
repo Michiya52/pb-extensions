@@ -379,22 +379,20 @@ var _Sources = (() => {
   var require_exports = __commonJS({
     "node_modules/@paperback/types/lib/generated/_exports.js"(exports) {
       "use strict";
-      var __createBinding = exports && exports.__createBinding || (Object.create ? function (o, m, k, k2) {
+      var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m, k, k2) {
         if (k2 === void 0) k2 = k;
         var desc = Object.getOwnPropertyDescriptor(m, k);
         if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-          desc = {
-            enumerable: true, get: function () {
-              return m[k];
-            }
-          };
+          desc = { enumerable: true, get: function() {
+            return m[k];
+          } };
         }
         Object.defineProperty(o, k2, desc);
-      } : function (o, m, k, k2) {
+      } : function(o, m, k, k2) {
         if (k2 === void 0) k2 = k;
         o[k2] = m[k];
       });
-      var __exportStar = exports && exports.__exportStar || function (m, exports2) {
+      var __exportStar = exports && exports.__exportStar || function(m, exports2) {
         for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports2, p)) __createBinding(exports2, m, p);
       };
       Object.defineProperty(exports, "__esModule", { value: true });
@@ -512,7 +510,7 @@ var _Sources = (() => {
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.BadgeColor = void 0;
       var BadgeColor2;
-      (function (BadgeColor3) {
+      (function(BadgeColor3) {
         BadgeColor3["BLUE"] = "default";
         BadgeColor3["GREEN"] = "success";
         BadgeColor3["GREY"] = "info";
@@ -582,22 +580,20 @@ var _Sources = (() => {
   var require_interfaces = __commonJS({
     "node_modules/@paperback/types/lib/base/interfaces/index.js"(exports) {
       "use strict";
-      var __createBinding = exports && exports.__createBinding || (Object.create ? function (o, m, k, k2) {
+      var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m, k, k2) {
         if (k2 === void 0) k2 = k;
         var desc = Object.getOwnPropertyDescriptor(m, k);
         if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-          desc = {
-            enumerable: true, get: function () {
-              return m[k];
-            }
-          };
+          desc = { enumerable: true, get: function() {
+            return m[k];
+          } };
         }
         Object.defineProperty(o, k2, desc);
-      } : function (o, m, k, k2) {
+      } : function(o, m, k, k2) {
         if (k2 === void 0) k2 = k;
         o[k2] = m[k];
       });
-      var __exportStar = exports && exports.__exportStar || function (m, exports2) {
+      var __exportStar = exports && exports.__exportStar || function(m, exports2) {
         for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports2, p)) __createBinding(exports2, m, p);
       };
       Object.defineProperty(exports, "__esModule", { value: true });
@@ -618,7 +614,7 @@ var _Sources = (() => {
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.ContentRating = exports.SourceIntents = void 0;
       var SourceIntents2;
-      (function (SourceIntents3) {
+      (function(SourceIntents3) {
         SourceIntents3[SourceIntents3["MANGA_CHAPTERS"] = 1] = "MANGA_CHAPTERS";
         SourceIntents3[SourceIntents3["MANGA_TRACKING"] = 2] = "MANGA_TRACKING";
         SourceIntents3[SourceIntents3["HOMEPAGE_SECTIONS"] = 4] = "HOMEPAGE_SECTIONS";
@@ -627,7 +623,7 @@ var _Sources = (() => {
         SourceIntents3[SourceIntents3["SETTINGS_UI"] = 32] = "SETTINGS_UI";
       })(SourceIntents2 = exports.SourceIntents || (exports.SourceIntents = {}));
       var ContentRating2;
-      (function (ContentRating3) {
+      (function(ContentRating3) {
         ContentRating3["EVERYONE"] = "EVERYONE";
         ContentRating3["MATURE"] = "MATURE";
         ContentRating3["ADULT"] = "ADULT";
@@ -642,7 +638,7 @@ var _Sources = (() => {
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.HomeSectionType = void 0;
       var HomeSectionType2;
-      (function (HomeSectionType3) {
+      (function(HomeSectionType3) {
         HomeSectionType3["singleRowNormal"] = "singleRowNormal";
         HomeSectionType3["singleRowLarge"] = "singleRowLarge";
         HomeSectionType3["doubleRow"] = "doubleRow";
@@ -663,22 +659,20 @@ var _Sources = (() => {
   var require_base = __commonJS({
     "node_modules/@paperback/types/lib/base/index.js"(exports) {
       "use strict";
-      var __createBinding = exports && exports.__createBinding || (Object.create ? function (o, m, k, k2) {
+      var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m, k, k2) {
         if (k2 === void 0) k2 = k;
         var desc = Object.getOwnPropertyDescriptor(m, k);
         if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-          desc = {
-            enumerable: true, get: function () {
-              return m[k];
-            }
-          };
+          desc = { enumerable: true, get: function() {
+            return m[k];
+          } };
         }
         Object.defineProperty(o, k2, desc);
-      } : function (o, m, k, k2) {
+      } : function(o, m, k, k2) {
         if (k2 === void 0) k2 = k;
         o[k2] = m[k];
       });
-      var __exportStar = exports && exports.__exportStar || function (m, exports2) {
+      var __exportStar = exports && exports.__exportStar || function(m, exports2) {
         for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports2, p)) __createBinding(exports2, m, p);
       };
       Object.defineProperty(exports, "__esModule", { value: true });
@@ -704,22 +698,20 @@ var _Sources = (() => {
   var require_lib = __commonJS({
     "node_modules/@paperback/types/lib/index.js"(exports) {
       "use strict";
-      var __createBinding = exports && exports.__createBinding || (Object.create ? function (o, m, k, k2) {
+      var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m, k, k2) {
         if (k2 === void 0) k2 = k;
         var desc = Object.getOwnPropertyDescriptor(m, k);
         if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-          desc = {
-            enumerable: true, get: function () {
-              return m[k];
-            }
-          };
+          desc = { enumerable: true, get: function() {
+            return m[k];
+          } };
         }
         Object.defineProperty(o, k2, desc);
-      } : function (o, m, k, k2) {
+      } : function(o, m, k, k2) {
         if (k2 === void 0) k2 = k;
         o[k2] = m[k];
       });
-      var __exportStar = exports && exports.__exportStar || function (m, exports2) {
+      var __exportStar = exports && exports.__exportStar || function(m, exports2) {
         for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports2, p)) __createBinding(exports2, m, p);
       };
       Object.defineProperty(exports, "__esModule", { value: true });
@@ -737,187 +729,184 @@ var _Sources = (() => {
   });
   var import_types = __toESM(require_lib());
 
+  // src/ComixTo/Common.ts
+  var API_BASE = "https://comix.to/api/v1";
+  var DOMAIN = "https://comix.to";
+  function normalizeString(str) {
+    return str.replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'").replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"');
+  }
+  function parseRelativeTime(s) {
+    if (!s) return /* @__PURE__ */ new Date();
+    const m = s.match(/^(\d+)\s*(s|m|h|d|w|mos|mo|y)\b/i);
+    if (!m) return /* @__PURE__ */ new Date();
+    const n = parseInt(m[1], 10);
+    const unit = m[2].toLowerCase();
+    const ms = {
+      s: 1e3,
+      m: 6e4,
+      h: 60 * 6e4,
+      d: 24 * 60 * 6e4,
+      w: 7 * 24 * 60 * 6e4,
+      mo: 30 * 24 * 60 * 6e4,
+      mos: 30 * 24 * 60 * 6e4,
+      y: 365 * 24 * 60 * 6e4
+    };
+    return new Date(Date.now() - n * (ms[unit] ?? 0));
+  }
+  var CONTENT_TYPES = [
+    { id: "manga", label: "Manga" },
+    { id: "manhwa", label: "Manhwa" },
+    { id: "manhua", label: "Manhua" },
+    { id: "other", label: "Other" }
+  ];
+  var PUBLICATION_STATUS = [
+    { id: "finished", label: "Finished" },
+    { id: "releasing", label: "Releasing" },
+    { id: "on_hiatus", label: "On Hiatus" },
+    { id: "discontinued", label: "Discontinued" },
+    { id: "not_yet_released", label: "Not Yet Released" }
+  ];
+  var ORDER_OPTIONS = [
+    { id: "relevance", label: "Best Match" },
+    { id: "chapter_updated_at", label: "Updated Date" },
+    { id: "created_at", label: "Created Date" },
+    { id: "views_7d", label: "Most Views (7 Days)" },
+    { id: "views_30d", label: "Most Views (1 Month)" },
+    { id: "views_90d", label: "Most Views (3 Months)" },
+    { id: "views_total", label: "Total Views" },
+    { id: "follows_total", label: "Most Follows" }
+  ];
+
   // src/ComixTo/Parser.ts
+  var NO_POSTER = "https://comix.to/images/no-poster.png";
+  var isNsfw = (rating) => rating != null && rating !== "safe";
   var Parser = class {
     parseMangaDetails(data, mangaId) {
+      const buildSection = (id, label, items) => items && items.length ? App.createTagSection({
+        id,
+        label,
+        tags: items.map(
+          (t) => App.createTag({ id: `${id}-${t.id}`, label: t.title })
+        )
+      }) : null;
+      const sections = [
+        buildSection("genre", "Genres", data.genres),
+        buildSection("tag", "Tags", data.tags),
+        buildSection("demographic", "Demographics", data.demographics),
+        buildSection("format", "Formats", data.formats)
+      ].filter((s) => s !== null);
       return App.createSourceManga({
         id: mangaId,
         mangaInfo: App.createMangaInfo({
-          titles: [data.title, ...data.alt_titles],
-          image: data.poster.large || "https://comix.to/images/no-poster.png",
+          titles: [data.title, ...data.altTitles ?? []],
+          image: data.poster?.large || data.poster?.medium || NO_POSTER,
           status: data.status,
           desc: data.synopsis,
-          author: data.author?.map((a) => a.title).join(", ") ?? "",
-          artist: data.artist?.map((a) => a.title).join(", ") ?? "",
-          rating: data.rated_avg ? data.rated_avg / 2 : 0,
-          hentai: data.is_nsfw,
-          tags: []
-          // Detailed tags usually require a separate fetch or mapping from term_ids
+          author: data.authors?.map((a) => a.title).join(", ") ?? "",
+          artist: data.artists?.map((a) => a.title).join(", ") ?? "",
+          rating: data.ratedAvg ? data.ratedAvg / 2 : 0,
+          hentai: isNsfw(data.contentRating),
+          tags: sections
         })
       });
     }
-    parseChapters(data, filters) {
-      const rawChapters = [];
-      const checkFilter = (val, filter) => {
-        if (!filter || !filter.enabled || !filter.list || filter.list.length === 0) return { pass: true, isMatched: false };
-        if (!val) return { pass: !filter.whitelist, isMatched: false };
-        const target = val.toLowerCase();
-        const isMatched = filter.list.some(item => {
-          const listItem = item.toLowerCase();
-          return filter.strict ? target === listItem : target.includes(listItem);
-        });
-        return { pass: filter.whitelist ? isMatched : !isMatched, isMatched };
-      };
-
+    parseChapters(data, isFiltering, isWhitelist, isStrict, savedGroups) {
+      const chapters = [];
       for (const chap of data) {
-        rawChapters.push({
-          id: chap.chapter_id.toString(),
-          chapNum: chap.number,
-          name: chap.name ? `${chap.name}` : `Chapter ${chap.number}`,
-          langCode: chap.language || "en",
-          volume: chap.volume,
-          group: chap.scanlation_group?.name || "",
-          lang: chap.language || "en",
-          region: chap.region || "",
-          time: new Date((chap.created_at || chap.updated_at || 0) * 1e3),
-          sortingIndex: chap.number
-        });
-      }
-
-      const grouped = rawChapters.reduce((acc, chap) => {
-        if (!acc[chap.chapNum]) acc[chap.chapNum] = [];
-        acc[chap.chapNum].push(chap);
-        return acc;
-      }, {});
-
-      const finalChapters = [];
-      for (const chapNum in grouped) {
-        const variants = grouped[chapNum];
-        let filtered = [...variants];
-
-        if (filters) {
-          try {
-            const uploaderFilter = filters.uploaders || null;
-            const hasUploaderFilter = uploaderFilter && uploaderFilter.enabled && Array.isArray(uploaderFilter.list) && uploaderFilter.list.length > 0;
-
-            // A. Hard Filter: Blacklist
-            if (hasUploaderFilter && !uploaderFilter.whitelist) {
-              filtered = filtered.filter(v => {
-                const u = checkFilter(v.group, uploaderFilter);
-                return u.pass;
-              });
-            }
-
-            // B. Soft Filter: Whitelist
-            if (hasUploaderFilter && uploaderFilter.whitelist && filtered.length > 0) {
-              const whitelisted = filtered.filter(v => {
-                const u = checkFilter(v.group, uploaderFilter);
-                return u.isMatched;
-              });
-              if (whitelisted.length > 0) filtered = whitelisted;
-            }
-
-            // C. Priority Ranking (v1.3.4)
-            if (hasUploaderFilter) {
-              const uLoaderList = uploaderFilter.list.map(u => u.toLowerCase());
-              const isStrict = !!uploaderFilter.strict;
-              filtered.sort((a, b) => {
-                const aName = (a.group || "").toLowerCase();
-                const bName = (b.group || "").toLowerCase();
-                let aIdx = uLoaderList.findIndex(u => isStrict ? aName === u : aName.includes(u));
-                let bIdx = uLoaderList.findIndex(u => isStrict ? bName === u : bName.includes(u));
-                if (aIdx === -1) aIdx = 9999;
-                if (bIdx === -1) bIdx = 9999;
-                return aIdx - bIdx;
-              });
-            }
-
-            // D. Deduplication (v1.6)
-            if (!!filters.removeDuplicates && filtered.length > 1) {
-              const unique = [];
-              const seen = new Set();
-              for (const chap of filtered) {
-                const key = `${chap.chapNum}-${chap.langCode}`;
-                if (!seen.has(key)) {
-                  seen.add(key);
-                  unique.push(chap);
-                }
+        const groupName = chap.group?.name || "";
+        if (isFiltering && savedGroups.length > 0) {
+          let matchFound = false;
+          const normalizedGroupName = normalizeString(groupName).toLowerCase();
+          for (const savedGroup of savedGroups) {
+            const normalizedSaved = normalizeString(savedGroup).toLowerCase();
+            if (isStrict) {
+              if (normalizedGroupName === normalizedSaved) {
+                matchFound = true;
+                break;
               }
-              filtered = unique;
+            } else {
+              if (normalizedGroupName.includes(normalizedSaved)) {
+                matchFound = true;
+                break;
+              }
             }
-
-            // E. One Version per Chapter logic
-            if (!!filters.oneVersionOnly && filtered.length > 1) {
-              filtered = [filtered[0]];
-            }
-          } catch (filterError) {
-            // If filtering fails, fall back to unfiltered variants
-            filtered = [...variants];
           }
+          if (isWhitelist && !matchFound) continue;
+          if (!isWhitelist && matchFound) continue;
         }
-
-        for (const chap of filtered) {
-          const showUploader = !!(filters && filters.showUploader);
-          const groupTag = (showUploader && chap.group) ? ` [${chap.group}]` : "";
-          const showTitle = !!(filters && filters.showTitle);
-          const displayName = showTitle ? `${chap.name}${groupTag}` : `Chapter ${chap.chapNum}${groupTag}`;
-
-          finalChapters.push(App.createChapter({
-            id: chap.id,
-            chapNum: chap.chapNum,
-            name: displayName,
-            langCode: chap.langCode,
+        chapters.push(
+          App.createChapter({
+            id: chap.id.toString(),
+            chapNum: chap.number,
+            name: chap.name ? `${chap.name}` : `Chapter ${chap.number}`,
+            langCode: chap.language || "en",
             volume: chap.volume,
-            group: chap.group,
-            time: chap.time,
-            sortingIndex: chap.sortingIndex
-          }));
-        }
+            group: groupName,
+            time: parseRelativeTime(chap.createdAtFormatted),
+            sortingIndex: chap.number
+          })
+        );
       }
-      return finalChapters;
+      return chapters;
     }
     parseChapterDetails(data, mangaId, chapterId) {
-      const pages = data.images.map((img) => img.url);
+      const pages = data.pages.map((p) => p.url);
       return App.createChapterDetails({
         id: chapterId,
         mangaId,
         pages
       });
     }
-    parseMangaList(items, showNsfw) {
+    parseMangaList(items, showNsfw, filteredTermIds = /* @__PURE__ */ new Set(), tagWhitelistMode = false, typeFilter = /* @__PURE__ */ new Set(), tagAndMode = false) {
       const mangaList = [];
       for (const item of items) {
-        if (!showNsfw && item.is_nsfw) {
+        if (!showNsfw && isNsfw(item.contentRating)) {
           continue;
+        }
+        if (filteredTermIds.size > 0 || typeFilter.size > 0) {
+          const itemTagIds = /* @__PURE__ */ new Set([
+            ...(item.genres ?? []).map((t) => t.id),
+            ...(item.demographics ?? []).map((t) => t.id),
+            ...(item.formats ?? []).map((t) => t.id),
+            ...(item.tags ?? []).map((t) => t.id)
+          ]);
+          const filteredIdsArr = Array.from(filteredTermIds);
+          let hasMatch;
+          if (tagAndMode) {
+            const tagsAllMatch = filteredIdsArr.length === 0 || filteredIdsArr.every((id) => itemTagIds.has(id));
+            const typeMatches = typeFilter.size === 0 || item.type != null && typeFilter.has(item.type);
+            hasMatch = tagsAllMatch && typeMatches;
+          } else {
+            const hasTagMatch = filteredIdsArr.length > 0 && filteredIdsArr.some((id) => itemTagIds.has(id));
+            const hasTypeMatch = typeFilter.size > 0 && item.type != null && typeFilter.has(item.type);
+            hasMatch = hasTagMatch || hasTypeMatch;
+          }
+          if (tagWhitelistMode ? !hasMatch : hasMatch) {
+            continue;
+          }
         }
         mangaList.push(
           App.createPartialSourceManga({
-            mangaId: item.hash_id,
-            image: item.poster?.large || item.poster?.medium || "https://comix.to/images/no-poster.png",
+            mangaId: item.hid,
+            image: item.poster?.large || item.poster?.medium || NO_POSTER,
             title: item.title,
-            subtitle: item.latest_chapter ? `Ch. ${item.latest_chapter}` : void 0
+            subtitle: item.latestChapter ? `Ch. ${item.latestChapter}` : void 0
           })
         );
       }
       return mangaList;
     }
-    // Helper to organize raw API terms into Paperback TagSections
     parseTagSections(genres, themes, formats, demographics) {
-      const createSection = (id, label, items) => {
-        return App.createTagSection({
-          id,
-          label,
-          tags: items.map(
-            (x) => App.createTag({
-              id: `${id}-${x.id || x.term_id || x.termId}`,
-              label: x.name || x.label || x.title || "Unknown"
-            })
-          )
-        });
-      };
+      const createSection = (id, label, items) => App.createTagSection({
+        id,
+        label,
+        tags: items.map(
+          (x) => App.createTag({ id: `${id}-${x.id}`, label: x.label })
+        )
+      });
       return [
         createSection("genre", "Genres", genres),
-        createSection("theme", "Themes", themes),
+        createSection("tag", "Tags", themes),
         createSection("format", "Formats", formats),
         createSection("demographic", "Demographics", demographics)
       ];
@@ -1265,9 +1254,8 @@ var _Sources = (() => {
     }
     return out;
   }
-  function generateHash(path, bodySize, time) {
-    const baseString = `${path}:${bodySize}:${time}`;
-    const encoded = encodeURIComponent(baseString).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
+  function generateHash(path) {
+    const encoded = encodeURIComponent(path).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
     let data = [];
     for (let i = 0; i < encoded.length; i++) {
       data.push(encoded.charCodeAt(i) & 255);
@@ -1280,426 +1268,427 @@ var _Sources = (() => {
     return b64UrlEncode(data);
   }
   function signUrl(url) {
-    const path = url.replace("https://comix.to/api/v2", "").split("?")[0];
-    const token = generateHash(path, 0, 1);
+    const path = url.replace("https://comix.to/api/v1", "").split("?")[0];
+    const token = generateHash(path);
     const sep = url.includes("?") ? "&" : "?";
-    return `${url}${sep}time=1&_=${token}`;
+    return `${url}${sep}_=${token}`;
   }
 
-  // src/ComixTo/Common.ts
-  var API_BASE = "https://comix.to/api/v2";
-  var DOMAIN = "https://comix.to";
-  var CONTENT_TYPES = [
-    { id: "manga", label: "Manga" },
-    { id: "manhwa", label: "Manhwa" },
-    { id: "manhua", label: "Manhua" },
-    { id: "other", label: "Other" }
-  ];
-  var PUBLICATION_STATUS = [
-    { id: "finished", label: "Finished" },
-    { id: "releasing", label: "Releasing" },
-    { id: "on_hiatus", label: "On Hiatus" },
-    { id: "discontinued", label: "Discontinued" },
-    { id: "not_yet_released", label: "Not Yet Released" }
-  ];
-
   // src/ComixTo/Settings.ts
-  var UI_KEEP_ALIVE_MAX = 50;
+  var TRENDING_OPTIONS = [
+    { id: "1", label: "1 day" },
+    { id: "7", label: "7 days" },
+    { id: "30", label: "1 month" },
+    { id: "90", label: "3 months" },
+    { id: "180", label: "6 months" },
+    { id: "365", label: "1 year" }
+  ];
   var uiKeepAlive = [];
   var keepAlive = (obj) => {
     uiKeepAlive.push(obj);
-    if (uiKeepAlive.length > UI_KEEP_ALIVE_MAX) {
-      uiKeepAlive.splice(0, uiKeepAlive.length - UI_KEEP_ALIVE_MAX);
-    }
     return obj;
   };
-  var DEFAULT_SETTINGS = {
-    show_volume_number: false,
-    show_title: false,
-    show_uploader: false,
-    is_nsfw: true,
-    trending_limit: ["30"],
-    remove_duplicates: true,
-    one_version_only: false,
-    uploaders: [],
-    uploaders_selected: [],
-    uploader_input: "",
-    uploaders_enabled: false,
-    uploaders_whitelist: false,
-    uploaders_strict: false,
-    uploaders_remove_selected: [],
-    uploaders_move_selected: []
-  };
-  var getSetting = async (stateManager, key) => {
-    try {
-      const val = await stateManager.retrieve(key);
-      if (val === null || val === void 0) return DEFAULT_SETTINGS[key];
-      // Ensure arrays are returned as copies to prevent mutation-by-reference
-      if (Array.isArray(val)) return [...val];
-      return val;
-    } catch (e) {
-      return DEFAULT_SETTINGS[key];
+  var groupSettingsWarmUp = null;
+  var warmUpGroupSettings = (stateManager) => {
+    if (!groupSettingsWarmUp) {
+      groupSettingsWarmUp = (async () => {
+        await getUploadersFiltering(stateManager);
+        await getUploadersWhitelisted(stateManager);
+        await getStrictNameMatching(stateManager);
+        await getUploaders(stateManager);
+        await getSelectedUploaders(stateManager);
+        await getUploaderInput(stateManager);
+      })();
     }
+    return groupSettingsWarmUp;
   };
-  var getFilters = async (stateManager) => {
-    return {
-      showVolume: await getSetting(stateManager, "show_volume_number"),
-      showTitle: await getSetting(stateManager, "show_title"),
-      showUploader: await getSetting(stateManager, "show_uploader"),
-      uploaders: {
-        enabled: await getSetting(stateManager, "uploaders_enabled"),
-        whitelist: await getSetting(stateManager, "uploaders_whitelist"),
-        strict: await getSetting(stateManager, "uploaders_strict"),
-        list: await getSetting(stateManager, "uploaders_selected")
-      },
-      oneVersionOnly: await getSetting(stateManager, "one_version_only"),
-      removeDuplicates: await getSetting(stateManager, "remove_duplicates")
-    };
-  };
-
   var getIsNsfw = async (stateManager) => {
-    return await getSetting(stateManager, "is_nsfw");
+    const val = await stateManager.retrieve("is_nsfw");
+    return val !== null ? val : true;
   };
-  var chapterSettings = (stateManager) => {
-    return keepAlive(App.createDUINavigationButton({
-      id: "chapter_settings",
-      label: "Chapter Settings",
-      form: App.createDUIForm({
-        sections: async () => [
-          App.createDUISection({
-            id: "contentchapter",
-            header: "Chapter Display",
-            isHidden: false,
-            rows: async () => [
-              App.createDUISwitch({
-                id: "show_volume_number",
-                label: "Show Chapter Volume",
-                value: App.createDUIBinding({
-                  get: async () => await getSetting(stateManager, "show_volume_number"),
-                  set: async (newValue) => await stateManager.store("show_volume_number", newValue)
-                })
-              }),
-              App.createDUISwitch({
-                id: "show_title",
-                label: "Show Chapter Title",
-                value: App.createDUIBinding({
-                  get: async () => await getSetting(stateManager, "show_title"),
-                  set: async (newValue) => await stateManager.store("show_title", newValue)
-                })
-              }),
-              App.createDUISwitch({
-                id: "show_uploader",
-                label: "Show Uploader",
-                value: App.createDUIBinding({
-                  get: async () => await getSetting(stateManager, "show_uploader"),
-                  set: async (newValue) => await stateManager.store("show_uploader", newValue)
-                })
-              })
-            ]
-          }),
-          App.createDUISection({
-            id: "chapter_filtering",
-            header: "Chapter Filtering",
-            isHidden: false,
-            rows: async () => [
-              App.createDUISwitch({
-                id: "remove_duplicates",
-                label: "Remove Duplicate Chapters",
-                value: App.createDUIBinding({
-                  get: async () => await getSetting(stateManager, "remove_duplicates"),
-                  set: async (newValue) => await stateManager.store("remove_duplicates", newValue)
-                })
-              }),
-              App.createDUISwitch({
-                id: "one_version_only",
-                label: "Always Only Show 1 Source",
-                value: App.createDUIBinding({
-                  get: async () => await getSetting(stateManager, "one_version_only"),
-                  set: async (newValue) => await stateManager.store("one_version_only", newValue)
-                })
-              })
-            ]
-          })
-        ]
-      })
-    }));
+  var getTrendingLimit = async (stateManager) => {
+    const val = await stateManager.retrieve("trending_limit");
+    return val ?? ["30"];
   };
-
-  var createDynamicListSection = (stateManager, id, header, listKey, selectedKey, inputKey, filterToggleKey, whitelistToggleKey, strictToggleKey) => {
-    return App.createDUISection({
-      id: id,
-      header: header,
-      isHidden: false,
-      rows: async () => {
-        const masterList = await getSetting(stateManager, listKey);
-        const safeList = Array.isArray(masterList) ? [...masterList] : [];
-        const priorityText = safeList.length > 0
-          ? safeList.map((name, i) => `${i + 1}. ${name}`).join("\n")
-          : "No uploaders added yet";
-        const rows = [
-          // --- Filter Mode Toggles ---
-          App.createDUISwitch({
-            id: `${id}_filter_toggle`,
-            label: `Enable ${header} Filtering`,
-            value: App.createDUIBinding({
-              get: async () => await getSetting(stateManager, filterToggleKey),
-              set: async (newValue) => await stateManager.store(filterToggleKey, newValue)
-            })
-          }),
-          App.createDUISwitch({
-            id: `${id}_whitelist_toggle`,
-            label: "Enable Whitelist Mode",
-            value: App.createDUIBinding({
-              get: async () => await getSetting(stateManager, whitelistToggleKey),
-              set: async (newValue) => await stateManager.store(whitelistToggleKey, newValue)
-            })
-          }),
-          App.createDUISwitch({
-            id: `${id}_strict_toggle`,
-            label: "Strict Matching",
-            value: App.createDUIBinding({
-              get: async () => await getSetting(stateManager, strictToggleKey),
-              set: async (newValue) => await stateManager.store(strictToggleKey, newValue)
-            })
-          }),
-          // --- Active Uploaders (which are used for filtering) ---
-          App.createDUISelect({
-            id: `${id}_select`,
-            label: `Active ${header}`,
-            options: safeList,
-            value: App.createDUIBinding({
-              get: async () => await getSetting(stateManager, selectedKey),
-              set: async (newValue) => await stateManager.store(selectedKey, newValue)
-            }),
-            allowsMultiselect: true,
-            labelResolver: async (val) => val
-          }),
-          // --- Priority Order Display ---
-          App.createDUILabel({
-            id: `${id}_priority_label`,
-            label: "Priority Order (1 = highest)",
-            value: ""
-          }),
-          App.createDUILabel({
-            id: `${id}_priority_display`,
-            label: "Current Priority",
-            value: "See selector below"
-          }),
-          // --- Add Uploaders ---
-          App.createDUIInputField({
-            id: `${id}_input`,
-            label: "Add Uploaders (Comma-separated)",
-            value: App.createDUIBinding({
-              get: async () => await getSetting(stateManager, inputKey),
-              set: async (newValue) => await stateManager.store(inputKey, newValue)
-            })
-          }),
-          App.createDUIButton({
-            id: `${id}_add`,
-            label: "Add to List",
-            onTap: async () => {
-              try {
-                const val = await getSetting(stateManager, inputKey);
-                if (!val || String(val).trim() === "") return;
-                const newItems = String(val).split(",").map((s) => s.trim()).filter((s) => s !== "");
-                if (newItems.length === 0) return;
-                const currentList = await getSetting(stateManager, listKey);
-                const currentSelected = await getSetting(stateManager, selectedKey);
-                const list = Array.isArray(currentList) ? [...currentList] : [];
-                const selected = Array.isArray(currentSelected) ? [...currentSelected] : [];
-                let changed = false;
-                for (const item of newItems) {
-                  if (!list.includes(item)) {
-                    list.push(item);
-                    changed = true;
-                  }
-                  if (!selected.includes(item)) {
-                    selected.push(item);
-                    changed = true;
-                  }
-                }
-                if (changed) {
-                  await stateManager.store(listKey, list);
-                  await stateManager.store(selectedKey, selected);
-                }
-                await stateManager.store(inputKey, "");
-              } catch (e) {
-                // Silently handle errors to prevent crash
-              }
-            }
-          }),
-          // --- Remove Uploaders (Pick to Remove) ---
-          App.createDUISelect({
-            id: `${id}_remove_select`,
-            label: "Select Uploaders to Remove",
-            options: safeList,
-            value: App.createDUIBinding({
-              get: async () => await getSetting(stateManager, "uploaders_remove_selected"),
-              set: async (newValue) => await stateManager.store("uploaders_remove_selected", newValue)
-            }),
-            allowsMultiselect: true,
-            labelResolver: async (val) => val
-          }),
-          App.createDUIButton({
-            id: `${id}_remove`,
-            label: "Remove Selected",
-            onTap: async () => {
-              try {
-                const removeItems = await getSetting(stateManager, "uploaders_remove_selected");
-                if (!Array.isArray(removeItems) || removeItems.length === 0) return;
-                const currentList = await getSetting(stateManager, listKey);
-                const currentSelected = await getSetting(stateManager, selectedKey);
-                const list = (Array.isArray(currentList) ? [...currentList] : []).filter((item) => !removeItems.includes(item));
-                const selected = (Array.isArray(currentSelected) ? [...currentSelected] : []).filter((item) => !removeItems.includes(item));
-                await stateManager.store(listKey, list);
-                await stateManager.store(selectedKey, selected);
-                await stateManager.store("uploaders_remove_selected", []);
-              } catch (e) {
-                // Silently handle errors to prevent crash
-              }
-            }
-          }),
-          // --- Reorder Priority ---
-          App.createDUISelect({
-            id: `${id}_move_select`,
-            label: "Select Uploader to Reorder",
-            options: safeList,
-            value: App.createDUIBinding({
-              get: async () => await getSetting(stateManager, "uploaders_move_selected"),
-              set: async (newValue) => await stateManager.store("uploaders_move_selected", newValue)
-            }),
-            allowsMultiselect: false,
-            labelResolver: async (val) => {
-              const list = await getSetting(stateManager, listKey);
-              const safe = Array.isArray(list) ? list : [];
-              const idx = safe.indexOf(val);
-              return idx >= 0 ? `#${idx + 1} - ${val}` : val;
-            }
-          }),
-          App.createDUIButton({
-            id: `${id}_move_up`,
-            label: "▲ Move Up (Higher Priority)",
-            onTap: async () => {
-              try {
-                const moveSelection = await getSetting(stateManager, "uploaders_move_selected");
-                const itemToMove = Array.isArray(moveSelection) ? moveSelection[0] : moveSelection;
-                if (!itemToMove) return;
-                const currentList = await getSetting(stateManager, listKey);
-                const list = Array.isArray(currentList) ? [...currentList] : [];
-                const idx = list.indexOf(itemToMove);
-                if (idx <= 0) return;
-                // Swap with the item above
-                const temp = list[idx - 1];
-                list[idx - 1] = list[idx];
-                list[idx] = temp;
-                await stateManager.store(listKey, list);
-              } catch (e) {
-                // Silently handle errors to prevent crash
-              }
-            }
-          }),
-          App.createDUIButton({
-            id: `${id}_move_down`,
-            label: "▼ Move Down (Lower Priority)",
-            onTap: async () => {
-              try {
-                const moveSelection = await getSetting(stateManager, "uploaders_move_selected");
-                const itemToMove = Array.isArray(moveSelection) ? moveSelection[0] : moveSelection;
-                if (!itemToMove) return;
-                const currentList = await getSetting(stateManager, listKey);
-                const list = Array.isArray(currentList) ? [...currentList] : [];
-                const idx = list.indexOf(itemToMove);
-                if (idx < 0 || idx >= list.length - 1) return;
-                // Swap with the item below
-                const temp = list[idx + 1];
-                list[idx + 1] = list[idx];
-                list[idx] = temp;
-                await stateManager.store(listKey, list);
-              } catch (e) {
-                // Silently handle errors to prevent crash
-              }
-            }
-          })
-        ];
-        return rows;
-      }
-    });
+  var getUploadersFiltering = async (stateManager) => {
+    return await stateManager.retrieve("uploaders_toggled") ?? false;
   };
-
+  var getUploadersWhitelisted = async (stateManager) => {
+    return await stateManager.retrieve("uploaders_whitelisted") ?? false;
+  };
+  var getStrictNameMatching = async (stateManager) => {
+    return await stateManager.retrieve("strict_name_matching") ?? false;
+  };
+  var getUploaders = async (stateManager) => {
+    return await stateManager.retrieve("uploaders") ?? [];
+  };
+  var getUploaderInput = async (stateManager) => {
+    return await stateManager.retrieve("uploader_input") ?? "";
+  };
+  var getSelectedUploaders = async (stateManager) => {
+    return await stateManager.retrieve("uploaders_selected") ?? [];
+  };
   var contentSettings = (stateManager) => {
     return keepAlive(App.createDUINavigationButton({
       id: "content_settings",
       label: "Extension Settings",
       form: App.createDUIForm({
+        sections: async () => keepAlive([
+          // 1. Home Page Settings
+          App.createDUISection({
+            id: "home_settings",
+            header: "Discover Page Settings",
+            footer: "Adjust the time range for trending media on the Discover page.",
+            isHidden: false,
+            rows: async () => keepAlive([
+              App.createDUISelect({
+                id: "trending_limit",
+                label: "Trending Timeframe",
+                options: TRENDING_OPTIONS.map((opt) => opt.id),
+                value: App.createDUIBinding({
+                  get: async () => await getTrendingLimit(stateManager),
+                  set: async (newValue) => await stateManager.store("trending_limit", newValue)
+                }),
+                allowsMultiselect: false,
+                labelResolver: async (value) => {
+                  return TRENDING_OPTIONS.find((opt) => opt.id === value)?.label ?? value;
+                }
+              })
+            ])
+          }),
+          // 2. Content Filtering
+          App.createDUISection({
+            id: "nsfw_settings",
+            header: "Content Filtering",
+            isHidden: false,
+            rows: async () => keepAlive([
+              App.createDUISwitch({
+                id: "is_nsfw",
+                label: "Show NSFW Content",
+                value: App.createDUIBinding({
+                  get: async () => await getIsNsfw(stateManager),
+                  set: async (newValue) => await stateManager.store("is_nsfw", newValue)
+                })
+              })
+            ])
+          })
+        ])
+      })
+    }));
+  };
+  var groupSettings = (stateManager) => {
+    return keepAlive(App.createDUINavigationButton({
+      id: "group_settings",
+      label: "Scanlation Group Settings",
+      form: App.createDUIForm({
         sections: async () => {
-          return [
-            createDynamicListSection(stateManager, "uploaders", "Uploaders", "uploaders", "uploaders_selected", "uploader_input", "uploaders_enabled", "uploaders_whitelist", "uploaders_strict"),
+          await warmUpGroupSettings(stateManager);
+          return keepAlive([
             App.createDUISection({
-              id: "nsfw_settings",
-              header: "Content Filtering",
-              rows: async () => [
+              id: "filtering_settings",
+              header: "Filtering Settings",
+              footer: "By default, listed groups are excluded from chapter lists (blacklist mode). Turn off Strict Matching to catch partial names.",
+              isHidden: false,
+              rows: async () => keepAlive([
                 App.createDUISwitch({
-                  id: "is_nsfw",
-                  label: "Show NSFW Content",
+                  id: "toggle_uploaders_filtering",
+                  label: "Enable Group Filtering",
                   value: App.createDUIBinding({
-                    get: async () => await getSetting(stateManager, "is_nsfw"),
-                    set: async (newValue) => await stateManager.store("is_nsfw", newValue)
+                    get: async () => await getUploadersFiltering(stateManager),
+                    set: async (newValue) => await stateManager.store("uploaders_toggled", newValue)
+                  })
+                }),
+                App.createDUISwitch({
+                  id: "uploaders_switch",
+                  label: "Enable Whitelist Mode",
+                  value: App.createDUIBinding({
+                    get: async () => await getUploadersWhitelisted(stateManager),
+                    set: async (newValue) => await stateManager.store("uploaders_whitelisted", newValue)
+                  })
+                }),
+                App.createDUISwitch({
+                  id: "strict_name_matching",
+                  label: "Strict Group Name Matching",
+                  value: App.createDUIBinding({
+                    get: async () => await getStrictNameMatching(stateManager),
+                    set: async (newValue) => await stateManager.store("strict_name_matching", newValue)
                   })
                 })
-              ]
+              ])
             }),
             App.createDUISection({
-              id: "home_settings",
-              header: "Discover Page Settings",
-              rows: async () => [
-                App.createDUISelect({
-                  id: "trending_limit",
-                  label: "Trending Timeframe",
-                  options: ["1", "7", "30", "90", "180", "365"],
-                  value: App.createDUIBinding({
-                    get: async () => await getSetting(stateManager, "trending_limit"),
-                    set: async (newValue) => await stateManager.store("trending_limit", newValue)
+              id: "manage_groups",
+              header: "Manage Groups",
+              isHidden: false,
+              rows: async () => {
+                const uploaders = await getUploaders(stateManager);
+                return keepAlive([
+                  App.createDUISelect({
+                    id: "uploaders_list",
+                    label: "Currently Saved Groups",
+                    options: uploaders,
+                    value: App.createDUIBinding({
+                      get: async () => await getSelectedUploaders(stateManager),
+                      set: async (newValue) => await stateManager.store("uploaders_selected", newValue)
+                    }),
+                    labelResolver: async (value) => value,
+                    allowsMultiselect: true
                   }),
-                  allowsMultiselect: false,
-                  labelResolver: async (value) => {
-                    const labels = { "1": "1 day", "7": "7 days", "30": "1 month", "90": "3 months", "180": "6 months", "365": "1 year" };
-                    return labels[value] || value;
-                  }
-                })
-              ]
+                  App.createDUIInputField({
+                    id: "uploader_input",
+                    label: "Group Name",
+                    value: App.createDUIBinding({
+                      get: async () => await getUploaderInput(stateManager),
+                      set: async (newValue) => await stateManager.store("uploader_input", newValue)
+                    })
+                  }),
+                  App.createDUIButton({
+                    id: "add_uploader",
+                    label: "Add Group",
+                    onTap: async () => {
+                      const targetUploader = await getUploaderInput(stateManager);
+                      if (!targetUploader || targetUploader.trim() === "") {
+                        throw new Error("Group name cannot be empty!");
+                      }
+                      const uploadersList = await getUploaders(stateManager);
+                      if (uploadersList.includes(targetUploader)) {
+                        throw new Error(`Group "${targetUploader}" is already in the list!`);
+                      }
+                      uploadersList.push(targetUploader);
+                      await stateManager.store("uploaders", uploadersList);
+                      await stateManager.store("uploader_input", "");
+                    }
+                  }),
+                  App.createDUIButton({
+                    id: "remove_uploader",
+                    label: "Remove Group",
+                    onTap: async () => {
+                      const targetUploader = await getUploaderInput(stateManager);
+                      if (!targetUploader || targetUploader.trim() === "") {
+                        throw new Error("Group name cannot be empty!");
+                      }
+                      const uploadersList = await getUploaders(stateManager);
+                      const index = uploadersList.indexOf(targetUploader);
+                      if (index !== -1) {
+                        uploadersList.splice(index, 1);
+                        await stateManager.store("uploaders", uploadersList);
+                        const selectedList = await getSelectedUploaders(stateManager);
+                        const newSelected = selectedList.filter((s) => s !== targetUploader);
+                        await stateManager.store("uploaders_selected", newSelected);
+                      } else {
+                        throw new Error(`Group "${targetUploader}" is not in the list!`);
+                      }
+                      await stateManager.store("uploader_input", "");
+                    }
+                  })
+                ]);
+              }
             })
-          ];
+          ]);
         }
       })
     }));
   };
-
-  var resetSettings = (stateManager) => {
-    return App.createDUIButton({
-      id: "reset",
-      label: "Reset All Settings",
-      onTap: async () => {
+  var getCachedTags = async (stateManager) => {
+    const cached = await stateManager.retrieve("tag_cache_v1");
+    if (!cached) return null;
+    try {
+      return JSON.parse(cached);
+    } catch {
+      return null;
+    }
+  };
+  var getTagBlacklist = async (stateManager) => {
+    return await stateManager.retrieve("tag_blacklist") ?? [];
+  };
+  var getTagFilterEnabled = async (stateManager) => {
+    return await stateManager.retrieve("tag_filter_enabled") ?? false;
+  };
+  var getTagWhitelistMode = async (stateManager) => {
+    return await stateManager.retrieve("tag_whitelist_mode") ?? false;
+  };
+  var getTagAndMode = async (stateManager) => {
+    return await stateManager.retrieve("tag_and_mode") ?? false;
+  };
+  var getTypeFilter = async (stateManager) => {
+    return await stateManager.retrieve("type_filter") ?? [];
+  };
+  var tagCacheWarmUp = null;
+  var resetTagCacheWarmUp = () => {
+    tagCacheWarmUp = null;
+  };
+  var warmUpTagCache = (stateManager, requestManager) => {
+    if (!tagCacheWarmUp) {
+      tagCacheWarmUp = (async () => {
+        const existing = await getCachedTags(stateManager);
+        if (existing) return existing;
         try {
-          for (const key of Object.keys(DEFAULT_SETTINGS)) {
-            await stateManager.store(key, DEFAULT_SETTINGS[key]);
-          }
-        } catch (e) {
-          // Silently handle reset errors
+          const fetchTerms = async (type) => {
+            const req = App.createRequest({
+              // /tags/search caps at limit=50 in v1; >50 returns 422.
+              url: signUrl(`${API_BASE}/tags/search?type=${type}&limit=50`),
+              method: "GET"
+            });
+            const res = await requestManager.schedule(req, 1);
+            const json = JSON.parse(res.data ?? "{}");
+            return Array.isArray(json.result) ? json.result : [];
+          };
+          const [genre, theme, format, demographic] = await Promise.all([
+            fetchTerms("genre"),
+            fetchTerms("tag"),
+            fetchTerms("format"),
+            fetchTerms("demographic")
+          ]);
+          const cache = { genre, theme, format, demographic };
+          await stateManager.store("tag_cache_v1", JSON.stringify(cache));
+          return cache;
+        } catch {
+          return null;
         }
+      })();
+    }
+    return tagCacheWarmUp;
+  };
+  var tagFilterSettings = (stateManager, requestManager) => {
+    return keepAlive(App.createDUINavigationButton({
+      id: "tag_filter_settings",
+      label: "Tag Filter",
+      form: App.createDUIForm({
+        sections: async () => {
+          const cache = await warmUpTagCache(stateManager, requestManager);
+          if (!cache) {
+            return keepAlive([
+              App.createDUISection({
+                id: "tag_filter_error",
+                header: "Tag Filter",
+                footer: "Failed to load tags. Please close and re-open this menu to retry.",
+                isHidden: false,
+                rows: async () => keepAlive([])
+              })
+            ]);
+          }
+          const makeSelect = (categoryId, label, items) => {
+            const options = items.map((x) => String(x.id));
+            const labelMap = new Map(items.map((x) => [String(x.id), x.label]));
+            return keepAlive(App.createDUISelect({
+              id: `tag_filter_select_${categoryId}`,
+              label,
+              options,
+              value: App.createDUIBinding({
+                get: async () => {
+                  const all = await getTagBlacklist(stateManager);
+                  return all.filter((id) => options.includes(id));
+                },
+                set: async (newValue) => {
+                  const all = await getTagBlacklist(stateManager);
+                  const others = all.filter((id) => !options.includes(id));
+                  await stateManager.store("tag_blacklist", [...others, ...newValue]);
+                }
+              }),
+              labelResolver: async (value) => labelMap.get(value) ?? value,
+              allowsMultiselect: true
+            }));
+          };
+          return keepAlive([
+            App.createDUISection({
+              id: "tag_filter_mode",
+              header: "Tag Filter Settings",
+              footer: "Blacklist (default): hide titles that match any checked item. Whitelist: show only titles that match. AND Mode: require all checked tags to match instead of any.",
+              isHidden: false,
+              rows: async () => keepAlive([
+                App.createDUISwitch({
+                  id: "tag_filter_enabled",
+                  label: "Enable Tag Filter",
+                  value: App.createDUIBinding({
+                    get: async () => await getTagFilterEnabled(stateManager),
+                    set: async (newValue) => await stateManager.store("tag_filter_enabled", newValue)
+                  })
+                }),
+                App.createDUISwitch({
+                  id: "tag_whitelist_mode",
+                  label: "Enable Whitelist Mode",
+                  value: App.createDUIBinding({
+                    get: async () => await getTagWhitelistMode(stateManager),
+                    set: async (newValue) => await stateManager.store("tag_whitelist_mode", newValue)
+                  })
+                }),
+                App.createDUISwitch({
+                  id: "tag_and_mode",
+                  label: "AND Mode",
+                  value: App.createDUIBinding({
+                    get: async () => await getTagAndMode(stateManager),
+                    set: async (newValue) => await stateManager.store("tag_and_mode", newValue)
+                  })
+                }),
+                App.createDUILabel({
+                  id: "tag_load_status",
+                  label: "Tag Status",
+                  value: "Loaded"
+                })
+              ])
+            }),
+            App.createDUISection({
+              id: "tag_categories",
+              header: "Tag Categories",
+              footer: "Checked items will be filtered from Discovery and Search results per the mode above.",
+              isHidden: false,
+              rows: async () => keepAlive([
+                keepAlive(App.createDUISelect({
+                  id: "type_filter_select",
+                  label: "Content Type",
+                  options: CONTENT_TYPES.map((x) => x.id),
+                  value: App.createDUIBinding({
+                    get: async () => await getTypeFilter(stateManager),
+                    set: async (newValue) => await stateManager.store("type_filter", newValue)
+                  }),
+                  labelResolver: async (value) => CONTENT_TYPES.find((x) => x.id === value)?.label ?? value,
+                  allowsMultiselect: true
+                })),
+                makeSelect("genre", "Genres", cache.genre),
+                makeSelect("theme", "Themes", cache.theme),
+                makeSelect("format", "Formats", cache.format),
+                makeSelect("demographic", "Demographics", cache.demographic)
+              ])
+            })
+          ]);
+        }
+      })
+    }));
+  };
+  var resetSettings = (stateManager) => {
+    return keepAlive(App.createDUIButton({
+      id: "reset",
+      label: "Reset All Settings to Default",
+      onTap: async () => {
+        await stateManager.store("trending_limit", null);
+        await stateManager.store("is_nsfw", null);
+        await stateManager.store("uploaders", null);
+        await stateManager.store("uploaders_selected", null);
+        await stateManager.store("uploaders_whitelisted", null);
+        await stateManager.store("uploaders_toggled", null);
+        await stateManager.store("uploader_input", null);
+        await stateManager.store("strict_name_matching", null);
+        await stateManager.store("tag_cache_v1", null);
+        await stateManager.store("tag_blacklist", null);
+        await stateManager.store("tag_filter_enabled", null);
+        await stateManager.store("tag_whitelist_mode", null);
+        await stateManager.store("tag_and_mode", null);
+        await stateManager.store("type_filter", null);
+        resetTagCacheWarmUp();
       }
-    });
+    }));
   };
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.4.2",
+    version: "1.5.1",
     name: "ComixTo",
     icon: "icon.png",
-    author: "Michiya52",
-    authorWebsite: "https://github.com/Michiya52",
-    description: "Extension for Comix.to with advanced filters. (Updated by Michiya52)",
-    contentRating: import_types.ContentRating.MATURE,
-    websiteBaseURL: `${DOMAIN}/`,
+    author: "acepilot147",
+    authorWebsite: "https://acepilot147.github.io/pb-extensions/0.8",
+    description: "Comix.to Extension with advanced filters. Fork of AthK extensions for Paperback 0.8 (edited by acepilot147)",
+    contentRating: import_types.ContentRating.EVERYONE,
+    websiteBaseURL: DOMAIN,
     sourceTags: [
       {
         text: "English",
@@ -1737,16 +1726,35 @@ var _Sources = (() => {
     }
     // -- Settings Menu --
     async getSourceMenu() {
-      return App.createDUISection({
+      return keepAlive(App.createDUISection({
         id: "main",
         header: "Source Settings",
         isHidden: false,
-        rows: async () => [
+        rows: async () => keepAlive([
           contentSettings(this.stateManager),
-          chapterSettings(this.stateManager),
+          groupSettings(this.stateManager),
+          tagFilterSettings(this.stateManager, this.requestManager),
           resetSettings(this.stateManager)
-        ]
-      });
+        ])
+      }));
+    }
+    async getTagFilterState() {
+      const enabled = await getTagFilterEnabled(this.stateManager);
+      if (!enabled) {
+        return { filteredTermIds: /* @__PURE__ */ new Set(), tagWhitelistMode: false, tagAndMode: false, typeFilter: /* @__PURE__ */ new Set() };
+      }
+      const [blacklist, whitelistMode, andMode, typeFilterList] = await Promise.all([
+        getTagBlacklist(this.stateManager),
+        getTagWhitelistMode(this.stateManager),
+        getTagAndMode(this.stateManager),
+        getTypeFilter(this.stateManager)
+      ]);
+      return {
+        filteredTermIds: new Set(blacklist.map((id) => parseInt(id, 10))),
+        tagWhitelistMode: whitelistMode,
+        tagAndMode: andMode,
+        typeFilter: new Set(typeFilterList)
+      };
     }
     getMangaShareUrl(mangaId) {
       return `${DOMAIN}/title/${mangaId}`;
@@ -1759,7 +1767,7 @@ var _Sources = (() => {
       const response = await this.requestManager.schedule(request, 1);
       this.checkResponseError(response);
       const json = JSON.parse(response.data ?? "{}");
-      if (json.status !== 200) throw new Error("Failed to fetch manga details");
+      if (json.status !== "ok") throw new Error(`Failed to fetch manga details (API ${json.status}: ${json.message ?? "no message"})`);
       return this.parser.parseMangaDetails(json.result, mangaId);
     }
     async getChapters(mangaId) {
@@ -1776,15 +1784,18 @@ var _Sources = (() => {
         const json = JSON.parse(
           response.data ?? "{}"
         );
-        if (json.status !== 200) break;
+        if (json.status !== "ok") throw new Error(`Failed to fetch chapters (page ${page}) (API ${json.status}: ${json.message ?? "no message"})`);
         chapters.push(...json.result.items);
-        lastPage = json.result.pagination.last_page;
+        lastPage = json.result.meta?.lastPage ?? 1;
         page++;
       } while (page <= lastPage);
-
-      const filters = await getFilters(this.stateManager);
-
-      return this.parser.parseChapters(chapters, filters);
+      const [isFiltering, isWhitelist, isStrict, savedGroups] = await Promise.all([
+        getUploadersFiltering(this.stateManager),
+        getUploadersWhitelisted(this.stateManager),
+        getStrictNameMatching(this.stateManager),
+        getUploaders(this.stateManager)
+      ]);
+      return this.parser.parseChapters(chapters, isFiltering, isWhitelist, isStrict, savedGroups);
     }
     async getChapterDetails(mangaId, chapterId) {
       const request = App.createRequest({
@@ -1796,11 +1807,11 @@ var _Sources = (() => {
       const json = JSON.parse(
         response.data ?? "{}"
       );
-      if (json.status !== 200) throw new Error("Failed to fetch chapter pages");
+      if (json.status !== "ok") throw new Error(`Failed to fetch chapter pages (API ${json.status}: ${json.message ?? "no message"})`);
       return this.parser.parseChapterDetails(json.result, mangaId, chapterId);
     }
     async getHomePageSections(sectionCallback) {
-      const limitArray = await getSetting(this.stateManager, "trending_limit");
+      const limitArray = await getTrendingLimit(this.stateManager);
       const limit = limitArray[0] ?? "30";
       const sections = [
         App.createHomeSection({
@@ -1831,14 +1842,14 @@ var _Sources = (() => {
       const promises = [];
       promises.push(
         this.fetchHomeData(
-          `${API_BASE}/top?type=trending&days=${limit}&limit=15&includes[]=author`,
+          `${API_BASE}/manga?type=trending&days=${limit}&limit=15&includes[]=author`,
           sections[0],
           sectionCallback
         )
       );
       promises.push(
         this.fetchHomeData(
-          `${API_BASE}/manga?order[chapter_updated_at]=desc&limit=15&scope=hot&includes[]=author`,
+          `${API_BASE}/manga?order[chapter_updated_at]=desc&limit=15&includes[]=author`,
           sections[1],
           sectionCallback
         )
@@ -1864,26 +1875,29 @@ var _Sources = (() => {
       const response = await this.requestManager.schedule(request, 1);
       this.checkResponseError(response);
       const json = JSON.parse(response.data ?? "{}");
-      const showNsfw = await getSetting(this.stateManager, "is_nsfw");
+      const [showNsfw, { filteredTermIds, tagWhitelistMode, tagAndMode, typeFilter }] = await Promise.all([
+        getIsNsfw(this.stateManager),
+        this.getTagFilterState()
+      ]);
       if (json.result && json.result.items) {
-        section.items = this.parser.parseMangaList(json.result.items, showNsfw);
+        section.items = this.parser.parseMangaList(json.result.items, showNsfw, filteredTermIds, tagWhitelistMode, typeFilter, tagAndMode);
       }
       callback(section);
     }
     async getViewMoreItems(homepageSectionId, metadata) {
       const page = metadata?.page ?? 1;
-      const limitArray = await getSetting(this.stateManager, "trending_limit");
+      const limitArray = await getTrendingLimit(this.stateManager);
       const limit = limitArray[0] ?? "30";
       let url = "";
       switch (homepageSectionId) {
         case "trending":
-          url = `${API_BASE}/top?type=trending&days=${limit}&limit=20&page=${page}&includes[]=author`;
+          url = `${API_BASE}/manga?type=trending&days=${limit}&limit=20&page=${page}&includes[]=author`;
           break;
         case "follows":
           url = `${API_BASE}/manga?order[follows_total]=desc&limit=20&page=${page}&includes[]=author`;
           break;
         case "latest":
-          url = `${API_BASE}/manga?order[chapter_updated_at]=desc&scope=hot&limit=20&page=${page}&includes[]=author`;
+          url = `${API_BASE}/manga?order[chapter_updated_at]=desc&limit=20&page=${page}&includes[]=author`;
           break;
         case "new":
           url = `${API_BASE}/manga?order[created_at]=desc&limit=20&page=${page}&includes[]=author`;
@@ -1893,11 +1907,15 @@ var _Sources = (() => {
       }
       const request = App.createRequest({ url: signUrl(url), method: "GET" });
       const response = await this.requestManager.schedule(request, 1);
+      this.checkResponseError(response);
       const json = JSON.parse(
         response.data ?? "{}"
       );
-      const showNsfw = await getSetting(this.stateManager, "is_nsfw");
-      const items = this.parser.parseMangaList(json.result.items, showNsfw);
+      const [showNsfw, { filteredTermIds, tagWhitelistMode, tagAndMode, typeFilter }] = await Promise.all([
+        getIsNsfw(this.stateManager),
+        this.getTagFilterState()
+      ]);
+      const items = this.parser.parseMangaList(json.result.items, showNsfw, filteredTermIds, tagWhitelistMode, typeFilter, tagAndMode);
       const hasNext = items.length > 0;
       return App.createPagedResults({
         results: items,
@@ -1907,54 +1925,128 @@ var _Sources = (() => {
     // -- Advanced Search --
     async getSearchTags() {
       const fetchTags = async (type) => {
-        const req = App.createRequest({
-          url: signUrl(`${API_BASE}/terms?type=${type}&limit=100`),
-          method: "GET"
-        });
-        const res = await this.requestManager.schedule(req, 1);
-        const json = JSON.parse(res.data ?? "{}");
-        return json.result?.items ?? [];
+        try {
+          const req = App.createRequest({
+            // /tags/search caps at limit=50 in v1; >50 returns 422.
+            url: signUrl(`${API_BASE}/tags/search?type=${type}&limit=50`),
+            method: "GET"
+          });
+          const res = await this.requestManager.schedule(req, 1);
+          if (res.status < 200 || res.status >= 300) return [];
+          const json = JSON.parse(res.data ?? "{}");
+          return Array.isArray(json.result) ? json.result : [];
+        } catch {
+          return [];
+        }
       };
       const [genres, themes, formats, demographics] = await Promise.all([
         fetchTags("genre"),
-        fetchTags("theme"),
+        fetchTags("tag"),
         fetchTags("format"),
         fetchTags("demographic")
       ]);
       const sections = [];
-      sections.push(...this.parser.parseTagSections(genres, themes, formats, demographics));
+      sections.push(
+        App.createTagSection({
+          id: "type",
+          label: "Content Type",
+          tags: CONTENT_TYPES.map(
+            (x) => App.createTag({ id: `type-${x.id}`, label: x.label })
+          )
+        })
+      );
+      sections.push(
+        App.createTagSection({
+          id: "order",
+          label: "Order (pick one, default: Best Match)",
+          tags: ORDER_OPTIONS.map(
+            (x) => App.createTag({ id: `order-${x.id}`, label: x.label })
+          )
+        })
+      );
+      sections.push(
+        App.createTagSection({
+          id: "status",
+          label: "Status",
+          tags: PUBLICATION_STATUS.map(
+            (x) => App.createTag({ id: `status-${x.id}`, label: x.label })
+          )
+        })
+      );
+      sections.push(
+        ...this.parser.parseTagSections(genres, themes, formats, demographics)
+      );
+      sections.push(
+        App.createTagSection({
+          id: "mode",
+          label: "Genre Inclusion Mode (default- AND)",
+          tags: [
+            App.createTag({
+              id: "logic-mode",
+              label: "Green=AND | Red=OR"
+            })
+          ]
+        })
+      );
       return sections;
     }
     async getSearchResults(query, metadata) {
       const page = metadata?.page ?? 1;
-      let url = `${API_BASE}/manga?order[relevance]=desc&page=${page}&limit=20`;
-      if (query.title) {
-        url += `&keyword=${encodeURIComponent(query.title)}`;
+      const orderTag = (query.includedTags ?? []).find((t) => t.id.startsWith("order-"));
+      const hasExplicitOrder = orderTag != null;
+      let url = `${API_BASE}/manga?page=${page}&limit=20`;
+      if (hasExplicitOrder) {
+        const orderKey = orderTag.id.replace("order-", "");
+        url += `&order[${orderKey}]=desc`;
+      } else if (!query.title) {
+        url += `&order[relevance]=desc`;
       }
-      const allTags = query.includedTags ?? [];
-      const excludedTags = query.excludedTags ?? [];
+      if (query.title) {
+        url += `&keyword=${encodeURIComponent(normalizeString(query.title))}`;
+      }
+      let genresMode = "and";
+      if (query.excludedTags?.some((t) => t.id === "logic-mode")) {
+        genresMode = "or";
+      }
+      const allTags = [...query.includedTags ?? []].filter(
+        (t) => t.id !== "logic-mode" && !t.id.startsWith("order-")
+      );
+      const excludedTags = [...query.excludedTags ?? []].filter(
+        (t) => t.id !== "logic-mode"
+      );
       const genreIds = [];
+      const typeIds = [];
+      const statusIds = [];
       const demographicIds = [];
       for (const tag of allTags) {
         if (tag.id.startsWith("genre-")) {
           genreIds.push(tag.id.replace("genre-", ""));
-        } else if (tag.id.startsWith("theme-")) {
-          genreIds.push(tag.id.replace("theme-", ""));
+        } else if (tag.id.startsWith("tag-")) {
+          genreIds.push(tag.id.replace("tag-", ""));
         } else if (tag.id.startsWith("format-")) {
           genreIds.push(tag.id.replace("format-", ""));
         } else if (tag.id.startsWith("demographic-")) {
           demographicIds.push(tag.id.replace("demographic-", ""));
+        } else if (tag.id.startsWith("type-")) {
+          typeIds.push(tag.id.replace("type-", ""));
+        } else if (tag.id.startsWith("status-")) {
+          statusIds.push(tag.id.replace("status-", ""));
         }
       }
       for (const id of genreIds) url += `&genres[]=${id}`;
+      for (const id of typeIds) url += `&types[]=${id}`;
+      for (const id of statusIds) url += `&statuses[]=${id}`;
       for (const id of demographicIds) url += `&demographics[]=${id}`;
       if (excludedTags.length > 0) {
         for (const tag of excludedTags) {
-          if (tag.id.startsWith("genre-") || tag.id.startsWith("theme-")) {
-            const cleanId = tag.id.replace(/^(genre-|theme-)/, "");
+          if (tag.id.startsWith("genre-") || tag.id.startsWith("tag-")) {
+            const cleanId = tag.id.replace(/^(genre-|tag-)/, "");
             url += `&genres[]=-${cleanId}`;
           }
         }
+      }
+      if (genreIds.length > 0 || excludedTags.some((t) => t.id.startsWith("genre-") || t.id.startsWith("tag-"))) {
+        url += `&genres_mode=${genresMode}`;
       }
       const request = App.createRequest({ url: signUrl(url), method: "GET" });
       const response = await this.requestManager.schedule(request, 1);
@@ -1962,10 +2054,13 @@ var _Sources = (() => {
       const json = JSON.parse(
         response.data ?? "{}"
       );
-      const showNsfw = await getIsNsfw(this.stateManager);
-      const items = this.parser.parseMangaList(json.result.items, showNsfw);
+      const [showNsfw, { filteredTermIds, tagWhitelistMode, tagAndMode, typeFilter }] = await Promise.all([
+        getIsNsfw(this.stateManager),
+        this.getTagFilterState()
+      ]);
+      const items = this.parser.parseMangaList(json.result.items, showNsfw, filteredTermIds, tagWhitelistMode, typeFilter, tagAndMode);
       let nextPage = void 0;
-      if (json.result.pagination && json.result.pagination.last_page > page) {
+      if (json.result.meta?.lastPage && json.result.meta.lastPage > page) {
         nextPage = { page: page + 1 };
       } else if (items.length >= 20) {
         nextPage = { page: page + 1 };
@@ -1989,8 +2084,18 @@ var _Sources = (() => {
       if (response.status === 403 || response.status === 503) {
         throw new Error("Cloudflare Bypass Required");
       }
+      if (response.status < 200 || response.status >= 300) {
+        const preview = (response.data ?? "").substring(0, 300);
+        console.log(`[ComixTo] HTTP ${response.status} \u2014 response preview: ${preview}`);
+        throw new Error(`HTTP ${response.status}: Unexpected response from server`);
+      }
+      const data = response.data ?? "";
+      if (data.trimStart().startsWith("<")) {
+        console.log(`[ComixTo] WARNING: Response looks like HTML, not JSON. Preview: ${data.substring(0, 300)}`);
+        throw new Error("Cloudflare Bypass Required");
+      }
     }
   };
   return __toCommonJS(ComixTo_exports);
 })();
-this.Sources = _Sources; if (typeof exports === 'object' && typeof module !== 'undefined') { module.exports.Sources = this.Sources; }
+this.Sources = _Sources; if (typeof exports === 'object' && typeof module !== 'undefined') {module.exports.Sources = this.Sources;}
