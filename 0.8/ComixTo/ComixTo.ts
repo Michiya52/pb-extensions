@@ -37,7 +37,7 @@ import {
 } from "./Settings";
 
 export const ComixToInfo: SourceInfo = {
-    version: "1.5.1",
+    version: "1.5.2",
     name: "ComixTo",
     icon: "icon.png",
     author: "Michiya52",
