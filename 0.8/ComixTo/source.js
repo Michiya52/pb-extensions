@@ -730,7 +730,7 @@ var _Sources = (() => {
   var import_types = __toESM(require_lib());
 
   // src/ComixTo/Common.ts
-  var API_BASE = "https://comix.to/api/v2";
+  var API_BASE = "https://comix.to/api/v1";
   var DOMAIN = "https://comix.to";
   function normalizeString(str) {
     return str.replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'").replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"');
@@ -1748,7 +1748,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.5.6",
+    version: "1.5.7",
     name: "ComixTo",
     icon: "icon.png",
     author: "Michiya52",
