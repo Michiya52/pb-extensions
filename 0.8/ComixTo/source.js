@@ -730,7 +730,7 @@ var _Sources = (() => {
   var import_types = __toESM(require_lib());
 
   // src/ComixTo/Common.ts
-  var API_BASE = "https://comix.to/api/v1";
+  var API_BASE = "https://comix.to/api/v2";
   var DOMAIN = "https://comix.to";
   function normalizeString(str) {
     return str.replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'").replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"');
@@ -1333,7 +1333,7 @@ var _Sources = (() => {
     return b64UrlEncode(data);
   }
   function signUrl(url) {
-    const path = url.replace("https://comix.to/api/v1", "").split("?")[0];
+    const path = url.replace("https://comix.to/api/v2", "").split("?")[0];
     const token = generateHash(path);
     const sep = url.includes("?") ? "&" : "?";
     return `${url}${sep}_=${token}`;
@@ -1566,7 +1566,7 @@ var _Sources = (() => {
           const fetchTerms = async (type) => {
             const req = App.createRequest({
               // /tags/search caps at limit=50 in v1; >50 returns 422.
-              url: signUrl(`${API_BASE}/tags/search?type=${type}&limit=50`),
+              url: signUrl(`${API_BASE}/terms?type=${type}&limit=100`),
               method: "GET"
             });
             const res = await requestManager.schedule(req, 1);
@@ -1727,7 +1727,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.5.2",
+    version: "1.5.3",
     name: "ComixTo",
     icon: "icon.png",
     author: "Michiya52",
@@ -1813,7 +1813,7 @@ var _Sources = (() => {
       const response = await this.requestManager.schedule(request, 1);
       this.checkResponseError(response);
       const json = JSON.parse(response.data ?? "{}");
-      if (json.status !== "ok") throw new Error(`Failed to fetch manga details (API ${json.status}: ${json.message ?? "no message"})`);
+      if (json.status !== 200) throw new Error("Failed to fetch manga details");
       return this.parser.parseMangaDetails(json.result, mangaId);
     }
     async getChapters(mangaId) {
@@ -1830,9 +1830,9 @@ var _Sources = (() => {
         const json = JSON.parse(
           response.data ?? "{}"
         );
-        if (json.status !== "ok") throw new Error(`Failed to fetch chapters (page ${page}) (API ${json.status}: ${json.message ?? "no message"})`);
+        if (json.status !== 200) break;
         chapters.push(...json.result.items);
-        lastPage = json.result.meta?.lastPage ?? 1;
+        lastPage = json.result.pagination?.last_page ?? json.result.meta?.lastPage ?? 1;
         page++;
       } while (page <= lastPage);
       const appFilters = await getFilters(this.stateManager);
@@ -1848,7 +1848,7 @@ var _Sources = (() => {
       const json = JSON.parse(
         response.data ?? "{}"
       );
-      if (json.status !== "ok") throw new Error(`Failed to fetch chapter pages (API ${json.status}: ${json.message ?? "no message"})`);
+      if (json.status !== 200) throw new Error("Failed to fetch chapter pages");
       return this.parser.parseChapterDetails(json.result, mangaId, chapterId);
     }
     async getHomePageSections(sectionCallback) {
@@ -1883,7 +1883,7 @@ var _Sources = (() => {
       const promises = [];
       promises.push(
         this.fetchHomeData(
-          `${API_BASE}/manga?type=trending&days=${limit}&limit=15&includes[]=author`,
+          `${API_BASE}/top?type=trending&days=${limit}&limit=15&includes[]=author`,
           sections[0],
           sectionCallback
         )
@@ -1932,7 +1932,7 @@ var _Sources = (() => {
       let url = "";
       switch (homepageSectionId) {
         case "trending":
-          url = `${API_BASE}/manga?type=trending&days=${limit}&limit=20&page=${page}&includes[]=author`;
+          url = `${API_BASE}/top?type=trending&days=${limit}&limit=20&page=${page}&includes[]=author`;
           break;
         case "follows":
           url = `${API_BASE}/manga?order[follows_total]=desc&limit=20&page=${page}&includes[]=author`;
@@ -1969,7 +1969,7 @@ var _Sources = (() => {
         try {
           const req = App.createRequest({
             // /tags/search caps at limit=50 in v1; >50 returns 422.
-            url: signUrl(`${API_BASE}/tags/search?type=${type}&limit=50`),
+            url: signUrl(`${API_BASE}/terms?type=${type}&limit=100`),
             method: "GET"
           });
           const res = await this.requestManager.schedule(req, 1);
@@ -2101,7 +2101,8 @@ var _Sources = (() => {
       ]);
       const items = this.parser.parseMangaList(json.result.items, showNsfw, filteredTermIds, tagWhitelistMode, typeFilter, tagAndMode);
       let nextPage = void 0;
-      if (json.result.meta?.lastPage && json.result.meta.lastPage > page) {
+      const lastSearchPage = json.result.pagination?.last_page ?? json.result.meta?.lastPage ?? null;
+      if (lastSearchPage && lastSearchPage > page) {
         nextPage = { page: page + 1 };
       } else if (items.length >= 20) {
         nextPage = { page: page + 1 };
@@ -2126,14 +2127,7 @@ var _Sources = (() => {
         throw new Error("Cloudflare Bypass Required");
       }
       if (response.status < 200 || response.status >= 300) {
-        const preview = (response.data ?? "").substring(0, 300);
-        console.log(`[ComixTo] HTTP ${response.status} \u2014 response preview: ${preview}`);
-        throw new Error(`HTTP ${response.status}: Unexpected response from server`);
-      }
-      const data = response.data ?? "";
-      if (data.trimStart().startsWith("<")) {
-        console.log(`[ComixTo] WARNING: Response looks like HTML, not JSON. Preview: ${data.substring(0, 300)}`);
-        throw new Error("Cloudflare Bypass Required");
+        console.log(`[ComixTo] HTTP ${response.status} \u2014 raw response: ${response.data}`);
       }
     }
   };

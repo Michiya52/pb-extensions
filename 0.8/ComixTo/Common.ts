@@ -1,4 +1,4 @@
-export const API_BASE = "https://comix.to/api/v1";
+export const API_BASE = "https://comix.to/api/v2";
 export const DOMAIN = "https://comix.to";
 
 export function normalizeString(str: string): string {
