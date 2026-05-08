@@ -823,7 +823,7 @@ var _Sources = (() => {
         })
       });
     }
-    parseChapters(data, isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly) {
+    parseChapters(data, isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly, showUploader) {
       const rawChapters = [];
       for (const chap of data) {
         const groupName = chap.group?.name || "";
@@ -904,7 +904,8 @@ var _Sources = (() => {
         }
 
         for (const chap of filtered) {
-          const displayName = showTitle && chap.name ? `${chap.name}` : `Chapter ${chap.chapNum}`;
+          const groupTag = showUploader && chap.group ? ` [${chap.group}]` : "";
+          const displayName = showTitle && chap.name ? `${chap.name}${groupTag}` : `Chapter ${chap.chapNum}${groupTag}`;
           finalChapters.push(
             App.createChapter({
               id: chap.id,
@@ -1322,6 +1323,7 @@ var _Sources = (() => {
         await getStrictNameMatching(stateManager);
         await getOneVersionOnly(stateManager);
         await getShowChapterTitles(stateManager);
+        await getShowUploader(stateManager);
         await getUploaders(stateManager);
         await getSelectedUploaders(stateManager);
         await getUploaderInput(stateManager);
@@ -1351,6 +1353,9 @@ var _Sources = (() => {
   };
   var getShowChapterTitles = async (stateManager) => {
     return await stateManager.retrieve("show_chapter_titles") ?? true;
+  };
+  var getShowUploader = async (stateManager) => {
+    return await stateManager.retrieve("show_uploader") ?? false;
   };
   var getUploaders = async (stateManager) => {
     return await stateManager.retrieve("uploaders") ?? [];
@@ -1467,6 +1472,14 @@ var _Sources = (() => {
                   value: App.createDUIBinding({
                     get: async () => await getShowChapterTitles(stateManager),
                     set: async (newValue) => await stateManager.store("show_chapter_titles", newValue)
+                  })
+                }),
+                App.createDUISwitch({
+                  id: "show_uploader",
+                  label: "Show Translator/Uploader in Title",
+                  value: App.createDUIBinding({
+                    get: async () => await getShowUploader(stateManager),
+                    set: async (newValue) => await stateManager.store("show_uploader", newValue)
                   })
                 })
               ])
@@ -1737,7 +1750,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.5.3",
+    version: "1.5.8",
     name: "ComixTo",
     icon: "icon.png",
     author: "acepilot147",
@@ -1859,15 +1872,16 @@ var _Sources = (() => {
         lastPage = json.result.meta?.lastPage ?? 1;
         page++;
       } while (page <= lastPage);
-      const [isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly] = await Promise.all([
+      const [isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly, showUploader] = await Promise.all([
         getUploadersFiltering(this.stateManager),
         getUploadersWhitelisted(this.stateManager),
         getStrictNameMatching(this.stateManager),
         getUploaders(this.stateManager),
         getShowChapterTitles(this.stateManager),
-        getOneVersionOnly(this.stateManager)
+        getOneVersionOnly(this.stateManager),
+        getShowUploader(this.stateManager)
       ]);
-      return this.parser.parseChapters(chapters, isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly);
+      return this.parser.parseChapters(chapters, isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly, showUploader);
     }
     async getChapterDetails(mangaId, chapterId) {
       const request = App.createRequest({
