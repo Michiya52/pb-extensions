@@ -66,4 +66,3 @@ export function isRatingAllowed(rating: string | null | undefined, maxRating: st
     if (maxIdx === -1) return true;
     return ratingIdx <= maxIdx;
 }
-

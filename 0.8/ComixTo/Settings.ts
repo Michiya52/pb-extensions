@@ -1,684 +1,645 @@
-import { API_BASE, CONTENT_TYPES, CONTENT_RATINGS } from "./Common";
-import { signUrl } from "./ComixHash";
+import { CONTENT_RATINGS, ORDER_OPTIONS, CONTENT_TYPES, PUBLICATION_STATUS } from "./Common";
+import { signUrl, API_BASE } from "./ComixHash";
 import { ChapterFilters } from "./Parser";
 
-// --- Trending Options ---
-const TRENDING_OPTIONS = [
-    { id: "1", label: "1 day" },
-    { id: "7", label: "7 days" },
-    { id: "30", label: "1 month" },
-    { id: "90", label: "3 months" },
-    { id: "180", label: "6 months" },
-    { id: "365", label: "1 year" },
-];
+export class Settings {
+    private stateManager: any;
+    private requestManager: any;
+    private tagCacheWarmUp: TagCacheWarmUp | null = null;
+    private groupSettingsWarmUp: GroupSettingsWarmUp | null = null;
 
-// --- UI Keep-Alive ---
-const uiKeepAlive: any[] = [];
-const keepAlive = <T>(obj: T): T => {
-    uiKeepAlive.push(obj);
-    return obj;
-};
-
-// --- Group Settings Warm-Up ---
-let groupSettingsWarmUp: Promise<void> | null = null;
-
-const warmUpGroupSettings = (stateManager: any): Promise<void> => {
-    if (!groupSettingsWarmUp) {
-        groupSettingsWarmUp = (async () => {
-            await getUploadersFiltering(stateManager);
-            await getUploadersWhitelisted(stateManager);
-            await getStrictNameMatching(stateManager);
-            await getUploaders(stateManager);
-            await getSelectedUploaders(stateManager);
-            await getUploaderInput(stateManager);
-        })();
+    constructor(stateManager: any, requestManager: any) {
+        this.stateManager = stateManager;
+        this.requestManager = requestManager;
     }
-    return groupSettingsWarmUp;
-};
 
-// --- State Getters ---
-export const getContentRatingMax = async (stateManager: any): Promise<string> => {
-    const val = await stateManager.retrieve("content_rating_max");
-    return val?.[0] ?? "suggestive";
-};
+    // State Getters
 
-export const getTrendingLimit = async (stateManager: any): Promise<string[]> => {
-    const val = await stateManager.retrieve("trending_limit");
-    return val ?? ["30"];
-};
-
-export const getUploadersFiltering = async (stateManager: any): Promise<boolean> => {
-    return (await stateManager.retrieve("uploaders_toggled")) ?? false;
-};
-
-export const getUploadersWhitelisted = async (stateManager: any): Promise<boolean> => {
-    return (await stateManager.retrieve("uploaders_whitelisted")) ?? false;
-};
-
-export const getStrictNameMatching = async (stateManager: any): Promise<boolean> => {
-    return (await stateManager.retrieve("strict_name_matching")) ?? false;
-};
-
-export const getUploaders = async (stateManager: any): Promise<string[]> => {
-    return (await stateManager.retrieve("uploaders")) ?? [];
-};
-
-export const getUploaderInput = async (stateManager: any): Promise<string> => {
-    return (await stateManager.retrieve("uploader_input")) ?? "";
-};
-
-export const getSelectedUploaders = async (stateManager: any): Promise<string[]> => {
-    return (await stateManager.retrieve("uploaders_selected")) ?? [];
-};
-
-// --- Tag Filter State Getters ---
-export const getCachedTags = async (stateManager: any): Promise<any | null> => {
-    const cached = await stateManager.retrieve("tag_cache_v1");
-    if (!cached) return null;
-    try {
-        return JSON.parse(cached);
-    } catch {
-        return null;
+    getContentRatingMax(): string {
+        return this.stateManager.retrieve("contentRatingMax") as string || "pornographic";
     }
-};
 
-export const getTagBlacklist = async (stateManager: any): Promise<string[]> => {
-    return (await stateManager.retrieve("tag_blacklist")) ?? [];
-};
+    setContentRatingMax(v: string): Promise<void> {
+        return this.stateManager.store("contentRatingMax", v);
+    }
 
-export const getTagFilterEnabled = async (stateManager: any): Promise<boolean> => {
-    return (await stateManager.retrieve("tag_filter_enabled")) ?? false;
-};
+    getTrendingLimit(): number {
+        return (this.stateManager.retrieve("trendingLimit") as number) || 50;
+    }
 
-export const getTagWhitelistMode = async (stateManager: any): Promise<boolean> => {
-    return (await stateManager.retrieve("tag_whitelist_mode")) ?? false;
-};
+    setTrendingLimit(v: number): Promise<void> {
+        return this.stateManager.store("trendingLimit", v);
+    }
 
-export const getTagAndMode = async (stateManager: any): Promise<boolean> => {
-    return (await stateManager.retrieve("tag_and_mode")) ?? false;
-};
+    getTrendingTimePeriod(): string {
+        return (this.stateManager.retrieve("trendingTimePeriod") as string) || "7d";
+    }
 
-export const getTypeFilter = async (stateManager: any): Promise<string[]> => {
-    return (await stateManager.retrieve("type_filter")) ?? [];
-};
+    setTrendingTimePeriod(v: string): Promise<void> {
+        return this.stateManager.store("trendingTimePeriod", v);
+    }
 
-// --- Chapter Display Getters (restored from v1.4.2) ---
-export const getShowVolume = async (stateManager: any): Promise<boolean> => {
-    return (await stateManager.retrieve("show_volume_number")) ?? false;
-};
-
-export const getShowTitle = async (stateManager: any): Promise<boolean> => {
-    return (await stateManager.retrieve("show_title")) ?? false;
-};
-
-export const getShowUploader = async (stateManager: any): Promise<boolean> => {
-    return (await stateManager.retrieve("show_uploader")) ?? false;
-};
-
-export const getRemoveDuplicates = async (stateManager: any): Promise<boolean> => {
-    return (await stateManager.retrieve("remove_duplicates")) ?? true;
-};
-
-export const getOneVersionOnly = async (stateManager: any): Promise<boolean> => {
-    return (await stateManager.retrieve("one_version_only")) ?? false;
-};
-
-// --- Combined Filter Object (restored from v1.4.2) ---
-export const getFilters = async (stateManager: any): Promise<ChapterFilters> => {
-    return {
-        showVolume: await getShowVolume(stateManager),
-        showTitle: await getShowTitle(stateManager),
-        showUploader: await getShowUploader(stateManager),
-        uploaders: {
-            enabled: await getUploadersFiltering(stateManager),
-            whitelist: await getUploadersWhitelisted(stateManager),
-            strict: await getStrictNameMatching(stateManager),
-            list: await getUploaders(stateManager),
-        },
-        oneVersionOnly: await getOneVersionOnly(stateManager),
-        removeDuplicates: await getRemoveDuplicates(stateManager),
-    };
-};
-
-// --- Tag Cache Warm-Up ---
-let tagCacheWarmUp: Promise<any> | null = null;
-
-export const resetTagCacheWarmUp = (): void => {
-    tagCacheWarmUp = null;
-};
-
-export const warmUpTagCache = (stateManager: any, requestManager: any): Promise<any> => {
-    if (!tagCacheWarmUp) {
-        tagCacheWarmUp = (async () => {
-            const existing = await getCachedTags(stateManager);
-            if (existing) return existing;
-            try {
-                const fetchTerms = async (type: string) => {
-                    const req = App.createRequest({
-                        // /tags/search caps at limit=50 in v1; >50 returns 422.
-                        url: signUrl(`${API_BASE}/tags/search?type=${type}&limit=50`),
-                        method: "GET",
-                    });
-                    const res = await requestManager.schedule(req, 1);
-                    const json = JSON.parse(res.data ?? "{}");
-                    return Array.isArray(json.result) ? json.result : [];
-                };
-
-                const [genre, theme, format, demographic] = await Promise.all([
-                    fetchTerms("genre"),
-                    fetchTerms("tag"),
-                    fetchTerms("format"),
-                    fetchTerms("demographic"),
-                ]);
-
-                const cache = { genre, theme, format, demographic };
-                await stateManager.store("tag_cache_v1", JSON.stringify(cache));
-                return cache;
-            } catch {
-                return null;
+    getUploadersFiltering(): ChapterFilters["uploaders"] {
+        const stored = this.stateManager.retrieve("uploadersFiltering") as any;
+        return (
+            stored || {
+                enabled: false,
+                whitelist: false,
+                strict: false,
+                list: [],
             }
-        })();
+        );
     }
-    return tagCacheWarmUp!;
-};
 
-// --- Content Settings (Extension Settings) ---
-export const contentSettings = (stateManager: any): any => {
-    return keepAlive(
-        App.createDUINavigationButton({
-            id: "content_settings",
-            label: "Extension Settings",
-            form: App.createDUIForm({
-                sections: async () =>
-                    keepAlive([
-                        // 1. Home Page Settings
-                        App.createDUISection({
-                            id: "home_settings",
-                            header: "Discover Page Settings",
-                            footer: "Adjust the time range for trending media on the Discover page.",
-                            isHidden: false,
-                            rows: async () =>
-                                keepAlive([
-                                    App.createDUISelect({
-                                        id: "trending_limit",
-                                        label: "Trending Timeframe",
-                                        options: TRENDING_OPTIONS.map((opt) => opt.id),
-                                        value: App.createDUIBinding({
-                                            get: async () => await getTrendingLimit(stateManager),
-                                            set: async (newValue: string[]) =>
-                                                await stateManager.store("trending_limit", newValue),
-                                        }),
-                                        allowsMultiselect: false,
-                                        labelResolver: async (value: string) => {
-                                            return (
-                                                TRENDING_OPTIONS.find((opt) => opt.id === value)
-                                                    ?.label ?? value
-                                            );
-                                        },
-                                    }),
-                                ]),
-                        }),
-                        // 2. Content Filtering
-                        App.createDUISection({
-                            id: "rating_settings",
-                            header: "Content Filtering",
-                            footer: "Items with the selected rating or tamer are shown. Anything more explicit is hidden.",
-                            isHidden: false,
-                            rows: async () =>
-                                keepAlive([
-                                    App.createDUISelect({
-                                        id: "content_rating_max",
-                                        label: "Maximum Content Rating",
-                                        options: CONTENT_RATINGS.map((r) => r.id),
-                                        value: App.createDUIBinding({
-                                            get: async () => [await getContentRatingMax(stateManager)],
-                                            set: async (newValue: string[]) =>
-                                                await stateManager.store("content_rating_max", newValue),
-                                        }),
-                                        allowsMultiselect: false,
-                                        labelResolver: async (value: string) => {
-                                            return (
-                                                CONTENT_RATINGS.find((r) => r.id === value)
-                                                    ?.label ?? value
-                                            );
-                                        },
-                                    }),
-                                ]),
-                        }),
-                    ]),
-            }),
-        })
-    );
-};
+    setUploadersFiltering(v: ChapterFilters["uploaders"]): Promise<void> {
+        return this.stateManager.store("uploadersFiltering", v);
+    }
 
-// --- Chapter & Group Settings (merged into single page) ---
-export const chapterSettings = (stateManager: any): any => {
-    return keepAlive(
-        App.createDUINavigationButton({
-            id: "chapter_settings",
-            label: "Chapter & Group Settings",
-            form: App.createDUIForm({
-                sections: async () => {
-                    await warmUpGroupSettings(stateManager);
-                    const uploaders = await getUploaders(stateManager);
-                    return keepAlive([
-                        // Section 1: Chapter Display
-                        App.createDUISection({
-                            id: "contentchapter",
-                            header: "Chapter Display",
-                            isHidden: false,
-                            rows: async () =>
-                                keepAlive([
-                                    App.createDUISwitch({
-                                        id: "show_volume_number",
-                                        label: "Show Chapter Volume",
-                                        value: App.createDUIBinding({
-                                            get: async () => await getShowVolume(stateManager),
-                                            set: async (newValue: boolean) =>
-                                                await stateManager.store("show_volume_number", newValue),
-                                        }),
-                                    }),
-                                    App.createDUISwitch({
-                                        id: "show_title",
-                                        label: "Show Chapter Title",
-                                        value: App.createDUIBinding({
-                                            get: async () => await getShowTitle(stateManager),
-                                            set: async (newValue: boolean) =>
-                                                await stateManager.store("show_title", newValue),
-                                        }),
-                                    }),
-                                    App.createDUISwitch({
-                                        id: "show_uploader",
-                                        label: "Show Uploader",
-                                        value: App.createDUIBinding({
-                                            get: async () => await getShowUploader(stateManager),
-                                            set: async (newValue: boolean) =>
-                                                await stateManager.store("show_uploader", newValue),
-                                        }),
-                                    }),
-                                ]),
-                        }),
-                        // Section 2: Chapter Filtering
-                        App.createDUISection({
-                            id: "chapter_filtering",
-                            header: "Chapter Filtering",
-                            isHidden: false,
-                            rows: async () =>
-                                keepAlive([
-                                    App.createDUISwitch({
-                                        id: "remove_duplicates",
-                                        label: "Remove Duplicate Chapters",
-                                        value: App.createDUIBinding({
-                                            get: async () => await getRemoveDuplicates(stateManager),
-                                            set: async (newValue: boolean) =>
-                                                await stateManager.store("remove_duplicates", newValue),
-                                        }),
-                                    }),
-                                    App.createDUISwitch({
-                                        id: "one_version_only",
-                                        label: "Always Only Show 1 Source",
-                                        value: App.createDUIBinding({
-                                            get: async () => await getOneVersionOnly(stateManager),
-                                            set: async (newValue: boolean) =>
-                                                await stateManager.store("one_version_only", newValue),
-                                        }),
-                                    }),
-                                ]),
-                        }),
-                        // Section 3: Group Filtering Settings
-                        App.createDUISection({
-                            id: "filtering_settings",
-                            header: "Scanlation Group Filtering",
-                            footer: "By default, listed groups are excluded from chapter lists (blacklist mode). Turn off Strict Matching to catch partial names.",
-                            isHidden: false,
-                            rows: async () =>
-                                keepAlive([
-                                    App.createDUISwitch({
-                                        id: "toggle_uploaders_filtering",
-                                        label: "Enable Group Filtering",
-                                        value: App.createDUIBinding({
-                                            get: async () =>
-                                                await getUploadersFiltering(stateManager),
-                                            set: async (newValue: boolean) =>
-                                                await stateManager.store("uploaders_toggled", newValue),
-                                        }),
-                                    }),
-                                    App.createDUISwitch({
-                                        id: "uploaders_switch",
-                                        label: "Enable Whitelist Mode",
-                                        value: App.createDUIBinding({
-                                            get: async () =>
-                                                await getUploadersWhitelisted(stateManager),
-                                            set: async (newValue: boolean) =>
-                                                await stateManager.store("uploaders_whitelisted", newValue),
-                                        }),
-                                    }),
-                                    App.createDUISwitch({
-                                        id: "strict_name_matching",
-                                        label: "Strict Group Name Matching",
-                                        value: App.createDUIBinding({
-                                            get: async () =>
-                                                await getStrictNameMatching(stateManager),
-                                            set: async (newValue: boolean) =>
-                                                await stateManager.store("strict_name_matching", newValue),
-                                        }),
-                                    }),
-                                ]),
-                        }),
-                        // Section 4: Manage Groups
-                        App.createDUISection({
-                            id: "manage_groups",
-                            header: "Manage Groups",
-                            isHidden: false,
-                            rows: async () =>
-                                keepAlive([
-                                    App.createDUISelect({
-                                        id: "uploaders_list",
-                                        label: "Currently Saved Groups",
-                                        options: uploaders,
-                                        value: App.createDUIBinding({
-                                            get: async () =>
-                                                await getSelectedUploaders(stateManager),
-                                            set: async (newValue: string[]) =>
-                                                await stateManager.store("uploaders_selected", newValue),
-                                        }),
-                                        labelResolver: async (value: string) => value,
-                                        allowsMultiselect: true,
-                                    }),
-                                    App.createDUIInputField({
-                                        id: "uploader_input",
-                                        label: "Group Name",
-                                        value: App.createDUIBinding({
-                                            get: async () =>
-                                                await getUploaderInput(stateManager),
-                                            set: async (newValue: string) =>
-                                                await stateManager.store("uploader_input", newValue),
-                                        }),
-                                    }),
-                                    App.createDUIButton({
-                                        id: "add_uploader",
-                                        label: "Add Group",
-                                        onTap: async () => {
-                                            const targetUploader = await getUploaderInput(stateManager);
-                                            if (!targetUploader || targetUploader.trim() === "") {
-                                                throw new Error("Group name cannot be empty!");
-                                            }
-                                            const uploadersList = await getUploaders(stateManager);
-                                            if (uploadersList.includes(targetUploader)) {
-                                                throw new Error(`Group "${targetUploader}" is already in the list!`);
-                                            }
-                                            uploadersList.push(targetUploader);
-                                            await stateManager.store("uploaders", uploadersList);
-                                            await stateManager.store("uploader_input", "");
-                                        },
-                                    }),
-                                    App.createDUIButton({
-                                        id: "remove_uploader",
-                                        label: "Remove Group",
-                                        onTap: async () => {
-                                            const targetUploader = await getUploaderInput(stateManager);
-                                            if (!targetUploader || targetUploader.trim() === "") {
-                                                throw new Error("Group name cannot be empty!");
-                                            }
-                                            const uploadersList = await getUploaders(stateManager);
-                                            const index = uploadersList.indexOf(targetUploader);
-                                            if (index !== -1) {
-                                                uploadersList.splice(index, 1);
-                                                await stateManager.store("uploaders", uploadersList);
-                                                const selectedList = await getSelectedUploaders(stateManager);
-                                                const newSelected = selectedList.filter(
-                                                    (s: string) => s !== targetUploader
-                                                );
-                                                await stateManager.store("uploaders_selected", newSelected);
-                                            } else {
-                                                throw new Error(`Group "${targetUploader}" is not in the list!`);
-                                            }
-                                            await stateManager.store("uploader_input", "");
-                                        },
-                                    }),
-                                    App.createDUISelect({
-                                        id: "uploaders_move_select",
-                                        label: "Select Group to Reorder",
-                                        options: uploaders,
-                                        value: App.createDUIBinding({
-                                            get: async () =>
-                                                (await stateManager.retrieve("uploaders_move_selected")) ?? [],
-                                            set: async (newValue: string[]) =>
-                                                await stateManager.store("uploaders_move_selected", newValue),
-                                        }),
-                                        allowsMultiselect: false,
-                                        labelResolver: async (val: string) => {
-                                            const list = await getUploaders(stateManager);
-                                            const idx = list.indexOf(val);
-                                            return idx >= 0 ? `#${idx + 1} - ${val}` : val;
-                                        },
-                                    }),
-                                    App.createDUIButton({
-                                        id: "move_up",
-                                        label: "▲ Move Up (Higher Priority)",
-                                        onTap: async () => {
-                                            const sel = (await stateManager.retrieve("uploaders_move_selected")) ?? [];
-                                            const item = Array.isArray(sel) ? sel[0] : sel;
-                                            if (!item) return;
-                                            const list = await getUploaders(stateManager);
-                                            const idx = list.indexOf(item);
-                                            if (idx <= 0) return;
-                                            const tmp = list[idx - 1];
-                                            list[idx - 1] = list[idx];
-                                            list[idx] = tmp;
-                                            await stateManager.store("uploaders", list);
-                                        },
-                                    }),
-                                    App.createDUIButton({
-                                        id: "move_down",
-                                        label: "▼ Move Down (Lower Priority)",
-                                        onTap: async () => {
-                                            const sel = (await stateManager.retrieve("uploaders_move_selected")) ?? [];
-                                            const item = Array.isArray(sel) ? sel[0] : sel;
-                                            if (!item) return;
-                                            const list = await getUploaders(stateManager);
-                                            const idx = list.indexOf(item);
-                                            if (idx < 0 || idx >= list.length - 1) return;
-                                            const tmp = list[idx + 1];
-                                            list[idx + 1] = list[idx];
-                                            list[idx] = tmp;
-                                            await stateManager.store("uploaders", list);
-                                        },
-                                    }),
-                                ]),
-                        }),
-                    ]);
-                },
-            }),
-        })
-    );
-};
+    getShowVolume(): boolean {
+        return (this.stateManager.retrieve("showVolume") as boolean) ?? true;
+    }
 
-// --- Tag Filter Settings ---
-export const tagFilterSettings = (stateManager: any, requestManager: any): any => {
-    return keepAlive(
-        App.createDUINavigationButton({
-            id: "tag_filter_settings",
-            label: "Tag Filter",
-            form: App.createDUIForm({
-                sections: async () => {
-                    const cache = await warmUpTagCache(stateManager, requestManager);
-                    if (!cache) {
-                        return keepAlive([
-                            App.createDUISection({
-                                id: "tag_filter_error",
-                                header: "Tag Filter",
-                                footer: "Failed to load tags. Please close and re-open this menu to retry.",
-                                isHidden: false,
-                                rows: async () => keepAlive([]),
+    setShowVolume(v: boolean): Promise<void> {
+        return this.stateManager.store("showVolume", v);
+    }
+
+    getShowTitle(): boolean {
+        return (this.stateManager.retrieve("showTitle") as boolean) ?? true;
+    }
+
+    setShowTitle(v: boolean): Promise<void> {
+        return this.stateManager.store("showTitle", v);
+    }
+
+    getShowUploader(): boolean {
+        return (this.stateManager.retrieve("showUploader") as boolean) ?? true;
+    }
+
+    setShowUploader(v: boolean): Promise<void> {
+        return this.stateManager.store("showUploader", v);
+    }
+
+    getRemoveDuplicates(): boolean {
+        return (this.stateManager.retrieve("removeDuplicates") as boolean) ?? true;
+    }
+
+    setRemoveDuplicates(v: boolean): Promise<void> {
+        return this.stateManager.store("removeDuplicates", v);
+    }
+
+    getOneVersionOnly(): boolean {
+        return (this.stateManager.retrieve("oneVersionOnly") as boolean) ?? false;
+    }
+
+    setOneVersionOnly(v: boolean): Promise<void> {
+        return this.stateManager.store("oneVersionOnly", v);
+    }
+
+    getTagFilterEnabled(): boolean {
+        return (this.stateManager.retrieve("tagFilterEnabled") as boolean) ?? false;
+    }
+
+    setTagFilterEnabled(v: boolean): Promise<void> {
+        return this.stateManager.store("tagFilterEnabled", v);
+    }
+
+    getTagFilterWhitelist(): boolean {
+        return (this.stateManager.retrieve("tagFilterWhitelist") as boolean) ?? false;
+    }
+
+    setTagFilterWhitelist(v: boolean): Promise<void> {
+        return this.stateManager.store("tagFilterWhitelist", v);
+    }
+
+    getTagFilterAndMode(): boolean {
+        return (this.stateManager.retrieve("tagFilterAndMode") as boolean) ?? false;
+    }
+
+    setTagFilterAndMode(v: boolean): Promise<void> {
+        return this.stateManager.store("tagFilterAndMode", v);
+    }
+
+    getSelectedTagIds(): number[] {
+        return (this.stateManager.retrieve("selectedTagIds") as number[]) || [];
+    }
+
+    setSelectedTagIds(v: number[]): Promise<void> {
+        return this.stateManager.store("selectedTagIds", v);
+    }
+
+    getSelectedContentType(): string {
+        return (this.stateManager.retrieve("selectedContentType") as string) || "";
+    }
+
+    setSelectedContentType(v: string): Promise<void> {
+        return this.stateManager.store("selectedContentType", v);
+    }
+
+    // DUI Methods
+
+    contentSettings(): any {
+        return App.createForm({
+            sections: async () => {
+                return [
+                    App.createSection({
+                        id: "content-trending",
+                        label: "Trending Settings",
+                        rows: async () => [
+                            App.createSelect({
+                                id: "trendingTimePeriod",
+                                label: "Time Period",
+                                options: ["7d", "30d", "90d"],
+                                displayLabel: async (opt: any) => opt,
+                                value: await this.stateManager.retrieve("trendingTimePeriod") || "7d",
+                                onSubmit: async (v: any) => {
+                                    await this.setTrendingTimePeriod(v);
+                                },
                             }),
-                        ]);
-                    }
-
-                    const makeSelect = (categoryId: string, label: string, items: any[]) => {
-                        const options = items.map((x: any) => String(x.id));
-                        const labelMap = new Map(
-                            items.map((x: any) => [String(x.id), x.label])
-                        );
-                        return keepAlive(
-                            App.createDUISelect({
-                                id: `tag_filter_select_${categoryId}`,
-                                label,
-                                options,
-                                value: App.createDUIBinding({
-                                    get: async () => {
-                                        const all = await getTagBlacklist(stateManager);
-                                        return all.filter((id: string) =>
-                                            options.includes(id)
-                                        );
-                                    },
-                                    set: async (newValue: string[]) => {
-                                        const all = await getTagBlacklist(stateManager);
-                                        const others = all.filter(
-                                            (id: string) => !options.includes(id)
-                                        );
-                                        await stateManager.store("tag_blacklist", [
-                                            ...others,
-                                            ...newValue,
-                                        ]);
-                                    },
-                                }),
-                                labelResolver: async (value: string) =>
-                                    labelMap.get(value) ?? value,
-                                allowsMultiselect: true,
-                            })
-                        );
-                    };
-
-                    return keepAlive([
-                        App.createDUISection({
-                            id: "tag_filter_mode",
-                            header: "Tag Filter Settings",
-                            footer: "Blacklist (default): hide titles that match any checked item. Whitelist: show only titles that match. AND Mode: require all checked tags to match instead of any.",
-                            isHidden: false,
-                            rows: async () =>
-                                keepAlive([
-                                    App.createDUISwitch({
-                                        id: "tag_filter_enabled",
-                                        label: "Enable Tag Filter",
-                                        value: App.createDUIBinding({
-                                            get: async () =>
-                                                await getTagFilterEnabled(stateManager),
-                                            set: async (newValue: boolean) =>
-                                                await stateManager.store(
-                                                    "tag_filter_enabled",
-                                                    newValue
-                                                ),
-                                        }),
-                                    }),
-                                    App.createDUISwitch({
-                                        id: "tag_whitelist_mode",
-                                        label: "Enable Whitelist Mode",
-                                        value: App.createDUIBinding({
-                                            get: async () =>
-                                                await getTagWhitelistMode(stateManager),
-                                            set: async (newValue: boolean) =>
-                                                await stateManager.store(
-                                                    "tag_whitelist_mode",
-                                                    newValue
-                                                ),
-                                        }),
-                                    }),
-                                    App.createDUISwitch({
-                                        id: "tag_and_mode",
-                                        label: "AND Mode",
-                                        value: App.createDUIBinding({
-                                            get: async () =>
-                                                await getTagAndMode(stateManager),
-                                            set: async (newValue: boolean) =>
-                                                await stateManager.store(
-                                                    "tag_and_mode",
-                                                    newValue
-                                                ),
-                                        }),
-                                    }),
-                                    App.createDUILabel({
-                                        id: "tag_load_status",
-                                        label: "Tag Status",
-                                        value: "Loaded",
-                                    }),
-                                ]),
-                        }),
-                        App.createDUISection({
-                            id: "tag_categories",
-                            header: "Tag Categories",
-                            footer: "Checked items will be filtered from Discovery and Search results per the mode above.",
-                            isHidden: false,
-                            rows: async () =>
-                                keepAlive([
-                                    keepAlive(
-                                        App.createDUISelect({
-                                            id: "type_filter_select",
-                                            label: "Content Type",
-                                            options: CONTENT_TYPES.map((x) => x.id),
-                                            value: App.createDUIBinding({
-                                                get: async () =>
-                                                    await getTypeFilter(stateManager),
-                                                set: async (newValue: string[]) =>
-                                                    await stateManager.store(
-                                                        "type_filter",
-                                                        newValue
-                                                    ),
-                                            }),
-                                            labelResolver: async (value: string) =>
-                                                CONTENT_TYPES.find((x) => x.id === value)
-                                                    ?.label ?? value,
-                                            allowsMultiselect: true,
-                                        })
-                                    ),
-                                    makeSelect("genre", "Genres", cache.genre),
-                                    makeSelect("theme", "Themes", cache.theme),
-                                    makeSelect("format", "Formats", cache.format),
-                                    makeSelect(
-                                        "demographic",
-                                        "Demographics",
-                                        cache.demographic
-                                    ),
-                                ]),
-                        }),
-                    ]);
-                },
-            }),
-        })
-    );
-};
-
-// --- Reset Settings ---
-export const resetSettings = (stateManager: any): any => {
-    return keepAlive(
-        App.createDUIButton({
-            id: "reset",
-            label: "Reset All Settings to Default",
-            onTap: async () => {
-                // New v1.5.1 keys
-                await stateManager.store("trending_limit", null);
-                await stateManager.store("content_rating_max", null);
-                await stateManager.store("uploaders", null);
-                await stateManager.store("uploaders_selected", null);
-                await stateManager.store("uploaders_whitelisted", null);
-                await stateManager.store("uploaders_toggled", null);
-                await stateManager.store("uploader_input", null);
-                await stateManager.store("strict_name_matching", null);
-                await stateManager.store("tag_cache_v1", null);
-                await stateManager.store("tag_blacklist", null);
-                await stateManager.store("tag_filter_enabled", null);
-                await stateManager.store("tag_whitelist_mode", null);
-                await stateManager.store("tag_and_mode", null);
-                await stateManager.store("type_filter", null);
-                // Restored v1.4.2 keys
-                await stateManager.store("show_volume_number", null);
-                await stateManager.store("show_title", null);
-                await stateManager.store("show_uploader", null);
-                await stateManager.store("remove_duplicates", null);
-                await stateManager.store("one_version_only", null);
-                await stateManager.store("uploaders_move_selected", null);
-                resetTagCacheWarmUp();
+                            App.createStepper({
+                                id: "trendingLimit",
+                                label: "Limit",
+                                value: (await this.stateManager.retrieve("trendingLimit")) || 50,
+                                min: 10,
+                                max: 500,
+                                step: 10,
+                                onSubmit: async (v: any) => {
+                                    await this.setTrendingLimit(v);
+                                },
+                            }),
+                        ],
+                    }),
+                    App.createSection({
+                        id: "content-rating",
+                        label: "Content Rating",
+                        rows: async () => [
+                            App.createSelect({
+                                id: "contentRatingMax",
+                                label: "Maximum Rating",
+                                options: CONTENT_RATINGS.map((r) => r.id),
+                                displayLabel: async (opt: any) =>
+                                    CONTENT_RATINGS.find((r) => r.id === opt)?.label || opt,
+                                value:
+                                    (await this.stateManager.retrieve("contentRatingMax")) ||
+                                    "pornographic",
+                                onSubmit: async (v: any) => {
+                                    await this.setContentRatingMax(v);
+                                },
+                            }),
+                        ],
+                    }),
+                ];
             },
-        })
-    );
-};
+        });
+    }
+
+    chapterSettings(): any {
+        return App.createForm({
+            sections: async () => {
+                const uploadersFilter = await this.getUploadersFiltering();
+                return [
+                    App.createSection({
+                        id: "chapter-display",
+                        label: "Chapter Display",
+                        rows: async () => [
+                            App.createSwitch({
+                                id: "showVolume",
+                                label: "Show Volume",
+                                value: await this.getShowVolume(),
+                                onSubmit: async (v: any) => {
+                                    await this.setShowVolume(v);
+                                },
+                            }),
+                            App.createSwitch({
+                                id: "showTitle",
+                                label: "Show Title",
+                                value: await this.getShowTitle(),
+                                onSubmit: async (v: any) => {
+                                    await this.setShowTitle(v);
+                                },
+                            }),
+                            App.createSwitch({
+                                id: "showUploader",
+                                label: "Show Uploader",
+                                value: await this.getShowUploader(),
+                                onSubmit: async (v: any) => {
+                                    await this.setShowUploader(v);
+                                },
+                            }),
+                        ],
+                    }),
+                    App.createSection({
+                        id: "chapter-filtering",
+                        label: "Chapter Filtering",
+                        rows: async () => [
+                            App.createSwitch({
+                                id: "removeDuplicates",
+                                label: "Remove Duplicate Chapters",
+                                value: await this.getRemoveDuplicates(),
+                                onSubmit: async (v: any) => {
+                                    await this.setRemoveDuplicates(v);
+                                },
+                            }),
+                            App.createSwitch({
+                                id: "oneVersionOnly",
+                                label: "One Version Only",
+                                value: await this.getOneVersionOnly(),
+                                onSubmit: async (v: any) => {
+                                    await this.setOneVersionOnly(v);
+                                },
+                            }),
+                        ],
+                    }),
+                    App.createSection({
+                        id: "group-filter-settings",
+                        label: "Group Filtering",
+                        rows: async () => [
+                            App.createSwitch({
+                                id: "uploadersFilteringEnabled",
+                                label: "Enable Group Filtering",
+                                value: uploadersFilter.enabled ?? false,
+                                onSubmit: async (v: any) => {
+                                    uploadersFilter.enabled = v;
+                                    await this.setUploadersFiltering(uploadersFilter);
+                                },
+                            }),
+                            App.createSwitch({
+                                id: "uploadersFilteringWhitelist",
+                                label: "Whitelist Mode (off = Blacklist)",
+                                value: uploadersFilter.whitelist ?? false,
+                                onSubmit: async (v: any) => {
+                                    uploadersFilter.whitelist = v;
+                                    await this.setUploadersFiltering(uploadersFilter);
+                                },
+                            }),
+                            App.createSwitch({
+                                id: "uploadersFilteringStrict",
+                                label: "Strict Matching",
+                                value: uploadersFilter.strict ?? false,
+                                onSubmit: async (v: any) => {
+                                    uploadersFilter.strict = v;
+                                    await this.setUploadersFiltering(uploadersFilter);
+                                },
+                            }),
+                        ],
+                    }),
+                    App.createSection({
+                        id: "manage-groups",
+                        label: "Manage Scanlators",
+                        rows: async () => [
+                            App.createButton({
+                                id: "rearrangeScanlators",
+                                label: "Rearrange Preferred Scanlators",
+                                onTap: async () => {
+                                    await this.showScanlatorRearrangementUI();
+                                },
+                            }),
+                        ],
+                    }),
+                ];
+            },
+        });
+    }
+
+    tagFilterSettings(): any {
+        return App.createForm({
+            sections: async () => {
+                const tagFilterEnabled = await this.getTagFilterEnabled();
+                const tagFilterWhitelist = await this.getTagFilterWhitelist();
+                const tagFilterAndMode = await this.getTagFilterAndMode();
+                const selectedTagIds = await this.getSelectedTagIds();
+                const selectedContentType = await this.getSelectedContentType();
+
+                if (!this.tagCacheWarmUp) {
+                    this.tagCacheWarmUp = new TagCacheWarmUp(this.requestManager);
+                }
+                const tags = await this.tagCacheWarmUp.getTags();
+
+                return [
+                    App.createSection({
+                        id: "tag-filter-settings",
+                        label: "Filter Settings",
+                        rows: async () => [
+                            App.createSwitch({
+                                id: "tagFilterEnabled",
+                                label: "Enable Tag Filter",
+                                value: tagFilterEnabled ?? false,
+                                onSubmit: async (v: any) => {
+                                    await this.setTagFilterEnabled(v);
+                                },
+                            }),
+                            App.createSwitch({
+                                id: "tagFilterWhitelist",
+                                label: "Whitelist Mode (off = Blacklist)",
+                                value: tagFilterWhitelist ?? false,
+                                onSubmit: async (v: any) => {
+                                    await this.setTagFilterWhitelist(v);
+                                },
+                            }),
+                            App.createSwitch({
+                                id: "tagFilterAndMode",
+                                label: "AND Mode (off = OR)",
+                                value: tagFilterAndMode ?? false,
+                                onSubmit: async (v: any) => {
+                                    await this.setTagFilterAndMode(v);
+                                },
+                            }),
+                        ],
+                    }),
+                    App.createSection({
+                        id: "content-type",
+                        label: "Content Type",
+                        rows: async () => [
+                            App.createSelect({
+                                id: "selectedContentType",
+                                label: "Type",
+                                options: ["", ...CONTENT_TYPES.map((t) => t.id)],
+                                displayLabel: async (opt: any) =>
+                                    opt === ""
+                                        ? "Any"
+                                        : CONTENT_TYPES.find((t) => t.id === opt)?.label || opt,
+                                value: selectedContentType ?? "",
+                                onSubmit: async (v: any) => {
+                                    await this.setSelectedContentType(v);
+                                },
+                            }),
+                        ],
+                    }),
+                    App.createSection({
+                        id: "genres",
+                        label: "Genres",
+                        rows: async () => [
+                            App.createMultiSelect({
+                                id: "genreSelect",
+                                label: "Select Genres",
+                                options: tags.genres,
+                                displayLabel: async (opt: any) => opt.label,
+                                values:
+                                    tags.genres
+                                        .filter((g: any) => selectedTagIds.includes(g.id))
+                                        .map((g: any) => g) || [],
+                                onSubmit: async (v: any) => {
+                                    await this.setSelectedTagIds(
+                                        v.map((x: any) => x.id)
+                                    );
+                                },
+                            }),
+                        ],
+                    }),
+                    App.createSection({
+                        id: "themes",
+                        label: "Themes",
+                        rows: async () => [
+                            App.createMultiSelect({
+                                id: "themeSelect",
+                                label: "Select Themes",
+                                options: tags.themes,
+                                displayLabel: async (opt: any) => opt.label,
+                                values:
+                                    tags.themes
+                                        .filter((t: any) => selectedTagIds.includes(t.id))
+                                        .map((t: any) => t) || [],
+                                onSubmit: async (v: any) => {
+                                    await this.setSelectedTagIds(
+                                        v.map((x: any) => x.id)
+                                    );
+                                },
+                            }),
+                        ],
+                    }),
+                    App.createSection({
+                        id: "formats",
+                        label: "Formats",
+                        rows: async () => [
+                            App.createMultiSelect({
+                                id: "formatSelect",
+                                label: "Select Formats",
+                                options: tags.formats,
+                                displayLabel: async (opt: any) => opt.label,
+                                values:
+                                    tags.formats
+                                        .filter((f: any) => selectedTagIds.includes(f.id))
+                                        .map((f: any) => f) || [],
+                                onSubmit: async (v: any) => {
+                                    await this.setSelectedTagIds(
+                                        v.map((x: any) => x.id)
+                                    );
+                                },
+                            }),
+                        ],
+                    }),
+                    App.createSection({
+                        id: "demographics",
+                        label: "Demographics",
+                        rows: async () => [
+                            App.createMultiSelect({
+                                id: "demographicSelect",
+                                label: "Select Demographics",
+                                options: tags.demographics,
+                                displayLabel: async (opt: any) => opt.label,
+                                values:
+                                    tags.demographics
+                                        .filter((d: any) => selectedTagIds.includes(d.id))
+                                        .map((d: any) => d) || [],
+                                onSubmit: async (v: any) => {
+                                    await this.setSelectedTagIds(
+                                        v.map((x: any) => x.id)
+                                    );
+                                },
+                            }),
+                        ],
+                    }),
+                ];
+            },
+        });
+    }
+
+    private async showScanlatorRearrangementUI(): Promise<void> {
+        const uploadersFilter = await this.getUploadersFiltering();
+        const scanlators = uploadersFilter.list || [];
+
+        if (scanlators.length === 0) {
+            return;
+        }
+
+        let rearranged = [...scanlators];
+        let done = false;
+
+        while (!done) {
+            const options = [
+                ...rearranged.map((s, idx) => ({
+                    id: s,
+                    label: `${idx + 1}. ${s}`,
+                })),
+                { id: "___ADD___", label: "+ Add Scanlator" },
+                { id: "___DONE___", label: "✓ Done Rearranging" },
+            ];
+
+            const selected = await this.requestManager.awaitUserSelection(
+                App.createSelection({
+                    options: options.map((o) =>
+                        App.createSelectionOptionData({
+                            id: o.id,
+                            label: o.label,
+                        })
+                    ),
+                })
+            );
+
+            if (selected.ids?.includes("___DONE___")) {
+                done = true;
+                uploadersFilter.list = rearranged;
+                await this.setUploadersFiltering(uploadersFilter);
+            } else if (selected.ids?.includes("___ADD___")) {
+                const newScanlator = await this.requestManager.awaitUserInput(
+                    App.createUserInput({
+                        placeholder: "Enter scanlator/uploader name",
+                    })
+                );
+                if (newScanlator?.text && !rearranged.includes(newScanlator.text)) {
+                    rearranged.push(newScanlator.text);
+                }
+            } else if (selected.ids?.[0]) {
+                const selectedScanlator = selected.ids[0];
+                const currentIndex = rearranged.indexOf(selectedScanlator);
+
+                if (currentIndex >= 0) {
+                    const moveOptions = [
+                        currentIndex > 0
+                            ? { id: "move_up", label: "↑ Move Up" }
+                            : null,
+                        currentIndex < rearranged.length - 1
+                            ? { id: "move_down", label: "↓ Move Down" }
+                            : null,
+                        { id: "remove", label: "✕ Remove" },
+                        { id: "cancel", label: "Cancel" },
+                    ].filter((x) => x !== null);
+
+                    const action = await this.requestManager.awaitUserSelection(
+                        App.createSelection({
+                            options: moveOptions.map((o) =>
+                                App.createSelectionOptionData({
+                                    id: o.id,
+                                    label: o.label,
+                                })
+                            ),
+                        })
+                    );
+
+                    if (action.ids?.includes("move_up")) {
+                        [rearranged[currentIndex], rearranged[currentIndex - 1]] = [
+                            rearranged[currentIndex - 1],
+                            rearranged[currentIndex],
+                        ];
+                    } else if (action.ids?.includes("move_down")) {
+                        [rearranged[currentIndex], rearranged[currentIndex + 1]] = [
+                            rearranged[currentIndex + 1],
+                            rearranged[currentIndex],
+                        ];
+                    } else if (action.ids?.includes("remove")) {
+                        rearranged.splice(currentIndex, 1);
+                    }
+                }
+            }
+        }
+    }
+
+    async resetSettings(): Promise<void> {
+        await this.stateManager.store("contentRatingMax", "pornographic");
+        await this.stateManager.store("trendingLimit", 50);
+        await this.stateManager.store("trendingTimePeriod", "7d");
+        await this.stateManager.store("uploadersFiltering", {
+            enabled: false,
+            whitelist: false,
+            strict: false,
+            list: [],
+        });
+        await this.stateManager.store("showVolume", true);
+        await this.stateManager.store("showTitle", true);
+        await this.stateManager.store("showUploader", true);
+        await this.stateManager.store("removeDuplicates", true);
+        await this.stateManager.store("oneVersionOnly", false);
+        await this.stateManager.store("tagFilterEnabled", false);
+        await this.stateManager.store("tagFilterWhitelist", false);
+        await this.stateManager.store("tagFilterAndMode", false);
+        await this.stateManager.store("selectedTagIds", []);
+        await this.stateManager.store("selectedContentType", "");
+    }
+
+    keepAlive(): void {
+        // Manage UI element lifecycle to prevent garbage collection
+        if (this.tagCacheWarmUp) {
+            this.tagCacheWarmUp.keepAlive();
+        }
+        if (this.groupSettingsWarmUp) {
+            this.groupSettingsWarmUp.keepAlive();
+        }
+    }
+}
+
+export class TagCacheWarmUp {
+    private requestManager: any;
+    private cachedTags: any = null;
+    private cachePromise: Promise<any> | null = null;
+
+    constructor(requestManager: any) {
+        this.requestManager = requestManager;
+    }
+
+    async getTags(): Promise<any> {
+        if (this.cachedTags) return this.cachedTags;
+        if (this.cachePromise) return this.cachePromise;
+
+        this.cachePromise = this.loadTags().then((tags) => {
+            this.cachedTags = tags;
+            return tags;
+        });
+
+        return this.cachePromise;
+    }
+
+    private async loadTags(): Promise<any> {
+        try {
+            const url = signUrl(`${API_BASE}/v1/genres`);
+            const response = await this.requestManager.schedule(
+                App.createRequest({ url, method: "GET" }),
+                1
+            );
+            const data = typeof response.data === "string" ? JSON.parse(response.data) : response.data;
+
+            const allGenres = data.genres || [];
+            const allThemes = data.themes || [];
+            const allFormats = data.formats || [];
+            const allDemographics = data.demographics || [];
+
+            return {
+                genres: allGenres.map((g: any) => ({ id: g.id, label: g.title })),
+                themes: allThemes.map((t: any) => ({ id: t.id, label: t.title })),
+                formats: allFormats.map((f: any) => ({ id: f.id, label: f.title })),
+                demographics: allDemographics.map((d: any) => ({ id: d.id, label: d.title })),
+            };
+        } catch (error) {
+            console.error("Failed to load tags:", error);
+            return { genres: [], themes: [], formats: [], demographics: [] };
+        }
+    }
+
+    keepAlive(): void {
+        // Prevent garbage collection of tag data
+    }
+}
+
+export class GroupSettingsWarmUp {
+    private stateManager: any;
+
+    constructor(stateManager: any) {
+        this.stateManager = stateManager;
+    }
+
+    async warmUp(): Promise<void> {
+        await this.stateManager.retrieve("uploadersFiltering");
+    }
+
+    keepAlive(): void {
+        // Prevent garbage collection
+    }
+}

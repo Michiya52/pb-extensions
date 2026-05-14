@@ -1,586 +1,473 @@
 import {
-    Source,
-    Manga,
     Chapter,
     ChapterDetails,
     HomeSection,
-    SearchRequest,
+    MangaUpdates,
     PagedResults,
-    SourceInfo,
-    ContentRating,
-    BadgeColor,
-    Request,
-    Response,
-    SourceManga,
     PartialSourceManga,
-    TagSection,
-    HomeSectionType,
-    SourceIntents,
+    RequestHeaders,
+    Response,
+    SearchRequest,
+    Section,
+    SourceInfo,
+    TagType,
 } from "paperback-extensions-common";
-
-import { Parser } from "./Parser";
-import { API_BASE, DOMAIN, CONTENT_TYPES, PUBLICATION_STATUS, ORDER_OPTIONS, normalizeString } from "./Common";
+import { Parser, ChapterFilters } from "./Parser";
+import { API_BASE, DOMAIN, CONTENT_RATINGS, ORDER_OPTIONS, CONTENT_TYPES, PUBLICATION_STATUS } from "./Common";
 import { signUrl } from "./ComixHash";
-import {
-    getFilters,
-    getContentRatingMax,
-    getTrendingLimit,
-    tagFilterSettings,
-    contentSettings,
-    chapterSettings,
-    resetSettings,
-    warmUpTagCache,
-    getTagFilterEnabled,
-    getTagBlacklist,
-    getTagWhitelistMode,
-    getTagAndMode,
-    getTypeFilter,
-} from "./Settings";
+import { Settings } from "./Settings";
 
 export const ComixToInfo: SourceInfo = {
     version: "1.5.8",
     name: "ComixTo",
-    icon: "icon.png",
+    description: "Read manga from ComixTo",
     author: "Michiya52",
-    authorWebsite: "https://michiya52.github.io/pb-extensions/0.8",
-    description: "Comix.to Extension with advanced filters. Fork of AthK extensions for Paperback 0.8 (Updated by Michiya52)",
-    contentRating: ContentRating.EVERYONE,
+    authorWebsite: "https://github.com/Michiya52",
+    icon: "icon.png",
+    contentRating: 4,
     websiteBaseURL: DOMAIN,
-    sourceTags: [
-        {
-            text: "English",
-            type: BadgeColor.GREY,
-        },
-    ],
-    intents:
-        SourceIntents.MANGA_CHAPTERS |
-        SourceIntents.HOMEPAGE_SECTIONS |
-        SourceIntents.CLOUDFLARE_BYPASS_REQUIRED |
-        SourceIntents.SETTINGS_UI,
-};
-
-const keepAlive = <T>(obj: T): T => {
-    return obj;
+    sourceTags: [{ text: "English", id: 1 }],
 };
 
 export class ComixTo extends Source {
-    parser = new Parser();
-    stateManager = App.createSourceStateManager();
-    requestManager = App.createRequestManager({
+    private stateManager = createDatabaseManager();
+    private requestManager = createRequestManager({
         requestsPerSecond: 4,
         requestTimeout: 15000,
-        interceptor: {
-            interceptRequest: async (request: Request): Promise<Request> => {
-                request.headers = {
-                    ...(request.headers ?? {}),
-                    Referer: `${DOMAIN}/`,
-                    "User-Agent": await this.requestManager.getDefaultUserAgent(),
-                };
-                return request;
-            },
-            interceptResponse: async (response: Response): Promise<Response> => {
-                return response;
-            },
-        },
     });
 
-    // -- Capabilities --
-    async supportsTagExclusion(): Promise<boolean> {
-        return true;
+    private parser = new Parser();
+    private settings = new Settings(this.stateManager, this.requestManager);
+
+    override getSourceInfo(): SourceInfo {
+        return ComixToInfo;
     }
 
-    // -- Settings Menu --
-    async getSourceMenu(): Promise<any> {
-        return keepAlive(
-            App.createDUISection({
-                id: "main",
-                header: "Source Settings",
-                isHidden: false,
-                rows: async () =>
-                    keepAlive([
-                        contentSettings(this.stateManager),
-                        chapterSettings(this.stateManager),
-                        tagFilterSettings(this.stateManager, this.requestManager),
-                        resetSettings(this.stateManager),
-                    ]),
-            })
-        );
+    override getSourceMenu(): Section {
+        return App.createSection({
+            id: "source_menu",
+            header: "ComixTo Settings",
+            rows: async () => [
+                App.createButton({
+                    id: "trending_settings",
+                    label: "Content & Trending Settings",
+                    onTap: async () => {
+                        App.pushUiSection({
+                            sections: await this.settings.contentSettings().sections(),
+                        });
+                    },
+                }),
+                App.createButton({
+                    id: "chapter_settings",
+                    label: "Chapter & Group Settings",
+                    onTap: async () => {
+                        App.pushUiSection({
+                            sections: await this.settings.chapterSettings().sections(),
+                        });
+                    },
+                }),
+                App.createButton({
+                    id: "tag_filter_settings",
+                    label: "Tag Filter Settings",
+                    onTap: async () => {
+                        App.pushUiSection({
+                            sections: await this.settings.tagFilterSettings().sections(),
+                        });
+                    },
+                }),
+                App.createButton({
+                    id: "reset_settings",
+                    label: "Reset All Settings",
+                    onTap: async () => {
+                        await this.settings.resetSettings();
+                    },
+                }),
+            ],
+        });
     }
 
-    async getTagFilterState(): Promise<{
+    private async getTagFilterState(): Promise<{
         filteredTermIds: Set<number>;
-        tagWhitelistMode: boolean;
-        tagAndMode: boolean;
+        filteredTerms: Set<string>;
+        modes: { whitelist: boolean; andMode: boolean };
         typeFilter: Set<string>;
     }> {
-        const enabled = await getTagFilterEnabled(this.stateManager);
-        if (!enabled) {
-            return {
-                filteredTermIds: new Set(),
-                tagWhitelistMode: false,
-                tagAndMode: false,
-                typeFilter: new Set(),
-            };
-        }
-
-        const [blacklist, whitelistMode, andMode, typeFilterList] = await Promise.all([
-            getTagBlacklist(this.stateManager),
-            getTagWhitelistMode(this.stateManager),
-            getTagAndMode(this.stateManager),
-            getTypeFilter(this.stateManager),
-        ]);
+        const enabled = await this.settings.getTagFilterEnabled();
+        const whitelist = await this.settings.getTagFilterWhitelist();
+        const andMode = await this.settings.getTagFilterAndMode();
+        const selectedTagIds = await this.settings.getSelectedTagIds();
+        const selectedContentType = await this.settings.getSelectedContentType();
 
         return {
-            filteredTermIds: new Set(blacklist.map((id: string) => parseInt(id, 10))),
-            tagWhitelistMode: whitelistMode,
-            tagAndMode: andMode,
-            typeFilter: new Set(typeFilterList),
+            filteredTermIds: new Set(enabled ? selectedTagIds : []),
+            filteredTerms: new Set(),
+            modes: { whitelist, andMode },
+            typeFilter: new Set(selectedContentType ? [selectedContentType] : []),
         };
     }
 
-    getMangaShareUrl(mangaId: string): string {
-        return `${DOMAIN}/title/${mangaId}`;
+    override async getMangaDetails(mangaId: string): Promise<any> {
+        const url = signUrl(
+            `${API_BASE}/v1/titles/${mangaId}?includes=authors,artists`
+        );
+
+        const response = await this.requestManager.schedule(
+            App.createRequest({ url, method: "GET" }),
+            1
+        );
+
+        const data =
+            typeof response.data === "string"
+                ? JSON.parse(response.data)
+                : response.data;
+
+        return this.parser.parseMangaDetails(data.data, mangaId);
     }
 
-    async getMangaDetails(mangaId: string): Promise<SourceManga> {
-        const request = App.createRequest({
-            url: signUrl(`${API_BASE}/manga/${mangaId}?includes[]=author&includes[]=artist`),
-            method: "GET",
-        });
-        const response = await this.requestManager.schedule(request, 1);
-        this.checkResponseError(response);
-        const json = JSON.parse(response.data ?? "{}");
-        if (json.status !== "ok")
-            throw new Error(
-                `Failed to fetch manga details (API ${json.status}: ${json.message ?? "no message"})`
-            );
-        return this.parser.parseMangaDetails(json.result, mangaId);
-    }
-
-    async getChapters(mangaId: string): Promise<Chapter[]> {
-        const chapters: any[] = [];
+    override async getChapters(mangaId: string): Promise<Chapter[]> {
+        const chapters: Chapter[] = [];
+        const pageSize = 100;
         let page = 1;
-        let lastPage = 1;
+        let hasMore = true;
 
-        do {
-            const request = App.createRequest({
-                url: signUrl(
-                    `${API_BASE}/manga/${mangaId}/chapters?page=${page}&limit=100&order[number]=desc`
-                ),
-                method: "GET",
-            });
-            const response = await this.requestManager.schedule(request, 1);
-            this.checkResponseError(response);
-            const json = JSON.parse(response.data ?? "{}");
-            if (json.status !== "ok")
-                throw new Error(
-                    `Failed to fetch chapters (page ${page}) (API ${json.status}: ${json.message ?? "no message"})`
-                );
-            chapters.push(...json.result.items);
-            lastPage = json.result.meta?.lastPage ?? 1;
-            page++;
-        } while (page <= lastPage);
-
-        const appFilters = await getFilters(this.stateManager);
-
-        return this.parser.parseChapters(chapters, appFilters);
-    }
-
-    async getChapterDetails(mangaId: string, chapterId: string): Promise<ChapterDetails> {
-        const request = App.createRequest({
-            url: signUrl(`${API_BASE}/chapters/${chapterId}`),
-            method: "GET",
-        });
-        const response = await this.requestManager.schedule(request, 1);
-        this.checkResponseError(response);
-        const json = JSON.parse(response.data ?? "{}");
-        if (json.status !== "ok")
-            throw new Error(
-                `Failed to fetch chapter pages (API ${json.status}: ${json.message ?? "no message"})`
+        while (hasMore) {
+            const url = signUrl(
+                `${API_BASE}/v1/titles/${mangaId}/chapters?page=${page}&limit=${pageSize}&order=desc&order_by=number`
             );
-        return this.parser.parseChapterDetails(json.result, mangaId, chapterId);
+
+            const response = await this.requestManager.schedule(
+                App.createRequest({ url, method: "GET" }),
+                1
+            );
+
+            const data =
+                typeof response.data === "string"
+                    ? JSON.parse(response.data)
+                    : response.data;
+            this.checkResponseError(data);
+
+            const items = data.data?.chapters || [];
+            if (items.length === 0) {
+                hasMore = false;
+            } else {
+                // Group and filter chapters
+                const filters: ChapterFilters = {
+                    showVolume: await this.settings.getShowVolume(),
+                    showTitle: await this.settings.getShowTitle(),
+                    showUploader: await this.settings.getShowUploader(),
+                    uploaders: await this.settings.getUploadersFiltering(),
+                    oneVersionOnly: await this.settings.getOneVersionOnly(),
+                    removeDuplicates: await this.settings.getRemoveDuplicates(),
+                };
+
+                const parsed = this.parser.parseChapters(items, filters);
+                chapters.push(...parsed);
+            }
+
+            page++;
+        }
+
+        return chapters;
     }
 
-    async getHomePageSections(
-        sectionCallback: (section: HomeSection) => void
-    ): Promise<void> {
-        const limitArray = await getTrendingLimit(this.stateManager);
-        const days = limitArray[0] ?? "30";
-        const maxRating = await getContentRatingMax(this.stateManager);
+    override async getChapterDetails(
+        mangaId: string,
+        chapterId: string
+    ): Promise<ChapterDetails> {
+        const url = signUrl(`${API_BASE}/v1/chapters/${chapterId}`);
 
+        const response = await this.requestManager.schedule(
+            App.createRequest({ url, method: "GET" }),
+            1
+        );
+
+        const data =
+            typeof response.data === "string"
+                ? JSON.parse(response.data)
+                : response.data;
+        this.checkResponseError(data);
+
+        return this.parser.parseChapterDetails(data.data, mangaId, chapterId);
+    }
+
+    override async getHomePageSections(
+        sectionCallback: (section: Section) => void
+    ): Promise<void> {
         const sections = [
-            App.createHomeSection({
-                id: "trending",
-                title: "Popular (Trending)",
-                containsMoreItems: true,
-                type: HomeSectionType.featured,
-            }),
-            App.createHomeSection({
-                id: "latest",
-                title: "Latest Updates",
-                containsMoreItems: true,
-                type: HomeSectionType.singleRowNormal,
-            }),
-            App.createHomeSection({
-                id: "new",
-                title: "Recently Added",
-                containsMoreItems: true,
-                type: HomeSectionType.singleRowNormal,
-            }),
-            App.createHomeSection({
-                id: "follows_new",
-                title: "Most Follows · New Comics",
-                containsMoreItems: true,
-                type: HomeSectionType.singleRowLarge,
-            }),
-            App.createHomeSection({
-                id: "follows",
-                title: "Most Followed",
-                containsMoreItems: true,
-                type: HomeSectionType.singleRowLarge,
-            }),
+            {
+                id: "1",
+                label: "Trending",
+                request: `${API_BASE}/v1/titles/trending?order=trending`,
+            },
+            {
+                id: "2",
+                label: "Latest Updated",
+                request: `${API_BASE}/v1/titles?order_by=chapter_updated_at&order=desc`,
+            },
+            { id: "3", label: "Newest", request: `${API_BASE}/v1/titles` },
+            {
+                id: "4",
+                label: "Most Followed",
+                request: `${API_BASE}/v1/titles?order_by=follows_total&order=desc`,
+            },
+            {
+                id: "5",
+                label: "Most Followed (Recent)",
+                request: `${API_BASE}/v1/titles?order_by=follows_7d&order=desc`,
+            },
         ];
 
-        const promises: Promise<void>[] = [];
+        const tagFilter = await this.getTagFilterState();
 
-        promises.push(
-            this.fetchHomeData(
-                `${API_BASE}/manga/top?type=trending&days=${days}&limit=15&content_rating=${maxRating}`,
-                sections[0],
-                sectionCallback
-            )
-        );
-        promises.push(
-            this.fetchHomeData(
-                `${API_BASE}/manga?order[chapter_updated_at]=desc&limit=15&includes[]=author`,
-                sections[1],
-                sectionCallback
-            )
-        );
-        promises.push(
-            this.fetchHomeData(
-                `${API_BASE}/manga?order[created_at]=desc&limit=15&includes[]=author`,
-                sections[2],
-                sectionCallback
-            )
-        );
-        promises.push(
-            this.fetchHomeData(
-                `${API_BASE}/manga/top?type=follows&days=${days}&limit=15&content_rating=${maxRating}`,
-                sections[3],
-                sectionCallback
-            )
-        );
-        promises.push(
-            this.fetchHomeData(
-                `${API_BASE}/manga?order[follows_total]=desc&limit=15&includes[]=author`,
-                sections[4],
-                sectionCallback
-            )
-        );
+        for (const section of sections) {
+            const homeSection = App.createHomeSection({
+                id: section.id,
+                title: section.label,
+                view_type: "scrollable",
+                containsUpdates: false,
+            });
 
-        await Promise.all(promises);
-    }
+            let items: PartialSourceManga[] = [];
 
-    async fetchHomeData(
-        url: string,
-        section: HomeSection,
-        callback: (section: HomeSection) => void
-    ): Promise<void> {
-        const request = App.createRequest({ url: signUrl(url), method: "GET" });
-        const response = await this.requestManager.schedule(request, 1);
-        this.checkResponseError(response);
-        const json = JSON.parse(response.data ?? "{}");
+            try {
+                const url = signUrl(section.request);
+                const response = await this.requestManager.schedule(
+                    App.createRequest({ url, method: "GET" }),
+                    1
+                );
 
-        const [maxRating, { filteredTermIds, tagWhitelistMode, tagAndMode, typeFilter }] =
-            await Promise.all([
-                getContentRatingMax(this.stateManager),
-                this.getTagFilterState(),
-            ]);
+                const data =
+                    typeof response.data === "string"
+                        ? JSON.parse(response.data)
+                        : response.data;
+                this.checkResponseError(data);
 
-        const items = Array.isArray(json.result) ? json.result : json.result?.items;
-        if (items) {
-            section.items = this.parser.parseMangaList(
-                items,
-                maxRating,
-                filteredTermIds,
-                tagWhitelistMode,
-                typeFilter,
-                tagAndMode
-            );
+                const maxRating = await this.settings.getContentRatingMax();
+                items = this.parser.parseMangaList(
+                    data.data?.titles || [],
+                    maxRating,
+                    tagFilter.filteredTermIds,
+                    tagFilter.modes.whitelist,
+                    tagFilter.typeFilter,
+                    tagFilter.modes.andMode
+                );
+            } catch (error) {
+                console.error(`Error fetching ${section.label}:`, error);
+            }
+
+            homeSection.items = items;
+            sectionCallback(homeSection);
         }
-        callback(section);
     }
 
-    async getViewMoreItems(
+    override async getViewMoreItems(
         homepageSectionId: string,
         metadata: any
     ): Promise<PagedResults> {
-        const page = metadata?.page ?? 1;
-        const limitArray = await getTrendingLimit(this.stateManager);
-        const days = limitArray[0] ?? "30";
-        const maxRating = await getContentRatingMax(this.stateManager);
-
+        let page = metadata?.page || 1;
         let url = "";
-        let isTopEndpoint = false;
-        switch (homepageSectionId) {
-            case "trending":
-                url = `${API_BASE}/manga/top?type=trending&days=${days}&limit=50&content_rating=${maxRating}`;
-                isTopEndpoint = true;
-                break;
-            case "follows_new":
-                url = `${API_BASE}/manga/top?type=follows&days=${days}&limit=50&content_rating=${maxRating}`;
-                isTopEndpoint = true;
-                break;
-            case "follows":
-                url = `${API_BASE}/manga?order[follows_total]=desc&limit=20&page=${page}&includes[]=author`;
-                break;
-            case "latest":
-                url = `${API_BASE}/manga?order[chapter_updated_at]=desc&limit=20&page=${page}&includes[]=author`;
-                break;
-            case "new":
-                url = `${API_BASE}/manga?order[created_at]=desc&limit=20&page=${page}&includes[]=author`;
-                break;
-            default:
-                return App.createPagedResults({ results: [], metadata: undefined });
-        }
 
-        const request = App.createRequest({ url: signUrl(url), method: "GET" });
-        const response = await this.requestManager.schedule(request, 1);
-        this.checkResponseError(response);
-        const json = JSON.parse(response.data ?? "{}");
+        const sectionMap: Record<string, string> = {
+            "1": `${API_BASE}/v1/titles/trending?order=trending&page=${page}`,
+            "2": `${API_BASE}/v1/titles?order_by=chapter_updated_at&order=desc&page=${page}`,
+            "3": `${API_BASE}/v1/titles?page=${page}`,
+            "4": `${API_BASE}/v1/titles?order_by=follows_total&order=desc&page=${page}`,
+            "5": `${API_BASE}/v1/titles?order_by=follows_7d&order=desc&page=${page}`,
+        };
 
-        const { filteredTermIds, tagWhitelistMode, tagAndMode, typeFilter } = await this.getTagFilterState();
+        url = sectionMap[homepageSectionId] || "";
 
-        const rawItems = Array.isArray(json.result) ? json.result : json.result?.items ?? [];
-        const items = this.parser.parseMangaList(
-            rawItems,
-            maxRating,
-            filteredTermIds,
-            tagWhitelistMode,
-            typeFilter,
-            tagAndMode
+        const tagFilter = await this.getTagFilterState();
+        const maxRating = await this.settings.getContentRatingMax();
+
+        const signedUrl = signUrl(url);
+        const response = await this.requestManager.schedule(
+            App.createRequest({ url: signedUrl, method: "GET" }),
+            1
         );
 
-        const nextPage = isTopEndpoint ? undefined : (items.length > 0 ? { page: page + 1 } : undefined);
+        const data =
+            typeof response.data === "string"
+                ? JSON.parse(response.data)
+                : response.data;
+        this.checkResponseError(data);
+
+        const items = this.parser.parseMangaList(
+            data.data?.titles || [],
+            maxRating,
+            tagFilter.filteredTermIds,
+            tagFilter.modes.whitelist,
+            tagFilter.typeFilter,
+            tagFilter.modes.andMode
+        );
 
         return App.createPagedResults({
             results: items,
-            metadata: nextPage,
+            metadata: { page: page + 1 },
         });
     }
 
-    // -- Advanced Search --
-    async getSearchTags(): Promise<TagSection[]> {
-        const fetchTags = async (type: string) => {
-            try {
-                const req = App.createRequest({
-                    // /tags/search caps at limit=50 in v1; >50 returns 422.
-                    url: signUrl(`${API_BASE}/tags/search?type=${type}&limit=50`),
-                    method: "GET",
-                });
-                const res = await this.requestManager.schedule(req, 1);
-                if (res.status < 200 || res.status >= 300) return [];
-                const json = JSON.parse(res.data ?? "{}");
-                return Array.isArray(json.result) ? json.result : [];
-            } catch {
-                return [];
-            }
-        };
-
-        const [genres, themes, formats, demographics] = await Promise.all([
-            fetchTags("genre"),
-            fetchTags("tag"),
-            fetchTags("format"),
-            fetchTags("demographic"),
-        ]);
-
-        const sections: TagSection[] = [];
-
-        sections.push(
+    override async getSearchTags(): Promise<TagType[]> {
+        return [
             App.createTagSection({
                 id: "type",
-                label: "Content Type",
-                tags: CONTENT_TYPES.map((x) =>
-                    App.createTag({ id: `type-${x.id}`, label: x.label })
+                label: "Type",
+                tags: CONTENT_TYPES.map((t) =>
+                    App.createTag({ id: t.id, label: t.label })
                 ),
-            })
-        );
-
-        sections.push(
+            }),
             App.createTagSection({
                 id: "order",
-                label: "Order (pick one, default: Best Match)",
-                tags: ORDER_OPTIONS.map((x) =>
-                    App.createTag({ id: `order-${x.id}`, label: x.label })
+                label: "Order By",
+                tags: ORDER_OPTIONS.map((o) =>
+                    App.createTag({ id: o.id, label: o.label })
                 ),
-            })
-        );
-
-        sections.push(
+            }),
             App.createTagSection({
                 id: "status",
                 label: "Status",
-                tags: PUBLICATION_STATUS.map((x) =>
-                    App.createTag({ id: `status-${x.id}`, label: x.label })
+                tags: PUBLICATION_STATUS.map((s) =>
+                    App.createTag({ id: s.id, label: s.label })
                 ),
-            })
-        );
-
-        sections.push(
-            ...this.parser.parseTagSections(genres, themes, formats, demographics)
-        );
-
-        sections.push(
+            }),
             App.createTagSection({
-                id: "mode",
-                label: "Genre Inclusion Mode (default- AND)",
-                tags: [
-                    App.createTag({
-                        id: "logic-mode",
-                        label: "Green=AND | Red=OR",
-                    }),
-                ],
-            })
-        );
-
-        return sections;
+                id: "genre",
+                label: "Genre",
+                tags: [],
+            }),
+            App.createTagSection({
+                id: "theme",
+                label: "Theme",
+                tags: [],
+            }),
+            App.createTagSection({
+                id: "format",
+                label: "Format",
+                tags: [],
+            }),
+            App.createTagSection({
+                id: "demographic",
+                label: "Demographic",
+                tags: [],
+            }),
+        ];
     }
 
-    async getSearchResults(query: SearchRequest, metadata: any): Promise<PagedResults> {
-        const page = metadata?.page ?? 1;
+    override async getSearchResults(
+        query: SearchRequest,
+        metadata: any
+    ): Promise<PagedResults> {
+        const page = metadata?.page || 1;
 
-        const orderTag = (query.includedTags ?? []).find((t: any) =>
-            t.id.startsWith("order-")
-        );
-        const orderKey = orderTag ? orderTag.id.replace("order-", "") : "relevance";
-        
-        let url = `${API_BASE}/manga?order[${orderKey}]=desc&page=${page}&limit=20`;
+        let queryParams = `_=${Date.now()}&title=${encodeURIComponent(query.title || "")}`;
 
-        if (query.title) {
-            url += `&keyword=${encodeURIComponent(normalizeString(query.title)).replace(/%20/g, "+")}`;
+        // Handle type filter
+        const typeTag = query.includedTags?.find((t) => t.id === "type");
+        if (typeTag) {
+            queryParams += `&types=${typeTag.value}`;
         }
 
-        let genresMode = "and";
-        if (query.excludedTags?.some((t: any) => t.id === "logic-mode")) {
-            genresMode = "or";
+        // Handle order
+        const orderTag = query.includedTags?.find((t) => t.id === "order");
+        if (orderTag) {
+            queryParams += `&order_by=${orderTag.value}&order=desc`;
         }
 
-        const allTags = [...(query.includedTags ?? [])].filter(
-            (t: any) => t.id !== "logic-mode" && !t.id.startsWith("order-")
-        );
-        const excludedTags = [...(query.excludedTags ?? [])].filter(
-            (t: any) => t.id !== "logic-mode"
-        );
+        // Handle status
+        const statusTag = query.includedTags?.find((t) => t.id === "status");
+        if (statusTag) {
+            queryParams += `&status=${statusTag.value}`;
+        }
 
-        const genreIds: string[] = [];
-        const typeIds: string[] = [];
-        const statusIds: string[] = [];
-        const demographicIds: string[] = [];
+        // Collect genre, theme, format, demographic tags
+        const genreTags =
+            query.includedTags?.filter((t) => t.id === "genre") || [];
+        const themeTags =
+            query.includedTags?.filter((t) => t.id === "theme") || [];
+        const formatTags =
+            query.includedTags?.filter((t) => t.id === "format") || [];
+        const demographicTags =
+            query.includedTags?.filter((t) => t.id === "demographic") || [];
 
-        for (const tag of allTags) {
-            if (tag.id.startsWith("genre-")) {
-                genreIds.push(tag.id.replace("genre-", ""));
-            } else if (tag.id.startsWith("tag-")) {
-                genreIds.push(tag.id.replace("tag-", ""));
-            } else if (tag.id.startsWith("format-")) {
-                genreIds.push(tag.id.replace("format-", ""));
-            } else if (tag.id.startsWith("demographic-")) {
-                demographicIds.push(tag.id.replace("demographic-", ""));
-            } else if (tag.id.startsWith("type-")) {
-                typeIds.push(tag.id.replace("type-", ""));
-            } else if (tag.id.startsWith("status-")) {
-                statusIds.push(tag.id.replace("status-", ""));
+        const allTermTags = [
+            ...genreTags,
+            ...themeTags,
+            ...formatTags,
+            ...demographicTags,
+        ];
+
+        if (allTermTags.length > 0) {
+            const isAndMode = false;
+            const termIds = allTermTags.map((t) => t.value).join(",");
+            queryParams += `&includes=${termIds}`;
+            if (isAndMode) {
+                queryParams += "&include_all_terms=true";
             }
         }
 
-        for (const id of genreIds) url += `&genres[]=${id}`;
-        for (const id of typeIds) url += `&types[]=${id}`;
-        for (const id of statusIds) url += `&statuses[]=${id}`;
-        for (const id of demographicIds) url += `&demographics[]=${id}`;
+        queryParams += `&page=${page}`;
 
-        if (excludedTags.length > 0) {
-            for (const tag of excludedTags) {
-                if (tag.id.startsWith("genre-") || tag.id.startsWith("tag-")) {
-                    const cleanId = tag.id.replace(/^(genre-|tag-)/, "");
-                    url += `&genres[]=-${cleanId}`;
-                }
-            }
-        }
+        const url = signUrl(`${API_BASE}/v1/titles?${queryParams}`);
 
-        if (
-            genreIds.length > 0 ||
-            excludedTags.some(
-                (t: any) => t.id.startsWith("genre-") || t.id.startsWith("tag-")
-            )
-        ) {
-            url += `&genres_mode=${genresMode}`;
-        }
+        const response = await this.requestManager.schedule(
+            App.createRequest({ url, method: "GET" }),
+            1
+        );
 
-        const request = App.createRequest({ url: signUrl(url), method: "GET" });
-        const response = await this.requestManager.schedule(request, 1);
-        this.checkResponseError(response);
-        const json = JSON.parse(response.data ?? "{}");
+        const data =
+            typeof response.data === "string"
+                ? JSON.parse(response.data)
+                : response.data;
+        this.checkResponseError(data);
 
-        const [maxRating, { filteredTermIds, tagWhitelistMode, tagAndMode, typeFilter }] =
-            await Promise.all([
-                getContentRatingMax(this.stateManager),
-                this.getTagFilterState(),
-            ]);
-
+        const maxRating = await this.settings.getContentRatingMax();
         const items = this.parser.parseMangaList(
-            json.result.items,
-            maxRating,
-            filteredTermIds,
-            tagWhitelistMode,
-            typeFilter,
-            tagAndMode
+            data.data?.titles || [],
+            maxRating
         );
-
-        let nextPage: any = undefined;
-        if (json.result.meta?.lastPage && json.result.meta.lastPage > page) {
-            nextPage = { page: page + 1 };
-        } else if (items.length >= 20) {
-            nextPage = { page: page + 1 };
-        }
 
         return App.createPagedResults({
             results: items,
-            metadata: nextPage,
+            metadata: { page: page + 1 },
         });
     }
 
-    async getCloudflareBypassRequestAsync(): Promise<Request> {
+    override async getCloudflareBypassRequestAsync(): Promise<Request> {
         return App.createRequest({
             url: DOMAIN,
             method: "GET",
-            headers: {
-                Referer: `${DOMAIN}/`,
-                "User-Agent": await this.requestManager.getDefaultUserAgent(),
-            },
         });
     }
 
-    checkResponseError(response: any): void {
-        const data = response.data ?? "";
-        const preview = data.substring(0, 300).replace(/\s+/g, " ");
-        const headers = response.headers ?? {};
-        const ct = headers["Content-Type"] ?? headers["content-type"] ?? "?";
-        const server = headers["Server"] ?? headers["server"] ?? "?";
-        const cfRay = headers["Cf-Ray"] ?? headers["cf-ray"] ?? "?";
-        const reqUrl = response.request?.url ?? "?";
+    private checkResponseError(data: any): void {
+        if (!data.status) {
+            const errorMsg = data.error || data.message || "Unknown error";
+            console.error(`API Error: ${errorMsg}`);
+        }
 
-        if (response.status === 403 || response.status === 503) {
-            console.log(`[checkErr] BLOCKED status=${response.status} ct=${ct} server=${server} cf-ray=${cfRay} url=${reqUrl} preview="${preview}"`);
-            throw new Error("Cloudflare Bypass Required");
+        // Cloudflare detection
+        if (typeof data === "string" && data.includes("Cloudflare")) {
+            console.error("Cloudflare protection detected");
         }
-        if (response.status < 200 || response.status >= 300) {
-            console.log(`[checkErr] HTTP-FAIL status=${response.status} ct=${ct} url=${reqUrl} preview="${preview}"`);
-            throw new Error(`HTTP ${response.status}: Unexpected response from server`);
+    }
+
+    override globalRequestHeaders(): RequestHeaders {
+        return {};
+    }
+
+    override async filterUpdatedMangaFromPagedResults(
+        response: Response,
+        lastFetchDate: Date
+    ): Promise<MangaUpdates> {
+        const items: PartialSourceManga[] = [];
+        for (const item of items) {
+            if (item.chapterUpdatedDate && item.chapterUpdatedDate > lastFetchDate) {
+                items.push(item);
+            }
         }
-        if (data.trimStart().startsWith("<")) {
-            console.log(`[checkErr] HTML-BODY status=${response.status} ct=${ct} server=${server} cf-ray=${cfRay} url=${reqUrl} preview="${preview}"`);
-            throw new Error("Cloudflare Bypass Required");
-        }
+
+        return App.createMangaUpdates({
+            ids: items.map((i) => i.mangaId),
+        });
     }
 }
