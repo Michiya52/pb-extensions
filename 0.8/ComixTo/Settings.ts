@@ -454,11 +454,18 @@ export class Settings {
     }
 
     private async showScanlatorRearrangementUI(): Promise<void> {
-        const uploadersFilter = await this.getUploadersFiltering();
-        const scanlators = uploadersFilter.list || [];
+        let uploadersFilter = await this.getUploadersFiltering();
+        let scanlators = uploadersFilter.list || [];
 
         if (scanlators.length === 0) {
-            return;
+            // Auto-seed scanlators from API
+            scanlators = await this.autoSeedScanlators();
+            if (scanlators.length > 0) {
+                uploadersFilter.list = scanlators;
+                await this.setUploadersFiltering(uploadersFilter);
+            } else {
+                return;
+            }
         }
 
         let rearranged = [...scanlators];
@@ -474,72 +481,116 @@ export class Settings {
                 { id: "___DONE___", label: "✓ Done Rearranging" },
             ];
 
-            const selected = await this.requestManager.awaitUserSelection(
-                App.createSelection({
-                    options: options.map((o) =>
-                        App.createSelectionOptionData({
-                            id: o.id,
-                            label: o.label,
-                        })
-                    ),
-                })
-            );
-
-            if (selected.ids?.includes("___DONE___")) {
-                done = true;
-                uploadersFilter.list = rearranged;
-                await this.setUploadersFiltering(uploadersFilter);
-            } else if (selected.ids?.includes("___ADD___")) {
-                const newScanlator = await this.requestManager.awaitUserInput(
-                    App.createUserInput({
-                        placeholder: "Enter scanlator/uploader name",
+            try {
+                const selected = await this.requestManager.awaitUserSelection(
+                    App.createSelection({
+                        options: options.map((o) =>
+                            App.createSelectionOptionData({
+                                id: o.id,
+                                label: o.label,
+                            })
+                        ),
                     })
                 );
-                if (newScanlator?.text && !rearranged.includes(newScanlator.text)) {
-                    rearranged.push(newScanlator.text);
-                }
-            } else if (selected.ids?.[0]) {
-                const selectedScanlator = selected.ids[0];
-                const currentIndex = rearranged.indexOf(selectedScanlator);
 
-                if (currentIndex >= 0) {
-                    const moveOptions = [
-                        currentIndex > 0
-                            ? { id: "move_up", label: "↑ Move Up" }
-                            : null,
-                        currentIndex < rearranged.length - 1
-                            ? { id: "move_down", label: "↓ Move Down" }
-                            : null,
-                        { id: "remove", label: "✕ Remove" },
-                        { id: "cancel", label: "Cancel" },
-                    ].filter((x) => x !== null);
-
-                    const action = await this.requestManager.awaitUserSelection(
-                        App.createSelection({
-                            options: moveOptions.map((o) =>
-                                App.createSelectionOptionData({
-                                    id: o.id,
-                                    label: o.label,
-                                })
-                            ),
+                if (selected.ids?.includes("___DONE___")) {
+                    done = true;
+                    uploadersFilter.list = rearranged;
+                    await this.setUploadersFiltering(uploadersFilter);
+                } else if (selected.ids?.includes("___ADD___")) {
+                    const newScanlator = await this.requestManager.awaitUserInput(
+                        App.createUserInput({
+                            placeholder: "Enter scanlator/uploader name",
                         })
                     );
+                    if (newScanlator?.text && !rearranged.includes(newScanlator.text)) {
+                        rearranged.push(newScanlator.text);
+                    }
+                } else if (selected.ids?.[0] && !selected.ids[0].startsWith("___")) {
+                    const selectedScanlator = selected.ids[0];
+                    const currentIndex = rearranged.indexOf(selectedScanlator);
 
-                    if (action.ids?.includes("move_up")) {
-                        [rearranged[currentIndex], rearranged[currentIndex - 1]] = [
-                            rearranged[currentIndex - 1],
-                            rearranged[currentIndex],
-                        ];
-                    } else if (action.ids?.includes("move_down")) {
-                        [rearranged[currentIndex], rearranged[currentIndex + 1]] = [
-                            rearranged[currentIndex + 1],
-                            rearranged[currentIndex],
-                        ];
-                    } else if (action.ids?.includes("remove")) {
-                        rearranged.splice(currentIndex, 1);
+                    if (currentIndex >= 0) {
+                        const moveOptions = [
+                            currentIndex > 0
+                                ? { id: "move_up", label: "↑ Move Up" }
+                                : null,
+                            currentIndex < rearranged.length - 1
+                                ? { id: "move_down", label: "↓ Move Down" }
+                                : null,
+                            { id: "remove", label: "✕ Remove" },
+                            { id: "cancel", label: "Cancel" },
+                        ].filter((x) => x !== null);
+
+                        const action = await this.requestManager.awaitUserSelection(
+                            App.createSelection({
+                                options: moveOptions.map((o) =>
+                                    App.createSelectionOptionData({
+                                        id: o.id,
+                                        label: o.label,
+                                    })
+                                ),
+                            })
+                        );
+
+                        if (action.ids?.includes("move_up")) {
+                            [rearranged[currentIndex], rearranged[currentIndex - 1]] = [
+                                rearranged[currentIndex - 1],
+                                rearranged[currentIndex],
+                            ];
+                        } else if (action.ids?.includes("move_down")) {
+                            [rearranged[currentIndex], rearranged[currentIndex + 1]] = [
+                                rearranged[currentIndex + 1],
+                                rearranged[currentIndex],
+                            ];
+                        } else if (action.ids?.includes("remove")) {
+                            rearranged.splice(currentIndex, 1);
+                        }
                     }
                 }
+            } catch (error) {
+                console.error("Error during scanlator rearrangement:", error);
+                break;
             }
+        }
+    }
+
+    private async autoSeedScanlators(): Promise<string[]> {
+        try {
+            // Try to fetch groups/scanlators from the API
+            const url = signUrl(`${API_BASE}/v1/titles?limit=100`);
+            const response = await this.requestManager.schedule(
+                App.createRequest({ url, method: "GET" }),
+                1
+            );
+
+            const data =
+                typeof response.data === "string"
+                    ? JSON.parse(response.data)
+                    : response.data;
+
+            // Extract unique group/scanlator names from titles
+            const scanlators = new Set<string>();
+            
+            if (data.data?.titles) {
+                for (const title of data.data.titles) {
+                    if (title.chapters && Array.isArray(title.chapters)) {
+                        for (const chapter of title.chapters) {
+                            const groupName = chapter.group?.name || chapter.scanlator;
+                            if (groupName && typeof groupName === "string") {
+                                scanlators.add(groupName.trim());
+                            }
+                        }
+                    }
+                    // Limit to avoid timeout
+                    if (scanlators.size >= 20) break;
+                }
+            }
+
+            return Array.from(scanlators).sort();
+        } catch (error) {
+            console.error("Failed to auto-seed scanlators:", error);
+            return [];
         }
     }
 

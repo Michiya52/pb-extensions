@@ -34,6 +34,23 @@ export class ComixTo extends Source {
     private requestManager = createRequestManager({
         requestsPerSecond: 4,
         requestTimeout: 15000,
+        interceptor: {
+            interceptRequest: async (request: Request): Promise<Request> => {
+                request.headers = {
+                    ...request.headers,
+                    "User-Agent":
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                    Accept: "application/json",
+                    "Accept-Language": "en-US,en;q=0.9",
+                    Referer: DOMAIN + "/",
+                    Origin: DOMAIN,
+                };
+                return request;
+            },
+            interceptResponse: async (response: Response): Promise<Response> => {
+                return response;
+            },
+        },
     });
 
     private parser = new Parser();
@@ -176,18 +193,41 @@ export class ComixTo extends Source {
     ): Promise<ChapterDetails> {
         const url = signUrl(`${API_BASE}/v1/chapters/${chapterId}`);
 
-        const response = await this.requestManager.schedule(
-            App.createRequest({ url, method: "GET" }),
-            1
-        );
+        try {
+            const response = await this.requestManager.schedule(
+                App.createRequest({
+                    url,
+                    method: "GET",
+                    headers: {
+                        "User-Agent":
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                        Accept: "application/json",
+                        Referer: DOMAIN + "/",
+                    },
+                }),
+                1
+            );
 
-        const data =
-            typeof response.data === "string"
-                ? JSON.parse(response.data)
-                : response.data;
-        this.checkResponseError(data);
+            this.checkResponseError(response);
 
-        return this.parser.parseChapterDetails(data.data, mangaId, chapterId);
+            let data = response.data;
+            if (typeof data === "string") {
+                try {
+                    data = JSON.parse(data);
+                } catch {
+                    throw new Error("Failed to parse response JSON");
+                }
+            }
+
+            if (!data || !data.data) {
+                throw new Error("Invalid chapter data returned from API");
+            }
+
+            return this.parser.parseChapterDetails(data.data, mangaId, chapterId);
+        } catch (error) {
+            console.error(`Error fetching chapter ${chapterId}:`, error);
+            throw error;
+        }
     }
 
     override async getHomePageSections(
@@ -436,18 +476,38 @@ export class ComixTo extends Source {
         return App.createRequest({
             url: DOMAIN,
             method: "GET",
+            headers: {
+                "User-Agent":
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                Accept: "*/*",
+                Referer: DOMAIN + "/",
+            },
         });
     }
 
-    private checkResponseError(data: any): void {
-        if (!data.status) {
-            const errorMsg = data.error || data.message || "Unknown error";
-            console.error(`API Error: ${errorMsg}`);
+    private checkResponseError(response: any): void {
+        // Check for HTTP error status
+        if (response.status && response.status >= 400) {
+            throw new Error(`HTTP Error ${response.status}: ${response.statusText || "Unknown error"}`);
         }
 
-        // Cloudflare detection
-        if (typeof data === "string" && data.includes("Cloudflare")) {
-            console.error("Cloudflare protection detected");
+        // Check for Cloudflare protection in response
+        const responseData = typeof response.data === "string" ? response.data : "";
+        if (responseData.includes("Cloudflare") || responseData.includes("cf-error")) {
+            throw new Error(
+                "Cloudflare protection detected. The extension requires Cloudflare bypass."
+            );
+        }
+
+        // Check for blocked response
+        if (response.status === 403) {
+            throw new Error("Access denied by server (403). Possible Cloudflare challenge.");
+        }
+
+        if (response.status === 503) {
+            throw new Error(
+                "Service temporarily unavailable (503). Server may be under maintenance or Cloudflare is active."
+            );
         }
     }
 
