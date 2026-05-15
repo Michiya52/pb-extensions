@@ -823,7 +823,7 @@ var _Sources = (() => {
         })
       });
     }
-    parseChapters(data, isFiltering, isWhitelist, isStrict, savedGroups, showTitle = true, oneVersionOnly = false, showUploader = true, removeDuplicates = true, priorityGroups = savedGroups) {
+    parseChapters(data, isFiltering, isWhitelist, isStrict, savedGroups, showTitle = true, oneVersionOnly = false, showUploader = true, removeDuplicates = true, priorityGroups = savedGroups, debugShowPriority = false) {
       const rawChapters = [];
       for (const chap of data) {
         rawChapters.push({
@@ -844,6 +844,18 @@ var _Sources = (() => {
       }, {});
       const finalChapters = [];
       const uploaderList = (priorityGroups ?? []).map((u) => normalizeString(u).toLowerCase());
+      const getPriorityIndex = (groupName) => {
+        const normalized = normalizeString(groupName || "").toLowerCase();
+        for (let i = 0; i < uploaderList.length; i++) {
+          const u = uploaderList[i];
+          if (isStrict) {
+            if (normalized === u) return i;
+          } else {
+            if (normalized.includes(u)) return i;
+          }
+        }
+        return 9999;
+      };
       try {
         console.log("[ComixTo] parseChapters: uploaderList:", uploaderList.slice(0, 20));
       } catch (e) {
@@ -875,12 +887,8 @@ var _Sources = (() => {
           }
         }
         filtered.sort((a, b) => {
-          const aName = normalizeString(a.group || "").toLowerCase();
-          const bName = normalizeString(b.group || "").toLowerCase();
-          let aIdx = uploaderList.findIndex((u) => isStrict ? aName === u : aName.includes(u));
-          let bIdx = uploaderList.findIndex((u) => isStrict ? bName === u : bName.includes(u));
-          if (aIdx === -1) aIdx = 9999;
-          if (bIdx === -1) bIdx = 9999;
+          const aIdx = getPriorityIndex(a.group || "");
+          const bIdx = getPriorityIndex(b.group || "");
           return aIdx - bIdx;
         });
         if (removeDuplicates && filtered.length > 1) {
@@ -900,7 +908,11 @@ var _Sources = (() => {
         }
         for (const chap of filtered) {
           const groupTag = showUploader && chap.group ? ` [${chap.group}]` : "";
-          const displayName = showTitle && chap.name ? `${chap.name}${groupTag}` : `Chapter ${chap.chapNum}${groupTag}`;
+          let displayName = showTitle && chap.name ? `${chap.name}${groupTag}` : `Chapter ${chap.chapNum}${groupTag}`;
+          if (debugShowPriority) {
+            const pIdx = getPriorityIndex(chap.group || "");
+            displayName = `${displayName} [P:${pIdx === 9999 ? "-" : pIdx}]`;
+          }
           finalChapters.push(
             App.createChapter({
               id: chap.id,
@@ -918,15 +930,11 @@ var _Sources = (() => {
       // Ensure deterministic ordering:
       // 1) Primary: chapter number (sortingIndex) descending (newest first)
       // 2) Secondary: uploader priority as defined by uploaderList (lower index = higher priority)
-      const priorityMap = new Map();
-      uploaderList.forEach((u, idx) => priorityMap.set(u, idx));
       finalChapters.sort((a, b) => {
         // numeric compare, descending
         if (b.sortingIndex !== a.sortingIndex) return Number(b.sortingIndex) - Number(a.sortingIndex);
-        const aU = normalizeString(a.group || "").toLowerCase();
-        const bU = normalizeString(b.group || "").toLowerCase();
-        const aIdx = priorityMap.has(aU) ? priorityMap.get(aU) : 9999;
-        const bIdx = priorityMap.has(bU) ? priorityMap.get(bU) : 9999;
+        const aIdx = getPriorityIndex(a.group || "");
+        const bIdx = getPriorityIndex(b.group || "");
         return aIdx - bIdx;
       });
       try {
@@ -1926,6 +1934,9 @@ var _Sources = (() => {
     const legacy = await stateManager.retrieve("removeDuplicates");
     return legacy ?? true;
   };
+  var getDebugMode = async (stateManager) => {
+    return await stateManager.retrieve("debug_mode") ?? false;
+  };
   var autoSeedUploadersFromChapters = async (stateManager, chapters) => {
     const existing = await getUploaders(stateManager);
     const existingSet = new Set(existing.map((g) => normalizeString(String(g)).toLowerCase()));
@@ -2144,6 +2155,23 @@ var _Sources = (() => {
                   value: App.createDUIBinding({
                     get: async () => await getRemoveDuplicates(stateManager),
                     set: async (newValue) => await stateManager.store("remove_duplicates", newValue)
+                  })
+                }),
+                App.createDUISwitch({
+                  id: "debug_mode",
+                  label: "Debug Mode (shows P:# priority in chapters)",
+                  value: App.createDUIBinding({
+                    get: async () => await getDebugMode(stateManager),
+                    set: async (newValue) => await stateManager.store("debug_mode", newValue)
+                  })
+                })
+                ,
+                App.createDUISwitch({
+                  id: "debug_show_priority",
+                  label: "Show Debug Priority In Chapter Name",
+                  value: App.createDUIBinding({
+                    get: async () => await stateManager.retrieve("debug_show_priority") ?? false,
+                    set: async (newValue) => await stateManager.store("debug_show_priority", newValue)
                   })
                 })
               ])
@@ -2471,7 +2499,7 @@ var _Sources = (() => {
       try {
         console.log("[ComixTo] getChapters: rawItems", chapters.length);
       } catch (e) {}
-      const [isFiltering, isWhitelist, isStrict, savedGroups, selectedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates] = await Promise.all([
+      const [isFiltering, isWhitelist, isStrict, savedGroups, selectedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates, debugMode] = await Promise.all([
         getUploadersFiltering(this.stateManager),
         getUploadersWhitelisted(this.stateManager),
         getStrictNameMatching(this.stateManager),
@@ -2480,13 +2508,14 @@ var _Sources = (() => {
         getShowTitle(this.stateManager),
         getOneVersionOnly(this.stateManager),
         getShowUploader(this.stateManager),
-        getRemoveDuplicates(this.stateManager)
+        getRemoveDuplicates(this.stateManager),
+        getDebugMode(this.stateManager)
       ]);
       const preferredGroups = Array.isArray(selectedGroups) && selectedGroups.length > 0 ? selectedGroups : savedGroups;
       try {
-        console.log("[ComixTo] getChapters: preferredGroups", (preferredGroups||[]).slice(0,20));
+        console.log("[ComixTo] getChapters: preferredGroups", (preferredGroups||[]).slice(0,20), "debugMode:", debugMode);
       } catch (e) {}
-      return this.parser.parseChapters(chapters, isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates, preferredGroups);
+      return this.parser.parseChapters(chapters, isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates, preferredGroups, debugMode);
     }
     async getChapterDetails(mangaId, chapterId) {
       const result = await fetchSigned(
