@@ -823,7 +823,7 @@ var _Sources = (() => {
         })
       });
     }
-    parseChapters(data, isFiltering, isWhitelist, isStrict, savedGroups, showTitle = true, oneVersionOnly = false, showUploader = true, removeDuplicates = true) {
+    parseChapters(data, isFiltering, isWhitelist, isStrict, savedGroups, showTitle = true, oneVersionOnly = false, showUploader = true, removeDuplicates = true, priorityGroups = savedGroups) {
       const rawChapters = [];
       for (const chap of data) {
         rawChapters.push({
@@ -843,7 +843,7 @@ var _Sources = (() => {
         return acc;
       }, {});
       const finalChapters = [];
-      const uploaderList = (savedGroups ?? []).map((u) => normalizeString(u).toLowerCase());
+      const uploaderList = (priorityGroups ?? []).map((u) => normalizeString(u).toLowerCase());
       for (const chapNum in grouped) {
         const variants = grouped[chapNum];
         let filtered = [...variants];
@@ -1845,34 +1845,84 @@ var _Sources = (() => {
     return val ?? ["30"];
   };
   var getUploadersFiltering = async (stateManager) => {
-    return await stateManager.retrieve("uploaders_toggled") ?? false;
+    const current = await stateManager.retrieve("uploaders_toggled");
+    if (typeof current === "boolean") return current;
+    const legacy = await stateManager.retrieve("uploadersFiltering");
+    return legacy?.enabled ?? false;
   };
   var getUploadersWhitelisted = async (stateManager) => {
-    return await stateManager.retrieve("uploaders_whitelisted") ?? false;
+    const current = await stateManager.retrieve("uploaders_whitelisted");
+    if (typeof current === "boolean") return current;
+    const legacy = await stateManager.retrieve("uploadersFiltering");
+    return legacy?.whitelist ?? false;
   };
   var getStrictNameMatching = async (stateManager) => {
-    return await stateManager.retrieve("strict_name_matching") ?? false;
+    const current = await stateManager.retrieve("strict_name_matching");
+    if (typeof current === "boolean") return current;
+    const legacy = await stateManager.retrieve("uploadersFiltering");
+    return legacy?.strict ?? false;
   };
   var getUploaders = async (stateManager) => {
-    return await stateManager.retrieve("uploaders") ?? [];
+    const current = await stateManager.retrieve("uploaders");
+    if (Array.isArray(current) && current.length > 0) return current;
+    const legacy = await stateManager.retrieve("uploadersFiltering");
+    const legacyList = Array.isArray(legacy?.list) ? legacy.list : [];
+    if (legacyList.length > 0 && (!Array.isArray(current) || current.length === 0)) {
+      await stateManager.store("uploaders", legacyList);
+    }
+    return Array.isArray(current) ? current : legacyList;
   };
   var getUploaderInput = async (stateManager) => {
     return await stateManager.retrieve("uploader_input") ?? "";
   };
   var getSelectedUploaders = async (stateManager) => {
-    return await stateManager.retrieve("uploaders_selected") ?? [];
+    const selected = await stateManager.retrieve("uploaders_selected");
+    if (Array.isArray(selected)) return selected;
+    return [];
   };
   var getShowTitle = async (stateManager) => {
-    return await stateManager.retrieve("show_title") ?? true;
+    const current = await stateManager.retrieve("show_title");
+    if (typeof current === "boolean") return current;
+    const legacy = await stateManager.retrieve("showTitle");
+    return legacy ?? true;
   };
   var getShowUploader = async (stateManager) => {
-    return await stateManager.retrieve("show_uploader") ?? true;
+    const current = await stateManager.retrieve("show_uploader");
+    if (typeof current === "boolean") return current;
+    const legacy = await stateManager.retrieve("showUploader");
+    return legacy ?? true;
   };
   var getOneVersionOnly = async (stateManager) => {
-    return await stateManager.retrieve("one_version_only") ?? false;
+    const current = await stateManager.retrieve("one_version_only");
+    if (typeof current === "boolean") return current;
+    const legacy = await stateManager.retrieve("oneVersionOnly");
+    return legacy ?? false;
   };
   var getRemoveDuplicates = async (stateManager) => {
-    return await stateManager.retrieve("remove_duplicates") ?? true;
+    const current = await stateManager.retrieve("remove_duplicates");
+    if (typeof current === "boolean") return current;
+    const legacy = await stateManager.retrieve("removeDuplicates");
+    return legacy ?? true;
+  };
+  var autoSeedUploadersFromChapters = async (stateManager, chapters) => {
+    const existing = await getUploaders(stateManager);
+    const existingSet = new Set(existing.map((g) => normalizeString(String(g)).toLowerCase()));
+    const seeded = [...existing];
+    for (const chap of chapters) {
+      const group = chap?.group?.name;
+      if (!group || typeof group !== "string") continue;
+      const normalized = normalizeString(group).toLowerCase();
+      if (!normalized || existingSet.has(normalized)) continue;
+      existingSet.add(normalized);
+      seeded.push(group);
+    }
+    if (seeded.length !== existing.length) {
+      await stateManager.store("uploaders", seeded);
+      const selected = await getSelectedUploaders(stateManager);
+      if (!Array.isArray(selected) || selected.length === 0) {
+        await stateManager.store("uploaders_selected", seeded);
+      }
+    }
   };
   var contentSettings = (stateManager) => {
     return keepAlive(App.createDUINavigationButton({
@@ -2395,17 +2445,20 @@ var _Sources = (() => {
         ...firstResult.items,
         ...restResults.flatMap((r) => r.items)
       ];
-      const [isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates] = await Promise.all([
+      await autoSeedUploadersFromChapters(this.stateManager, chapters);
+      const [isFiltering, isWhitelist, isStrict, savedGroups, selectedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates] = await Promise.all([
         getUploadersFiltering(this.stateManager),
         getUploadersWhitelisted(this.stateManager),
         getStrictNameMatching(this.stateManager),
         getUploaders(this.stateManager),
+        getSelectedUploaders(this.stateManager),
         getShowTitle(this.stateManager),
         getOneVersionOnly(this.stateManager),
         getShowUploader(this.stateManager),
         getRemoveDuplicates(this.stateManager)
       ]);
-      return this.parser.parseChapters(chapters, isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates);
+      const preferredGroups = Array.isArray(selectedGroups) && selectedGroups.length > 0 ? selectedGroups : savedGroups;
+      return this.parser.parseChapters(chapters, isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates, preferredGroups);
     }
     async getChapterDetails(mangaId, chapterId) {
       const result = await fetchSigned(
