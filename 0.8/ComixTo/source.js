@@ -844,6 +844,11 @@ var _Sources = (() => {
       }, {});
       const finalChapters = [];
       const uploaderList = (priorityGroups ?? []).map((u) => normalizeString(u).toLowerCase());
+      try {
+        console.log("[ComixTo] parseChapters: uploaderList:", uploaderList.slice(0, 20));
+      } catch (e) {
+        // ignore logging errors
+      }
       for (const chapNum in grouped) {
         const variants = grouped[chapNum];
         let filtered = [...variants];
@@ -924,6 +929,9 @@ var _Sources = (() => {
         const bIdx = priorityMap.has(bU) ? priorityMap.get(bU) : 9999;
         return aIdx - bIdx;
       });
+      try {
+        console.log("[ComixTo] parseChapters: finalChapters count", finalChapters.length, "sample:", finalChapters.slice(0, 8).map(c=>({chap:c.chapNum,grp:c.group}))); 
+      } catch (e) {}
       return finalChapters;
     }
     parseChapterDetails(data, mangaId, chapterId) {
@@ -2460,6 +2468,9 @@ var _Sources = (() => {
         ...restResults.flatMap((r) => r.items)
       ];
       await autoSeedUploadersFromChapters(this.stateManager, chapters);
+      try {
+        console.log("[ComixTo] getChapters: rawItems", chapters.length);
+      } catch (e) {}
       const [isFiltering, isWhitelist, isStrict, savedGroups, selectedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates] = await Promise.all([
         getUploadersFiltering(this.stateManager),
         getUploadersWhitelisted(this.stateManager),
@@ -2472,6 +2483,9 @@ var _Sources = (() => {
         getRemoveDuplicates(this.stateManager)
       ]);
       const preferredGroups = Array.isArray(selectedGroups) && selectedGroups.length > 0 ? selectedGroups : savedGroups;
+      try {
+        console.log("[ComixTo] getChapters: preferredGroups", (preferredGroups||[]).slice(0,20));
+      } catch (e) {}
       return this.parser.parseChapters(chapters, isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates, preferredGroups);
     }
     async getChapterDetails(mangaId, chapterId) {
