@@ -858,52 +858,68 @@ var _Sources = (() => {
         }
         return 9999;
       };
-      for (const chapNum in grouped) {
-        const variants = grouped[chapNum];
-        let filtered = [...variants];
-        if (isFiltering && savedGroups && savedGroups.length > 0) {
-          if (!isWhitelist) {
-            filtered = filtered.filter((v) => {
-              const normalizedGroup = normalizeString(v.group || "").toLowerCase();
-              const isMatched = savedGroups.some((item) => {
-                const normalizedItem = normalizeString(item).toLowerCase();
-                return isStrict ? normalizedGroup === normalizedItem : normalizedGroup.includes(normalizedItem);
+      // When oneVersionOnly is on, use "sticky scanlator" logic:
+      // Process chapters in ascending order. Stick with the active scanlator
+      // as long as they have chapters. When they don't, switch to the best
+      // available scanlator and stay with that one going forward.
+      if (oneVersionOnly) {
+        const chapNums = Object.keys(grouped).sort((a, b) => Number(a) - Number(b));
+        let activeGroup = null; // currently sticky scanlator (normalized)
+
+        for (const chapNum of chapNums) {
+          const variants = grouped[chapNum];
+          let filtered = [...variants];
+
+          // Apply blacklist/whitelist filtering
+          if (isFiltering && savedGroups && savedGroups.length > 0) {
+            if (!isWhitelist) {
+              filtered = filtered.filter((v) => {
+                const normalizedGroup = normalizeString(v.group || "").toLowerCase();
+                const isMatched = savedGroups.some((item) => {
+                  const normalizedItem = normalizeString(item).toLowerCase();
+                  return isStrict ? normalizedGroup === normalizedItem : normalizedGroup.includes(normalizedItem);
+                });
+                return !isMatched;
               });
-              return !isMatched;
-            });
-          }
-          if (isWhitelist && filtered.length > 0) {
-            const whitelisted = filtered.filter((v) => {
-              const normalizedGroup = normalizeString(v.group || "").toLowerCase();
-              return savedGroups.some((item) => {
-                const normalizedItem = normalizeString(item).toLowerCase();
-                return isStrict ? normalizedGroup === normalizedItem : normalizedGroup.includes(normalizedItem);
+            }
+            if (isWhitelist && filtered.length > 0) {
+              const whitelisted = filtered.filter((v) => {
+                const normalizedGroup = normalizeString(v.group || "").toLowerCase();
+                return savedGroups.some((item) => {
+                  const normalizedItem = normalizeString(item).toLowerCase();
+                  return isStrict ? normalizedGroup === normalizedItem : normalizedGroup.includes(normalizedItem);
+                });
               });
-            });
-            if (whitelisted.length > 0) filtered = whitelisted;
-          }
-        }
-        filtered.sort((a, b) => {
-          const aIdx = getPriorityIndex(a.group || "");
-          const bIdx = getPriorityIndex(b.group || "");
-          return aIdx - bIdx;
-        });
-        if (removeDuplicates && filtered.length > 1) {
-          const unique = [];
-          const seen = new Set();
-          for (const chap of filtered) {
-            const key = `${chap.chapNum}-${chap.langCode}`;
-            if (!seen.has(key)) {
-              seen.add(key);
-              unique.push(chap);
+              if (whitelisted.length > 0) filtered = whitelisted;
             }
           }
-          filtered = unique;
-        }
-        if (oneVersionOnly && filtered.length > 1) {
-          filtered = [filtered[0]];
-        }
-        for (const chap of filtered) {
+
+          if (filtered.length === 0) continue;
+
+          // Sort by priority
+          filtered.sort((a, b) => {
+            const aIdx = getPriorityIndex(a.group || "");
+            const bIdx = getPriorityIndex(b.group || "");
+            return aIdx - bIdx;
+          });
+
+          // Sticky scanlator selection
+          let chosen = null;
+          if (activeGroup) {
+            // Try to stick with the current active scanlator
+            chosen = filtered.find((v) => {
+              const norm = normalizeString(v.group || "").toLowerCase();
+              if (isStrict) return norm === activeGroup;
+              return norm.includes(activeGroup) || activeGroup.includes(norm);
+            });
+          }
+          if (!chosen) {
+            // Active scanlator doesn't have this chapter — switch to best available
+            chosen = filtered[0];
+            activeGroup = normalizeString(chosen.group || "").toLowerCase();
+          }
+
+          const chap = chosen;
           const groupTag = showUploader && chap.group ? ` [${chap.group}]` : "";
           let displayName = showTitle && chap.name ? `${chap.name}${groupTag}` : `Chapter ${chap.chapNum}${groupTag}`;
           const pIdx = getPriorityIndex(chap.group || "");
@@ -922,6 +938,71 @@ var _Sources = (() => {
               sortingIndex: chap.sortingIndex
             })
           );
+        }
+      } else {
+        // Original per-chapter-number logic (no sticky behavior)
+        for (const chapNum in grouped) {
+          const variants = grouped[chapNum];
+          let filtered = [...variants];
+          if (isFiltering && savedGroups && savedGroups.length > 0) {
+            if (!isWhitelist) {
+              filtered = filtered.filter((v) => {
+                const normalizedGroup = normalizeString(v.group || "").toLowerCase();
+                const isMatched = savedGroups.some((item) => {
+                  const normalizedItem = normalizeString(item).toLowerCase();
+                  return isStrict ? normalizedGroup === normalizedItem : normalizedGroup.includes(normalizedItem);
+                });
+                return !isMatched;
+              });
+            }
+            if (isWhitelist && filtered.length > 0) {
+              const whitelisted = filtered.filter((v) => {
+                const normalizedGroup = normalizeString(v.group || "").toLowerCase();
+                return savedGroups.some((item) => {
+                  const normalizedItem = normalizeString(item).toLowerCase();
+                  return isStrict ? normalizedGroup === normalizedItem : normalizedGroup.includes(normalizedItem);
+                });
+              });
+              if (whitelisted.length > 0) filtered = whitelisted;
+            }
+          }
+          filtered.sort((a, b) => {
+            const aIdx = getPriorityIndex(a.group || "");
+            const bIdx = getPriorityIndex(b.group || "");
+            return aIdx - bIdx;
+          });
+          if (removeDuplicates && filtered.length > 1) {
+            const unique = [];
+            const seen = new Set();
+            for (const chap of filtered) {
+              const key = `${chap.chapNum}-${chap.langCode}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                unique.push(chap);
+              }
+            }
+            filtered = unique;
+          }
+          for (const chap of filtered) {
+            const groupTag = showUploader && chap.group ? ` [${chap.group}]` : "";
+            let displayName = showTitle && chap.name ? `${chap.name}${groupTag}` : `Chapter ${chap.chapNum}${groupTag}`;
+            const pIdx = getPriorityIndex(chap.group || "");
+            if (debugShowPriority && pIdx !== 9999) {
+              displayName = `${displayName} (P:${pIdx})`;
+            }
+            finalChapters.push(
+              App.createChapter({
+                id: chap.id,
+                chapNum: chap.chapNum,
+                name: displayName,
+                langCode: chap.langCode,
+                volume: chap.volume,
+                group: chap.group,
+                time: chap.time,
+                sortingIndex: chap.sortingIndex
+              })
+            );
+          }
         }
       }
       // Ensure deterministic ordering:
