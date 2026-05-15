@@ -2228,7 +2228,7 @@ var _Sources = (() => {
                   }),
                   App.createDUINavigationButton({
                     id: "rearrange_uploaders",
-                    label: "Rearrange Preferred Scanlators",
+                    label: "✎ Edit Preferred Scanlators",
                     form: App.createDUIForm({
                       sections: async () => {
                         const uploadersFilter = await stateManager.retrieve("uploadersFiltering") || { list: [] };
@@ -2236,81 +2236,113 @@ var _Sources = (() => {
                         const existing = await getUploaders(stateManager);
                         if (scanlators.length === 0 && existing.length > 0) scanlators = [...existing];
 
-                        return keepAlive([
-                          App.createDUISection({
-                            id: "rearrange_header",
-                            header: "Rearrange Preferred Scanlators",
-                            footer: "Tap an item to move or remove it. Use Add Group to add new entries.",
+                        // Helper to persist current order
+                        const persistOrder = async () => {
+                          uploadersFilter.list = scanlators;
+                          await stateManager.store("uploadersFiltering", uploadersFilter);
+                          await stateManager.store("uploaders", scanlators);
+                          await appendDevLog(stateManager, `Saved rearranged uploaders: ${JSON.stringify(scanlators)}`);
+                        };
+
+                        // Build one section per scanlator: name label + action row
+                        const sections = [];
+
+                        // Header section with instructions
+                        sections.push(App.createDUISection({
+                          id: "rearrange_info",
+                          header: "Edit Preferred Scanlators",
+                          footer: "Use ≡↑ and ≡↓ to reorder. Use 🗑 Delete to remove. Priority goes from top (#1) to bottom.",
+                          isHidden: false,
+                          rows: async () => keepAlive([])
+                        }));
+
+                        // Each scanlator gets its own section for visual separation
+                        for (let i = 0; i < scanlators.length; i++) {
+                          const name = scanlators[i];
+                          const idx = i; // capture for closure
+                          sections.push(App.createDUISection({
+                            id: `scanlator_section_${i}`,
+                            header: `#${i + 1}  ${name}`,
                             isHidden: false,
                             rows: async () => {
-                              const rows = [];
-                              // list current scanlators as buttons
-                              for (let i = 0; i < scanlators.length; i++) {
-                                const name = scanlators[i];
-                                rows.push(App.createDUIButton({
-                                  id: `rearrange_item_${i}`,
-                                  label: `${i + 1}. ${name}`,
+                              const actionRows = [];
+
+                              // Move Up button (≡↑)
+                              if (idx > 0) {
+                                actionRows.push(App.createDUIButton({
+                                  id: `move_up_${idx}`,
+                                  label: "≡↑  Move Up",
                                   onTap: async () => {
-                                    const moveOptions = [];
-                                    if (i > 0) moveOptions.push({ id: "move_up", label: "↑ Move Up" });
-                                    if (i < scanlators.length - 1) moveOptions.push({ id: "move_down", label: "↓ Move Down" });
-                                    moveOptions.push({ id: "remove", label: "✕ Remove" });
-                                    moveOptions.push({ id: "cancel", label: "Cancel" });
-
-                                    const action = await requestManager.awaitUserSelection(App.createSelection({
-                                      options: moveOptions.map((o) => App.createSelectionOptionData({ id: o.id, label: o.label }))
-                                    }));
-
-                                    if (action.ids?.includes("move_up")) {
-                                      const tmp = scanlators[i - 1];
-                                      scanlators[i - 1] = scanlators[i];
-                                      scanlators[i] = tmp;
-                                    } else if (action.ids?.includes("move_down")) {
-                                      const tmp = scanlators[i + 1];
-                                      scanlators[i + 1] = scanlators[i];
-                                      scanlators[i] = tmp;
-                                    } else if (action.ids?.includes("remove")) {
-                                      scanlators.splice(i, 1);
-                                    }
-
-                                    // persist after each change
-                                    uploadersFilter.list = scanlators;
-                                    await stateManager.store("uploadersFiltering", uploadersFilter);
-                                    await appendDevLog(stateManager, `Saved rearranged uploaders: ${JSON.stringify(scanlators)}`);
+                                    const tmp = scanlators[idx - 1];
+                                    scanlators[idx - 1] = scanlators[idx];
+                                    scanlators[idx] = tmp;
+                                    await persistOrder();
                                   }
                                 }));
                               }
 
-                              // Add Group button
-                              rows.push(App.createDUIButton({
-                                id: "rearrange_add",
-                                label: "Add Group",
-                                onTap: async () => {
-                                  const newScanlator = await requestManager.awaitUserInput(App.createUserInput({ placeholder: "Enter scanlator/uploader name" }));
-                                  if (newScanlator?.text && !scanlators.includes(newScanlator.text)) {
-                                    scanlators.push(newScanlator.text);
-                                    uploadersFilter.list = scanlators;
-                                    await stateManager.store("uploadersFiltering", uploadersFilter);
-                                    await appendDevLog(stateManager, `Added uploader: ${newScanlator.text}`);
+                              // Move Down button (≡↓)
+                              if (idx < scanlators.length - 1) {
+                                actionRows.push(App.createDUIButton({
+                                  id: `move_down_${idx}`,
+                                  label: "≡↓  Move Down",
+                                  onTap: async () => {
+                                    const tmp = scanlators[idx + 1];
+                                    scanlators[idx + 1] = scanlators[idx];
+                                    scanlators[idx] = tmp;
+                                    await persistOrder();
                                   }
-                                }
-                              }));
+                                }));
+                              }
 
-                              // Done button (just saves and returns)
-                              rows.push(App.createDUIButton({
-                                id: "rearrange_done",
-                                label: "Done",
+                              // Delete button (🗑)
+                              actionRows.push(App.createDUIButton({
+                                id: `delete_${idx}`,
+                                label: "🗑  Delete",
                                 onTap: async () => {
-                                  uploadersFilter.list = scanlators;
-                                  await stateManager.store("uploadersFiltering", uploadersFilter);
-                                  await appendDevLog(stateManager, `Finalized rearranged uploaders: ${JSON.stringify(scanlators)}`);
+                                  scanlators.splice(idx, 1);
+                                  await persistOrder();
+                                  // Also remove from selected uploaders
+                                  const selectedList = await getSelectedUploaders(stateManager);
+                                  const newSelected = selectedList.filter((s) => s !== name);
+                                  await stateManager.store("uploaders_selected", newSelected);
                                 }
                               }));
 
-                              return keepAlive(rows);
+                              return keepAlive(actionRows);
                             }
-                          })
-                        ]);
+                          }));
+                        }
+
+                        // Bottom section: Add Group + Save & Done
+                        sections.push(App.createDUISection({
+                          id: "rearrange_actions",
+                          header: "Actions",
+                          isHidden: false,
+                          rows: async () => keepAlive([
+                            App.createDUIButton({
+                              id: "rearrange_add",
+                              label: "+ Add Group",
+                              onTap: async () => {
+                                const newScanlator = await requestManager.awaitUserInput(App.createUserInput({ placeholder: "Enter scanlator/uploader name" }));
+                                if (newScanlator?.text && !scanlators.includes(newScanlator.text)) {
+                                  scanlators.push(newScanlator.text);
+                                  await persistOrder();
+                                }
+                              }
+                            }),
+                            App.createDUIButton({
+                              id: "rearrange_done",
+                              label: "✓ Save & Done",
+                              onTap: async () => {
+                                await persistOrder();
+                                await appendDevLog(stateManager, `Finalized rearranged uploaders: ${JSON.stringify(scanlators)}`);
+                              }
+                            })
+                          ])
+                        }));
+
+                        return keepAlive(sections);
                       }
                     })
                   })

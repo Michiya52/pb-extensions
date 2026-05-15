@@ -288,7 +288,7 @@ export class Settings {
                         rows: async () => [
                             App.createButton({
                                 id: "rearrangeScanlators",
-                                label: "Rearrange Preferred Scanlators",
+                                label: "✎ Edit Preferred Scanlators",
                                 onTap: async () => {
                                     await this.showScanlatorRearrangementUI();
                                 },
@@ -387,7 +387,7 @@ export class Settings {
                     }),
                     App.createSection({
                         id: "themes",
-                        label: "Themes",
+                        label: "Select Themes",
                         rows: async () => [
                             App.createMultiSelect({
                                 id: "themeSelect",
@@ -408,7 +408,7 @@ export class Settings {
                     }),
                     App.createSection({
                         id: "formats",
-                        label: "Formats",
+                        label: "Select Formats",
                         rows: async () => [
                             App.createMultiSelect({
                                 id: "formatSelect",
@@ -429,7 +429,7 @@ export class Settings {
                     }),
                     App.createSection({
                         id: "demographics",
-                        label: "Demographics",
+                        label: "Select Demographics",
                         rows: async () => [
                             App.createMultiSelect({
                                 id: "demographicSelect",
@@ -458,7 +458,6 @@ export class Settings {
         let scanlators = uploadersFilter.list || [];
 
         if (scanlators.length === 0) {
-            // Auto-seed scanlators from API
             scanlators = await this.autoSeedScanlators();
             if (scanlators.length > 0) {
                 uploadersFilter.list = scanlators;
@@ -469,16 +468,22 @@ export class Settings {
         }
 
         let rearranged = [...scanlators];
+
+        const persistOrder = async () => {
+            uploadersFilter.list = rearranged;
+            await this.setUploadersFiltering(uploadersFilter);
+        };
+
         let done = false;
 
         while (!done) {
             const options = [
                 ...rearranged.map((s, idx) => ({
                     id: s,
-                    label: `${idx + 1}. ${s}`,
+                    label: `#${idx + 1}  ${s}`,
                 })),
-                { id: "___ADD___", label: "+ Add Scanlator" },
-                { id: "___DONE___", label: "✓ Done Rearranging" },
+                { id: "___ADD___", label: "+ Add Group" },
+                { id: "___DONE___", label: "✓ Save & Done" },
             ];
 
             try {
@@ -495,8 +500,7 @@ export class Settings {
 
                 if (selected.ids?.includes("___DONE___")) {
                     done = true;
-                    uploadersFilter.list = rearranged;
-                    await this.setUploadersFiltering(uploadersFilter);
+                    await persistOrder();
                 } else if (selected.ids?.includes("___ADD___")) {
                     const newScanlator = await this.requestManager.awaitUserInput(
                         App.createUserInput({
@@ -505,6 +509,7 @@ export class Settings {
                     );
                     if (newScanlator?.text && !rearranged.includes(newScanlator.text)) {
                         rearranged.push(newScanlator.text);
+                        await persistOrder();
                     }
                 } else if (selected.ids?.[0] && !selected.ids[0].startsWith("___")) {
                     const selectedScanlator = selected.ids[0];
@@ -513,12 +518,12 @@ export class Settings {
                     if (currentIndex >= 0) {
                         const moveOptions = [
                             currentIndex > 0
-                                ? { id: "move_up", label: "↑ Move Up" }
+                                ? { id: "move_up", label: "≡↑  Move Up" }
                                 : null,
                             currentIndex < rearranged.length - 1
-                                ? { id: "move_down", label: "↓ Move Down" }
+                                ? { id: "move_down", label: "≡↓  Move Down" }
                                 : null,
-                            { id: "remove", label: "✕ Remove" },
+                            { id: "remove", label: "🗑  Delete" },
                             { id: "cancel", label: "Cancel" },
                         ].filter((x) => x !== null);
 
@@ -546,6 +551,8 @@ export class Settings {
                         } else if (action.ids?.includes("remove")) {
                             rearranged.splice(currentIndex, 1);
                         }
+
+                        await persistOrder();
                     }
                 }
             } catch (error) {
@@ -557,7 +564,6 @@ export class Settings {
 
     private async autoSeedScanlators(): Promise<string[]> {
         try {
-            // Try to fetch groups/scanlators from the API
             const url = signUrl(`${API_BASE}/v1/titles?limit=100`);
             const response = await this.requestManager.schedule(
                 App.createRequest({ url, method: "GET" }),
