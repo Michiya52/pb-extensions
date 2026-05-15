@@ -910,6 +910,20 @@ var _Sources = (() => {
           );
         }
       }
+      // Ensure deterministic ordering:
+      // 1) Primary: chapter number (sortingIndex) descending (newest first)
+      // 2) Secondary: uploader priority as defined by uploaderList (lower index = higher priority)
+      const priorityMap = new Map();
+      uploaderList.forEach((u, idx) => priorityMap.set(u, idx));
+      finalChapters.sort((a, b) => {
+        // numeric compare, descending
+        if (b.sortingIndex !== a.sortingIndex) return Number(b.sortingIndex) - Number(a.sortingIndex);
+        const aU = normalizeString(a.group || "").toLowerCase();
+        const bU = normalizeString(b.group || "").toLowerCase();
+        const aIdx = priorityMap.has(aU) ? priorityMap.get(aU) : 9999;
+        const bIdx = priorityMap.has(bU) ? priorityMap.get(bU) : 9999;
+        return aIdx - bIdx;
+      });
       return finalChapters;
     }
     parseChapterDetails(data, mangaId, chapterId) {
