@@ -845,22 +845,19 @@ var _Sources = (() => {
       const finalChapters = [];
       const uploaderList = (priorityGroups ?? []).map((u) => normalizeString(u).toLowerCase());
       const getPriorityIndex = (groupName) => {
-        const normalized = normalizeString(groupName || "").toLowerCase();
+        if (!groupName || typeof groupName !== "string") return 9999;
+        const normalized = normalizeString(groupName).toLowerCase();
         for (let i = 0; i < uploaderList.length; i++) {
           const u = uploaderList[i];
+          if (!u) continue;
           if (isStrict) {
             if (normalized === u) return i;
-          } else {
-            if (normalized.includes(u)) return i;
+          } else if (normalized.includes(u) || u.includes(normalized)) {
+            return i;
           }
         }
         return 9999;
       };
-      try {
-        console.log("[ComixTo] parseChapters: uploaderList:", uploaderList.slice(0, 20));
-      } catch (e) {
-        // ignore logging errors
-      }
       for (const chapNum in grouped) {
         const variants = grouped[chapNum];
         let filtered = [...variants];
@@ -909,9 +906,9 @@ var _Sources = (() => {
         for (const chap of filtered) {
           const groupTag = showUploader && chap.group ? ` [${chap.group}]` : "";
           let displayName = showTitle && chap.name ? `${chap.name}${groupTag}` : `Chapter ${chap.chapNum}${groupTag}`;
-          if (debugShowPriority) {
-            const pIdx = getPriorityIndex(chap.group || "");
-            displayName = `${displayName} [P:${pIdx === 9999 ? "-" : pIdx}]`;
+          const pIdx = getPriorityIndex(chap.group || "");
+          if (debugShowPriority && pIdx !== 9999) {
+            displayName = `${displayName} (P:${pIdx})`;
           }
           finalChapters.push(
             App.createChapter({
@@ -937,9 +934,6 @@ var _Sources = (() => {
         const bIdx = getPriorityIndex(b.group || "");
         return aIdx - bIdx;
       });
-      try {
-        console.log("[ComixTo] parseChapters: finalChapters count", finalChapters.length, "sample:", finalChapters.slice(0, 8).map(c=>({chap:c.chapNum,grp:c.group}))); 
-      } catch (e) {}
       return finalChapters;
     }
     parseChapterDetails(data, mangaId, chapterId) {
@@ -1910,6 +1904,15 @@ var _Sources = (() => {
     if (Array.isArray(selected)) return selected;
     return [];
   };
+  var getPriorityOrderedUploaders = async (stateManager) => {
+    const current = await stateManager.retrieve("uploaders");
+    if (Array.isArray(current) && current.length > 0) return current;
+    const legacy = await stateManager.retrieve("uploadersFiltering");
+    if (legacy && Array.isArray(legacy.list) && legacy.list.length > 0) {
+      return legacy.list;
+    }
+    return Array.isArray(current) ? current : [];
+  };
   var getShowTitle = async (stateManager) => {
     const current = await stateManager.retrieve("show_title");
     if (typeof current === "boolean") return current;
@@ -1954,6 +1957,96 @@ var _Sources = (() => {
       const selected = await getSelectedUploaders(stateManager);
       if (!Array.isArray(selected) || selected.length === 0) {
         await stateManager.store("uploaders_selected", seeded);
+      }
+    }
+  };
+  var showScanlatorRearrangementUI = async (stateManager) => {
+    let uploadersFilter = await stateManager.retrieve("uploadersFiltering") || { list: [] };
+    let scanlators = uploadersFilter.list || [];
+    if (scanlators.length === 0) {
+      const existing = await getUploaders(stateManager);
+      if (existing.length > 0) {
+        scanlators = existing;
+      } else {
+        throw new Error("No groups to rearrange. Add some first!");
+      }
+    }
+    let rearranged = [...scanlators];
+    let done = false;
+    while (!done) {
+      const options = [
+        ...rearranged.map((s, idx) => ({
+          id: s,
+          label: `${idx + 1}. ${s}`,
+        })),
+        { id: "___ADD___", label: "+ Add Scanlator" },
+        { id: "___DONE___", label: "✓ Done Rearranging" },
+      ];
+      try {
+        const selected = await requestManager.awaitUserSelection(
+          App.createSelection({
+            options: options.map((o) =>
+              App.createSelectionOptionData({
+                id: o.id,
+                label: o.label,
+              })
+            ),
+          })
+        );
+        if (selected.ids?.includes("___DONE___")) {
+          done = true;
+          uploadersFilter.list = rearranged;
+          await stateManager.store("uploadersFiltering", uploadersFilter);
+        } else if (selected.ids?.includes("___ADD___")) {
+          const newScanlator = await requestManager.awaitUserInput(
+            App.createUserInput({
+              placeholder: "Enter scanlator/uploader name",
+            })
+          );
+          if (newScanlator?.text && !rearranged.includes(newScanlator.text)) {
+            rearranged.push(newScanlator.text);
+          }
+        } else if (selected.ids?.[0] && !selected.ids[0].startsWith("___")) {
+          const selectedScanlator = selected.ids[0];
+          const currentIndex = rearranged.indexOf(selectedScanlator);
+          if (currentIndex >= 0) {
+            const moveOptions = [
+              currentIndex > 0
+                ? { id: "move_up", label: "↑ Move Up" }
+                : null,
+              currentIndex < rearranged.length - 1
+                ? { id: "move_down", label: "↓ Move Down" }
+                : null,
+              { id: "remove", label: "✕ Remove" },
+              { id: "cancel", label: "Cancel" },
+            ].filter((x) => x !== null);
+            const action = await requestManager.awaitUserSelection(
+              App.createSelection({
+                options: moveOptions.map((o) =>
+                  App.createSelectionOptionData({
+                    id: o.id,
+                    label: o.label,
+                  })
+                ),
+              })
+            );
+            if (action.ids?.includes("move_up")) {
+              [rearranged[currentIndex], rearranged[currentIndex - 1]] = [
+                rearranged[currentIndex - 1],
+                rearranged[currentIndex],
+              ];
+            } else if (action.ids?.includes("move_down")) {
+              [rearranged[currentIndex], rearranged[currentIndex + 1]] = [
+                rearranged[currentIndex + 1],
+                rearranged[currentIndex],
+              ];
+            } else if (action.ids?.includes("remove")) {
+              rearranged.splice(currentIndex, 1);
+            }
+          }
+        }
+      } catch (e) {
+        done = true;
       }
     }
   };
@@ -2114,6 +2207,13 @@ var _Sources = (() => {
                         throw new Error(`Group "${targetUploader}" is not in the list!`);
                       }
                       await stateManager.store("uploader_input", "");
+                    }
+                  }),
+                  App.createDUIButton({
+                    id: "rearrange_uploaders",
+                    label: "Rearrange Preferred Scanlators",
+                    onTap: async () => {
+                      await showScanlatorRearrangementUI(stateManager);
                     }
                   })
                 ]);
@@ -2496,10 +2596,7 @@ var _Sources = (() => {
         ...restResults.flatMap((r) => r.items)
       ];
       await autoSeedUploadersFromChapters(this.stateManager, chapters);
-      try {
-        console.log("[ComixTo] getChapters: rawItems", chapters.length);
-      } catch (e) {}
-      const [isFiltering, isWhitelist, isStrict, savedGroups, selectedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates, debugMode] = await Promise.all([
+      const [isFiltering, isWhitelist, isStrict, savedGroups, selectedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates, debugMode, priorityOrder] = await Promise.all([
         getUploadersFiltering(this.stateManager),
         getUploadersWhitelisted(this.stateManager),
         getStrictNameMatching(this.stateManager),
@@ -2509,12 +2606,10 @@ var _Sources = (() => {
         getOneVersionOnly(this.stateManager),
         getShowUploader(this.stateManager),
         getRemoveDuplicates(this.stateManager),
-        getDebugMode(this.stateManager)
+        getDebugMode(this.stateManager),
+        getPriorityOrderedUploaders(this.stateManager)
       ]);
-      const preferredGroups = Array.isArray(selectedGroups) && selectedGroups.length > 0 ? selectedGroups : savedGroups;
-      try {
-        console.log("[ComixTo] getChapters: preferredGroups", (preferredGroups||[]).slice(0,20), "debugMode:", debugMode);
-      } catch (e) {}
+      const preferredGroups = Array.isArray(priorityOrder) && priorityOrder.length > 0 ? priorityOrder : savedGroups;
       return this.parser.parseChapters(chapters, isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates, preferredGroups, debugMode);
     }
     async getChapterDetails(mangaId, chapterId) {
