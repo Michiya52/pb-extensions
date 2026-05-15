@@ -2231,86 +2231,130 @@ var _Sources = (() => {
                     label: "✎ Edit Preferred Scanlators",
                     form: App.createDUIForm({
                       sections: async () => {
-                        const uploadersFilter = await stateManager.retrieve("uploadersFiltering") || { list: [] };
-                        let scanlators = Array.isArray(uploadersFilter.list) ? [...uploadersFilter.list] : [];
-                        const existing = await getUploaders(stateManager);
-                        if (scanlators.length === 0 && existing.length > 0) scanlators = [...existing];
-
                         return keepAlive([
                           App.createDUISection({
-                            id: "rearrange_header",
+                            id: "rearrange_select",
                             header: "Edit Preferred Scanlators",
-                            footer: "Tap a group to move or delete it. Priority goes from top (#1) to bottom.",
+                            footer: "Select a group from the list, then use the buttons below to reorder or delete it. Priority goes from top to bottom. Re-open this page to see updated order.",
                             isHidden: false,
                             rows: async () => {
-                              const rows = [];
-                              for (let i = 0; i < scanlators.length; i++) {
-                                const name = scanlators[i];
-                                rows.push(App.createDUIButton({
-                                  id: `rearrange_item_${i}`,
-                                  label: `${i + 1}. ${name}`,
-                                  onTap: async () => {
-                                    const moveOptions = [];
-                                    if (i > 0) moveOptions.push({ id: "move_up", label: "≡↑  Move Up" });
-                                    if (i < scanlators.length - 1) moveOptions.push({ id: "move_down", label: "≡↓  Move Down" });
-                                    moveOptions.push({ id: "remove", label: "🗑  Delete" });
-                                    moveOptions.push({ id: "cancel", label: "Cancel" });
-
-                                    const action = await requestManager.awaitUserSelection(App.createSelection({
-                                      options: moveOptions.map((o) => App.createSelectionOptionData({ id: o.id, label: o.label }))
-                                    }));
-
-                                    if (action.ids?.includes("move_up")) {
-                                      const tmp = scanlators[i - 1];
-                                      scanlators[i - 1] = scanlators[i];
-                                      scanlators[i] = tmp;
-                                    } else if (action.ids?.includes("move_down")) {
-                                      const tmp = scanlators[i + 1];
-                                      scanlators[i + 1] = scanlators[i];
-                                      scanlators[i] = tmp;
-                                    } else if (action.ids?.includes("remove")) {
-                                      scanlators.splice(i, 1);
-                                    }
-
-                                    // persist after each change
-                                    uploadersFilter.list = scanlators;
-                                    await stateManager.store("uploadersFiltering", uploadersFilter);
-                                    await stateManager.store("uploaders", scanlators);
-                                    await appendDevLog(stateManager, `Saved rearranged uploaders: ${JSON.stringify(scanlators)}`);
-                                  }
-                                }));
-                              }
-
-                              // Add Group button
-                              rows.push(App.createDUIButton({
-                                id: "rearrange_add",
+                              const uploaders = await getUploaders(stateManager);
+                              const options = uploaders.map((name, idx) => `${idx + 1}. ${name}`);
+                              return keepAlive([
+                                App.createDUISelect({
+                                  id: "rearrange_pick",
+                                  label: "Select Group",
+                                  options: options,
+                                  value: App.createDUIBinding({
+                                    get: async () => await stateManager.retrieve("rearrange_selected") ?? [],
+                                    set: async (newValue) => await stateManager.store("rearrange_selected", newValue)
+                                  }),
+                                  labelResolver: async (value) => value,
+                                  allowsMultiselect: false
+                                })
+                              ]);
+                            }
+                          }),
+                          App.createDUISection({
+                            id: "rearrange_actions",
+                            header: "Actions",
+                            isHidden: false,
+                            rows: async () => keepAlive([
+                              App.createDUIButton({
+                                id: "rearrange_move_up",
+                                label: "↑ Move Up",
+                                onTap: async () => {
+                                  const selected = await stateManager.retrieve("rearrange_selected");
+                                  if (!Array.isArray(selected) || selected.length === 0) throw new Error("Select a group first!");
+                                  const label = selected[0];
+                                  const uploaders = await getUploaders(stateManager);
+                                  const idx = uploaders.findIndex((name, i) => `${i + 1}. ${name}` === label);
+                                  if (idx <= 0) throw new Error("Already at top or not found!");
+                                  const tmp = uploaders[idx - 1];
+                                  uploaders[idx - 1] = uploaders[idx];
+                                  uploaders[idx] = tmp;
+                                  await stateManager.store("uploaders", uploaders);
+                                  const uploadersFilter = await stateManager.retrieve("uploadersFiltering") || { list: [] };
+                                  uploadersFilter.list = uploaders;
+                                  await stateManager.store("uploadersFiltering", uploadersFilter);
+                                  // Update selection label to reflect new position
+                                  await stateManager.store("rearrange_selected", [`${idx}. ${uploaders[idx - 1]}`]);
+                                }
+                              }),
+                              App.createDUIButton({
+                                id: "rearrange_move_down",
+                                label: "↓ Move Down",
+                                onTap: async () => {
+                                  const selected = await stateManager.retrieve("rearrange_selected");
+                                  if (!Array.isArray(selected) || selected.length === 0) throw new Error("Select a group first!");
+                                  const label = selected[0];
+                                  const uploaders = await getUploaders(stateManager);
+                                  const idx = uploaders.findIndex((name, i) => `${i + 1}. ${name}` === label);
+                                  if (idx < 0 || idx >= uploaders.length - 1) throw new Error("Already at bottom or not found!");
+                                  const tmp = uploaders[idx + 1];
+                                  uploaders[idx + 1] = uploaders[idx];
+                                  uploaders[idx] = tmp;
+                                  await stateManager.store("uploaders", uploaders);
+                                  const uploadersFilter = await stateManager.retrieve("uploadersFiltering") || { list: [] };
+                                  uploadersFilter.list = uploaders;
+                                  await stateManager.store("uploadersFiltering", uploadersFilter);
+                                  await stateManager.store("rearrange_selected", [`${idx + 2}. ${uploaders[idx + 1]}`]);
+                                }
+                              }),
+                              App.createDUIButton({
+                                id: "rearrange_delete",
+                                label: "🗑 Delete Selected",
+                                onTap: async () => {
+                                  const selected = await stateManager.retrieve("rearrange_selected");
+                                  if (!Array.isArray(selected) || selected.length === 0) throw new Error("Select a group first!");
+                                  const label = selected[0];
+                                  const uploaders = await getUploaders(stateManager);
+                                  const idx = uploaders.findIndex((name, i) => `${i + 1}. ${name}` === label);
+                                  if (idx < 0) throw new Error("Group not found!");
+                                  const removed = uploaders[idx];
+                                  uploaders.splice(idx, 1);
+                                  await stateManager.store("uploaders", uploaders);
+                                  const uploadersFilter = await stateManager.retrieve("uploadersFiltering") || { list: [] };
+                                  uploadersFilter.list = uploaders;
+                                  await stateManager.store("uploadersFiltering", uploadersFilter);
+                                  const selectedList = await getSelectedUploaders(stateManager);
+                                  const newSelected = selectedList.filter((s) => s !== removed);
+                                  await stateManager.store("uploaders_selected", newSelected);
+                                  await stateManager.store("rearrange_selected", []);
+                                }
+                              })
+                            ])
+                          }),
+                          App.createDUISection({
+                            id: "rearrange_add_section",
+                            header: "Add New Group",
+                            isHidden: false,
+                            rows: async () => keepAlive([
+                              App.createDUIInputField({
+                                id: "rearrange_add_input",
+                                label: "Group Name",
+                                value: App.createDUIBinding({
+                                  get: async () => await stateManager.retrieve("rearrange_add_name") ?? "",
+                                  set: async (newValue) => await stateManager.store("rearrange_add_name", newValue)
+                                })
+                              }),
+                              App.createDUIButton({
+                                id: "rearrange_add_btn",
                                 label: "+ Add Group",
                                 onTap: async () => {
-                                  const newScanlator = await requestManager.awaitUserInput(App.createUserInput({ placeholder: "Enter scanlator/uploader name" }));
-                                  if (newScanlator?.text && !scanlators.includes(newScanlator.text)) {
-                                    scanlators.push(newScanlator.text);
-                                    uploadersFilter.list = scanlators;
-                                    await stateManager.store("uploadersFiltering", uploadersFilter);
-                                    await stateManager.store("uploaders", scanlators);
-                                    await appendDevLog(stateManager, `Added uploader: ${newScanlator.text}`);
-                                  }
-                                }
-                              }));
-
-                              // Done button
-                              rows.push(App.createDUIButton({
-                                id: "rearrange_done",
-                                label: "✓ Save & Done",
-                                onTap: async () => {
-                                  uploadersFilter.list = scanlators;
+                                  const name = await stateManager.retrieve("rearrange_add_name");
+                                  if (!name || name.trim() === "") throw new Error("Group name cannot be empty!");
+                                  const uploaders = await getUploaders(stateManager);
+                                  if (uploaders.includes(name.trim())) throw new Error(`"${name.trim()}" is already in the list!`);
+                                  uploaders.push(name.trim());
+                                  await stateManager.store("uploaders", uploaders);
+                                  const uploadersFilter = await stateManager.retrieve("uploadersFiltering") || { list: [] };
+                                  uploadersFilter.list = uploaders;
                                   await stateManager.store("uploadersFiltering", uploadersFilter);
-                                  await stateManager.store("uploaders", scanlators);
-                                  await appendDevLog(stateManager, `Finalized rearranged uploaders: ${JSON.stringify(scanlators)}`);
+                                  await stateManager.store("rearrange_add_name", "");
                                 }
-                              }));
-
-                              return keepAlive(rows);
-                            }
+                              })
+                            ])
                           })
                         ]);
                       }
