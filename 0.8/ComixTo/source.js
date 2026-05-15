@@ -1940,6 +1940,23 @@ var _Sources = (() => {
   var getDebugMode = async (stateManager) => {
     return await stateManager.retrieve("debug_mode") ?? false;
   };
+  var getDeveloperMode = async (stateManager) => {
+    const dev = await stateManager.retrieve("developer_mode");
+    if (typeof dev === "boolean") return dev;
+    // fall back to debug_mode if developer_mode not set
+    return await stateManager.retrieve("debug_mode") ?? false;
+  };
+  var appendDevLog = async (stateManager, message) => {
+    try {
+      if (!(await getDeveloperMode(stateManager))) return;
+      const raw = await stateManager.retrieve("dev_log");
+      let log = Array.isArray(raw) ? raw : [];
+      log.push({ ts: Date.now(), msg: message });
+      await stateManager.store("dev_log", log);
+    } catch (e) {
+      // ignore logging errors
+    }
+  };
   var autoSeedUploadersFromChapters = async (stateManager, chapters) => {
     const existing = await getUploaders(stateManager);
     const existingSet = new Set(existing.map((g) => normalizeString(String(g)).toLowerCase()));
@@ -2209,12 +2226,93 @@ var _Sources = (() => {
                       await stateManager.store("uploader_input", "");
                     }
                   }),
-                  App.createDUIButton({
+                  App.createDUINavigationButton({
                     id: "rearrange_uploaders",
                     label: "Rearrange Preferred Scanlators",
-                    onTap: async () => {
-                      await showScanlatorRearrangementUI(stateManager);
-                    }
+                    form: App.createDUIForm({
+                      sections: async () => {
+                        const uploadersFilter = await stateManager.retrieve("uploadersFiltering") || { list: [] };
+                        let scanlators = Array.isArray(uploadersFilter.list) ? [...uploadersFilter.list] : [];
+                        const existing = await getUploaders(stateManager);
+                        if (scanlators.length === 0 && existing.length > 0) scanlators = [...existing];
+
+                        return keepAlive([
+                          App.createDUISection({
+                            id: "rearrange_header",
+                            header: "Rearrange Preferred Scanlators",
+                            footer: "Tap an item to move or remove it. Use Add Group to add new entries.",
+                            isHidden: false,
+                            rows: async () => {
+                              const rows = [];
+                              // list current scanlators as buttons
+                              for (let i = 0; i < scanlators.length; i++) {
+                                const name = scanlators[i];
+                                rows.push(App.createDUIButton({
+                                  id: `rearrange_item_${i}`,
+                                  label: `${i + 1}. ${name}`,
+                                  onTap: async () => {
+                                    const moveOptions = [];
+                                    if (i > 0) moveOptions.push({ id: "move_up", label: "↑ Move Up" });
+                                    if (i < scanlators.length - 1) moveOptions.push({ id: "move_down", label: "↓ Move Down" });
+                                    moveOptions.push({ id: "remove", label: "✕ Remove" });
+                                    moveOptions.push({ id: "cancel", label: "Cancel" });
+
+                                    const action = await requestManager.awaitUserSelection(App.createSelection({
+                                      options: moveOptions.map((o) => App.createSelectionOptionData({ id: o.id, label: o.label }))
+                                    }));
+
+                                    if (action.ids?.includes("move_up")) {
+                                      const tmp = scanlators[i - 1];
+                                      scanlators[i - 1] = scanlators[i];
+                                      scanlators[i] = tmp;
+                                    } else if (action.ids?.includes("move_down")) {
+                                      const tmp = scanlators[i + 1];
+                                      scanlators[i + 1] = scanlators[i];
+                                      scanlators[i] = tmp;
+                                    } else if (action.ids?.includes("remove")) {
+                                      scanlators.splice(i, 1);
+                                    }
+
+                                    // persist after each change
+                                    uploadersFilter.list = scanlators;
+                                    await stateManager.store("uploadersFiltering", uploadersFilter);
+                                    await appendDevLog(stateManager, `Saved rearranged uploaders: ${JSON.stringify(scanlators)}`);
+                                  }
+                                }));
+                              }
+
+                              // Add Group button
+                              rows.push(App.createDUIButton({
+                                id: "rearrange_add",
+                                label: "Add Group",
+                                onTap: async () => {
+                                  const newScanlator = await requestManager.awaitUserInput(App.createUserInput({ placeholder: "Enter scanlator/uploader name" }));
+                                  if (newScanlator?.text && !scanlators.includes(newScanlator.text)) {
+                                    scanlators.push(newScanlator.text);
+                                    uploadersFilter.list = scanlators;
+                                    await stateManager.store("uploadersFiltering", uploadersFilter);
+                                    await appendDevLog(stateManager, `Added uploader: ${newScanlator.text}`);
+                                  }
+                                }
+                              }));
+
+                              // Done button (just saves and returns)
+                              rows.push(App.createDUIButton({
+                                id: "rearrange_done",
+                                label: "Done",
+                                onTap: async () => {
+                                  uploadersFilter.list = scanlators;
+                                  await stateManager.store("uploadersFiltering", uploadersFilter);
+                                  await appendDevLog(stateManager, `Finalized rearranged uploaders: ${JSON.stringify(scanlators)}`);
+                                }
+                              }));
+
+                              return keepAlive(rows);
+                            }
+                          })
+                        ]);
+                      }
+                    })
                   })
                 ]);
               }
@@ -2257,23 +2355,7 @@ var _Sources = (() => {
                     set: async (newValue) => await stateManager.store("remove_duplicates", newValue)
                   })
                 }),
-                App.createDUISwitch({
-                  id: "debug_mode",
-                  label: "Debug Mode (shows P:# priority in chapters)",
-                  value: App.createDUIBinding({
-                    get: async () => await getDebugMode(stateManager),
-                    set: async (newValue) => await stateManager.store("debug_mode", newValue)
-                  })
-                })
-                ,
-                App.createDUISwitch({
-                  id: "debug_show_priority",
-                  label: "Show Debug Priority In Chapter Name",
-                  value: App.createDUIBinding({
-                    get: async () => await stateManager.retrieve("debug_show_priority") ?? false,
-                    set: async (newValue) => await stateManager.store("debug_show_priority", newValue)
-                  })
-                })
+                
               ])
             })
           ]);
