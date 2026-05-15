@@ -280,6 +280,14 @@ export class Settings {
                                     await this.setUploadersFiltering(uploadersFilter);
                                 },
                             }),
+                            App.createSwitch({
+                                id: "autoSeedUploaders",
+                                label: "Auto-Collect Scanlators",
+                                value: (await this.stateManager.retrieve("auto_seed_uploaders")) ?? true,
+                                onSubmit: async (v: any) => {
+                                    await this.stateManager.store("auto_seed_uploaders", v);
+                                },
+                            }),
                         ],
                     }),
                     App.createSection({
@@ -288,7 +296,7 @@ export class Settings {
                         rows: async () => [
                             App.createButton({
                                 id: "rearrangeScanlators",
-                                label: "✎ Edit Preferred Scanlators",
+                                label: "✎ Edit Scanlators",
                                 onTap: async () => {
                                     await this.showScanlatorRearrangementUI();
                                 },

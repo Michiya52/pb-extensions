@@ -2038,6 +2038,11 @@ var _Sources = (() => {
       // ignore logging errors
     }
   };
+  var getAutoSeedUploaders = async (stateManager) => {
+    const val = await stateManager.retrieve("auto_seed_uploaders");
+    if (typeof val === "boolean") return val;
+    return true; // default ON
+  };
   var autoSeedUploadersFromChapters = async (stateManager, chapters) => {
     const existing = await getUploaders(stateManager);
     const existingSet = new Set(existing.map((g) => normalizeString(String(g)).toLowerCase()));
@@ -2238,6 +2243,14 @@ var _Sources = (() => {
                   value: App.createDUIBinding({
                     get: async () => await getStrictNameMatching(stateManager),
                     set: async (newValue) => await stateManager.store("strict_name_matching", newValue)
+                  })
+                }),
+                App.createDUISwitch({
+                  id: "auto_seed_uploaders",
+                  label: "Auto-Collect Scanlators",
+                  value: App.createDUIBinding({
+                    get: async () => await getAutoSeedUploaders(stateManager),
+                    set: async (newValue) => await stateManager.store("auto_seed_uploaders", newValue)
                   })
                 })
               ])
@@ -2626,6 +2639,8 @@ var _Sources = (() => {
         await stateManager.store("uploaders_toggled", null);
         await stateManager.store("uploader_input", null);
         await stateManager.store("strict_name_matching", null);
+        await stateManager.store("auto_seed_uploaders", null);
+        await stateManager.store("uploadersFiltering", null);
         await stateManager.store("tag_cache_v1", null);
         await stateManager.store("tag_blacklist", null);
         await stateManager.store("tag_filter_enabled", null);
@@ -2640,7 +2655,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.5.9",
+    version: "1.5.11",
     name: "ComixTo",
     icon: "icon.png",
     author: "Michiya52",
@@ -2757,7 +2772,9 @@ var _Sources = (() => {
         ...firstResult.items,
         ...restResults.flatMap((r) => r.items)
       ];
-      await autoSeedUploadersFromChapters(this.stateManager, chapters);
+      if (await getAutoSeedUploaders(this.stateManager)) {
+        await autoSeedUploadersFromChapters(this.stateManager, chapters);
+      }
       const [isFiltering, isWhitelist, isStrict, savedGroups, selectedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates, debugMode, priorityOrder] = await Promise.all([
         getUploadersFiltering(this.stateManager),
         getUploadersWhitelisted(this.stateManager),
