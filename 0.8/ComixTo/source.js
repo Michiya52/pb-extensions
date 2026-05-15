@@ -823,44 +823,94 @@ var _Sources = (() => {
         })
       });
     }
-    parseChapters(data, isFiltering, isWhitelist, isStrict, savedGroups) {
-      const chapters = [];
+    parseChapters(data, isFiltering, isWhitelist, isStrict, savedGroups, showTitle = true, oneVersionOnly = false, showUploader = true, removeDuplicates = true) {
+      const rawChapters = [];
       for (const chap of data) {
-        const groupName = chap.group?.name || "";
-        if (isFiltering && savedGroups.length > 0) {
-          let matchFound = false;
-          const normalizedGroupName = normalizeString(groupName).toLowerCase();
-          for (const savedGroup of savedGroups) {
-            const normalizedSaved = normalizeString(savedGroup).toLowerCase();
-            if (isStrict) {
-              if (normalizedGroupName === normalizedSaved) {
-                matchFound = true;
-                break;
-              }
-            } else {
-              if (normalizedGroupName.includes(normalizedSaved)) {
-                matchFound = true;
-                break;
-              }
+        rawChapters.push({
+          id: chap.id.toString(),
+          chapNum: chap.number,
+          name: chap.name,
+          langCode: chap.language || "en",
+          volume: chap.volume,
+          group: chap.group?.name || "",
+          time: parseRelativeTime(chap.createdAtFormatted),
+          sortingIndex: chap.number
+        });
+      }
+      const grouped = rawChapters.reduce((acc, chap) => {
+        if (!acc[chap.chapNum]) acc[chap.chapNum] = [];
+        acc[chap.chapNum].push(chap);
+        return acc;
+      }, {});
+      const finalChapters = [];
+      const uploaderList = (savedGroups ?? []).map((u) => normalizeString(u).toLowerCase());
+      for (const chapNum in grouped) {
+        const variants = grouped[chapNum];
+        let filtered = [...variants];
+        if (isFiltering && savedGroups && savedGroups.length > 0) {
+          if (!isWhitelist) {
+            filtered = filtered.filter((v) => {
+              const normalizedGroup = normalizeString(v.group || "").toLowerCase();
+              const isMatched = savedGroups.some((item) => {
+                const normalizedItem = normalizeString(item).toLowerCase();
+                return isStrict ? normalizedGroup === normalizedItem : normalizedGroup.includes(normalizedItem);
+              });
+              return !isMatched;
+            });
+          }
+          if (isWhitelist && filtered.length > 0) {
+            const whitelisted = filtered.filter((v) => {
+              const normalizedGroup = normalizeString(v.group || "").toLowerCase();
+              return savedGroups.some((item) => {
+                const normalizedItem = normalizeString(item).toLowerCase();
+                return isStrict ? normalizedGroup === normalizedItem : normalizedGroup.includes(normalizedItem);
+              });
+            });
+            if (whitelisted.length > 0) filtered = whitelisted;
+          }
+        }
+        filtered.sort((a, b) => {
+          const aName = normalizeString(a.group || "").toLowerCase();
+          const bName = normalizeString(b.group || "").toLowerCase();
+          let aIdx = uploaderList.findIndex((u) => isStrict ? aName === u : aName.includes(u));
+          let bIdx = uploaderList.findIndex((u) => isStrict ? bName === u : bName.includes(u));
+          if (aIdx === -1) aIdx = 9999;
+          if (bIdx === -1) bIdx = 9999;
+          return aIdx - bIdx;
+        });
+        if (removeDuplicates && filtered.length > 1) {
+          const unique = [];
+          const seen = new Set();
+          for (const chap of filtered) {
+            const key = `${chap.chapNum}-${chap.langCode}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              unique.push(chap);
             }
           }
-          if (isWhitelist && !matchFound) continue;
-          if (!isWhitelist && matchFound) continue;
+          filtered = unique;
         }
-        chapters.push(
-          App.createChapter({
-            id: chap.id.toString(),
-            chapNum: chap.number,
-            name: chap.name ? `${chap.name}` : `Chapter ${chap.number}`,
-            langCode: chap.language || "en",
-            volume: chap.volume,
-            group: groupName,
-            time: parseRelativeTime(chap.createdAtFormatted),
-            sortingIndex: chap.number
-          })
-        );
+        if (oneVersionOnly && filtered.length > 1) {
+          filtered = [filtered[0]];
+        }
+        for (const chap of filtered) {
+          const groupTag = showUploader && chap.group ? ` [${chap.group}]` : "";
+          const displayName = showTitle && chap.name ? `${chap.name}${groupTag}` : `Chapter ${chap.chapNum}${groupTag}`;
+          finalChapters.push(
+            App.createChapter({
+              id: chap.id,
+              chapNum: chap.chapNum,
+              name: displayName,
+              langCode: chap.langCode,
+              volume: chap.volume,
+              group: chap.group,
+              time: chap.time,
+              sortingIndex: chap.sortingIndex
+            })
+          );
+        }
       }
-      return chapters;
+      return finalChapters;
     }
     parseChapterDetails(data, mangaId, chapterId) {
       const baseUrl = data.pages.baseUrl ?? "";
@@ -1812,6 +1862,18 @@ var _Sources = (() => {
   var getSelectedUploaders = async (stateManager) => {
     return await stateManager.retrieve("uploaders_selected") ?? [];
   };
+  var getShowTitle = async (stateManager) => {
+    return await stateManager.retrieve("show_title") ?? true;
+  };
+  var getShowUploader = async (stateManager) => {
+    return await stateManager.retrieve("show_uploader") ?? true;
+  };
+  var getOneVersionOnly = async (stateManager) => {
+    return await stateManager.retrieve("one_version_only") ?? false;
+  };
+  var getRemoveDuplicates = async (stateManager) => {
+    return await stateManager.retrieve("remove_duplicates") ?? true;
+  };
   var contentSettings = (stateManager) => {
     return keepAlive(App.createDUINavigationButton({
       id: "content_settings",
@@ -1973,6 +2035,46 @@ var _Sources = (() => {
                   })
                 ]);
               }
+            }),
+            App.createDUISection({
+              id: "chapter_display_settings",
+              header: "Chapter Display Settings",
+              footer: "Control how chapter variants are shown in chapter lists.",
+              isHidden: false,
+              rows: async () => keepAlive([
+                App.createDUISwitch({
+                  id: "show_title",
+                  label: "Show Chapter Title",
+                  value: App.createDUIBinding({
+                    get: async () => await getShowTitle(stateManager),
+                    set: async (newValue) => await stateManager.store("show_title", newValue)
+                  })
+                }),
+                App.createDUISwitch({
+                  id: "show_uploader",
+                  label: "Show Group In Chapter Name",
+                  value: App.createDUIBinding({
+                    get: async () => await getShowUploader(stateManager),
+                    set: async (newValue) => await stateManager.store("show_uploader", newValue)
+                  })
+                }),
+                App.createDUISwitch({
+                  id: "one_version_only",
+                  label: "Keep Only One Version Per Chapter",
+                  value: App.createDUIBinding({
+                    get: async () => await getOneVersionOnly(stateManager),
+                    set: async (newValue) => await stateManager.store("one_version_only", newValue)
+                  })
+                }),
+                App.createDUISwitch({
+                  id: "remove_duplicates",
+                  label: "Remove Duplicate Chapter Variants",
+                  value: App.createDUIBinding({
+                    get: async () => await getRemoveDuplicates(stateManager),
+                    set: async (newValue) => await stateManager.store("remove_duplicates", newValue)
+                  })
+                })
+              ])
             })
           ]);
         }
@@ -2176,12 +2278,12 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.8.1",
+    version: "1.5.9",
     name: "ComixTo",
     icon: "icon.png",
-    author: "acepilot147",
-    authorWebsite: "https://acepilot147.github.io/pb-extensions/0.8",
-    description: "Comix.to Extension with advanced filters. Fork of AthK extensions for Paperback 0.8 (edited by acepilot147)",
+    author: "Michiya52",
+    authorWebsite: "https://github.com/Michiya52",
+    description: "Read manga from ComixTo",
     contentRating: import_types.ContentRating.EVERYONE,
     websiteBaseURL: DOMAIN,
     sourceTags: [
@@ -2293,13 +2395,17 @@ var _Sources = (() => {
         ...firstResult.items,
         ...restResults.flatMap((r) => r.items)
       ];
-      const [isFiltering, isWhitelist, isStrict, savedGroups] = await Promise.all([
+      const [isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates] = await Promise.all([
         getUploadersFiltering(this.stateManager),
         getUploadersWhitelisted(this.stateManager),
         getStrictNameMatching(this.stateManager),
-        getUploaders(this.stateManager)
+        getUploaders(this.stateManager),
+        getShowTitle(this.stateManager),
+        getOneVersionOnly(this.stateManager),
+        getShowUploader(this.stateManager),
+        getRemoveDuplicates(this.stateManager)
       ]);
-      return this.parser.parseChapters(chapters, isFiltering, isWhitelist, isStrict, savedGroups);
+      return this.parser.parseChapters(chapters, isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates);
     }
     async getChapterDetails(mangaId, chapterId) {
       const result = await fetchSigned(
