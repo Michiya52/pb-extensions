@@ -2179,62 +2179,15 @@ var _Sources = (() => {
                     labelResolver: async (value) => value,
                     allowsMultiselect: true
                   }),
-                  App.createDUIInputField({
-                    id: "uploader_input",
-                    label: "Group Name",
-                    value: App.createDUIBinding({
-                      get: async () => await getUploaderInput(stateManager),
-                      set: async (newValue) => await stateManager.store("uploader_input", newValue)
-                    })
-                  }),
-                  App.createDUIButton({
-                    id: "add_uploader",
-                    label: "Add Group",
-                    onTap: async () => {
-                      const targetUploader = await getUploaderInput(stateManager);
-                      if (!targetUploader || targetUploader.trim() === "") {
-                        throw new Error("Group name cannot be empty!");
-                      }
-                      const uploadersList = await getUploaders(stateManager);
-                      if (uploadersList.includes(targetUploader)) {
-                        throw new Error(`Group "${targetUploader}" is already in the list!`);
-                      }
-                      uploadersList.push(targetUploader);
-                      await stateManager.store("uploaders", uploadersList);
-                      await stateManager.store("uploader_input", "");
-                    }
-                  }),
-                  App.createDUIButton({
-                    id: "remove_uploader",
-                    label: "Remove Group",
-                    onTap: async () => {
-                      const targetUploader = await getUploaderInput(stateManager);
-                      if (!targetUploader || targetUploader.trim() === "") {
-                        throw new Error("Group name cannot be empty!");
-                      }
-                      const uploadersList = await getUploaders(stateManager);
-                      const index = uploadersList.indexOf(targetUploader);
-                      if (index !== -1) {
-                        uploadersList.splice(index, 1);
-                        await stateManager.store("uploaders", uploadersList);
-                        const selectedList = await getSelectedUploaders(stateManager);
-                        const newSelected = selectedList.filter((s) => s !== targetUploader);
-                        await stateManager.store("uploaders_selected", newSelected);
-                      } else {
-                        throw new Error(`Group "${targetUploader}" is not in the list!`);
-                      }
-                      await stateManager.store("uploader_input", "");
-                    }
-                  }),
                   App.createDUINavigationButton({
                     id: "rearrange_uploaders",
-                    label: "✎ Edit Preferred Scanlators",
+                    label: "✎ Edit Scanlators",
                     form: App.createDUIForm({
                       sections: async () => {
                         return keepAlive([
                           App.createDUISection({
                             id: "rearrange_select",
-                            header: "Edit Preferred Scanlators",
+                            header: "Edit Scanlators",
                             footer: "Select a group from the list, then use the buttons below to reorder or delete it. Priority goes from top to bottom. Re-open this page to see updated order.",
                             isHidden: false,
                             rows: async () => {
