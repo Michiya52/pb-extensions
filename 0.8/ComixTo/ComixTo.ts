@@ -157,12 +157,11 @@ export class ComixTo extends Source {
                 1
             );
 
-            this.checkResponseError(response);
-
             const data =
                 typeof response.data === "string"
                     ? JSON.parse(response.data)
                     : response.data;
+            this.checkResponseError(data);
 
             const items = data.data?.chapters || [];
             if (items.length === 0) {
@@ -277,12 +276,11 @@ export class ComixTo extends Source {
                     1
                 );
 
-                this.checkResponseError(response);
-
                 const data =
                     typeof response.data === "string"
                         ? JSON.parse(response.data)
                         : response.data;
+                this.checkResponseError(data);
 
                 const maxRating = await this.settings.getContentRatingMax();
                 items = this.parser.parseMangaList(
@@ -327,12 +325,11 @@ export class ComixTo extends Source {
             App.createRequest({ url: signedUrl, method: "GET" }),
             1
         );
-this.checkResponseError(response);
 
         const data =
             typeof response.data === "string"
                 ? JSON.parse(response.data)
-                : response.data
+                : response.data;
         this.checkResponseError(data);
 
         const items = this.parser.parseMangaList(
@@ -456,12 +453,11 @@ this.checkResponseError(response);
             App.createRequest({ url, method: "GET" }),
             1
         );
-this.checkResponseError(response);
 
         const data =
             typeof response.data === "string"
                 ? JSON.parse(response.data)
-                : response.data
+                : response.data;
         this.checkResponseError(data);
 
         const maxRating = await this.settings.getContentRatingMax();
@@ -489,39 +485,27 @@ this.checkResponseError(response);
         });
     }
 
-    private !response) {
-            throw new Error("No response received from server");
+    private checkResponseError(response: any): void {
+        // Check for HTTP error status
+        if (response.status && response.status >= 400) {
+            throw new Error(`HTTP Error ${response.status}: ${response.statusText || "Unknown error"}`);
         }
 
-        const status = response.status || response.statusCode || 200;
-
-        if (status >= 400) {
-            const data = typeof response.data === "string" ? response.data : "";
-            
-            // Detect Cloudflare
-            if (status === 403 || status === 503 || data.includes("Cloudflare") || data.includes("cf_error")) {
-                throw new Error(
-                    `Cloudflare protection active (${status}). Enable Cloudflare bypass in Paperback settings.`
-                );
-            }
-
-            // Detect rate limiting
-            if (status === 429) {
-                throw new Error("Rate limited by server. Please wait before retrying.");
-            }
-
-            // Generic HTTP error
-            throw new Error(`HTTP Error ${status}: ${response.statusText || "Request failed"}`);
+        // Check for Cloudflare protection in response
+        const responseData = typeof response.data === "string" ? response.data : "";
+        if (responseData.includes("Cloudflare") || responseData.includes("cf-error")) {
+            throw new Error(
+                "Cloudflare protection detected. The extension requires Cloudflare bypass."
+            );
         }
 
-        // Check response content for Cloudflare HTML
-        const responseText = typeof response.data === "string" ? response.data : "";
-        if (
-            responseText.includes("<title>Just a moment...</title>") ||
-            responseText.includes("Attention Required! | Cloudflare") ||
-            responseText.includes("Ray ID:")
-        ) {
-            throw new Error("Cloudflare challenge detected. Paperback needs to bypass it - check settings."throw new Error(
+        // Check for blocked response
+        if (response.status === 403) {
+            throw new Error("Access denied by server (403). Possible Cloudflare challenge.");
+        }
+
+        if (response.status === 503) {
+            throw new Error(
                 "Service temporarily unavailable (503). Server may be under maintenance or Cloudflare is active."
             );
         }
