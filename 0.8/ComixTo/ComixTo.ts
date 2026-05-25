@@ -18,7 +18,7 @@ import { signUrl } from "./ComixHash";
 import { Settings } from "./Settings";
 
 export const ComixToInfo: SourceInfo = {
-    version: "1.5.11",
+    version: "1.5.12",
     name: "ComixTo",
     description: "Read manga from ComixTo",
     author: "Michiya52",
