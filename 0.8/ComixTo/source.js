@@ -1018,10 +1018,11 @@ var _Sources = (() => {
       return finalChapters;
     }
     parseChapterDetails(data, mangaId, chapterId) {
-      const baseUrl = data.pages.baseUrl ?? "";
-      const pages = data.pages.items.map(
-        (p) => /^https?:\/\//.test(p.url) ? p.url : `${baseUrl}${p.url}`
-      );
+      const baseUrl = (data.pages.baseUrl ?? "").replace(/\/sii?\//, "/i/");
+      const pages = data.pages.items.map((p) => {
+        const url = /^https?:\/\//.test(p.url) ? p.url : `${baseUrl}${p.url}`;
+        return url.replace(/\/sii?\//, "/i/");
+      });
       return App.createChapterDetails({
         id: chapterId,
         mangaId,
