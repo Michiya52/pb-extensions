@@ -1558,6 +1558,9 @@ var _Sources = (() => {
       if (!raw) return null;
       const constants = JSON.parse(raw);
       validateConstants(constants);
+      if (constants?.signer?.pipelineOrder !== "sbox-cbc" || constants?.decrypt?.pipelineOrder !== "sbox-cbc-inverse") {
+        throw new Error("Outdated Comix remote constants schema pipeline");
+      }
       return constants;
     } catch {
       await stateManager.store(REMOTE_CONSTANTS_STATE_KEY, null);
