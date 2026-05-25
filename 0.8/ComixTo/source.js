@@ -1803,7 +1803,7 @@ var _Sources = (() => {
     let remoteFirst = false;
     let localStatus;
     let signStart = Date.now();
-    const availableRemoteConstants = await getAvailableRemoteComixConstants(stateManager);
+    const availableRemoteConstants = null;
     let signedUrl;
     if (availableRemoteConstants) {
       signedUrl = signUrlWithRemoteConstants(fullUrl, availableRemoteConstants);
