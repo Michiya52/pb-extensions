@@ -1730,7 +1730,84 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixHash.ts
   function generateHash(rawPath) {
-    return signPath(rawPath);
+    const B64_CHARS_CBC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    const SBOX_CBC_STAGES = [
+      {
+        "tableB64": "TBqH6PGKZpVJtSPsw7dIF7yqx2k5VwgNRDeaEO9zhsH5d0ElVbBTP0b8kd+I0hJRrOoqLWqoTaJyMjv30YIpv9PpS3SFfUr1Yu6Orv7AKC6Na8n71P2kyIP0pZMx8Pi4wgcdnr0nUqcOtjwkek9A+sajs+F1n0Xl1h6LDFBWfF/teJIbzdUwqyCJmGE180Mr3a3kurSM2jTyWxHMyrJd45aboBwYr2j2sbkVC05vQjiQec7nVAJ7FgoABCxe18/L4H5lRyF/PlovWKZj3P86BWTmIgnrPZTEndnQhHBxXBMBZw+722zYoeK+M8WAgamZFJwGdiY2YG2P3gNuWZcfGQ==",
+        "keyB64": "rHDaYeCnpP0WKdrXiVhVCyLlx9Uq+FQMtic=",
+        "iv": 145
+      },
+      {
+        "tableB64": "JsG5oul0GpwSZLiHpv5ucFlX3ve9MJo6JcVNQaHH9uNbnhG1G/UcBikWF4GJWM2/eakOPWdsglEiMcQYCrvOP9nmM1SXHUgtYxT/OWbhyisFR9wkCUMgeBUfvNJzDP2okXatQJP7hErsKmpLep8E5cLajAgsAn7Qqic0iI0eX6uuE1X5XAE2Ay4ATuTD6utlXkVE1pTvT0ywy8BSU2ANjttrd6A7zJXf0YDYEKO38ziFUO5xYfGxhijy5wsPRkm617T66K/VnVYH9OCkf7Yh/FqK06fPdSN7j/g31BmZkpDibULIMr6ylvCbpX1oPpjdbzyLNcZirHKDXS/J7bNpfA==",
+        "keyB64": "JOnpDPMZJjt/V1Lcy/aJz4dj+2bO5ODBOqR8VQ==",
+        "iv": 111
+      },
+      {
+        "tableB64": "Cd5hNQ9D7kk7nV28BHBtDgsihk4SwOjgqf3NJHl/rfmv3x9EFdoqcXTWWTR2sqz47f/hQjompqDs/Jw/VCiigydpAkix2EBMj2XC9ef2jaHMWL9cYDE9Ixu6GL541+lfjO9qq7v3FrRSA5KR/g30Zi5jEbV+ByxBbPIM+n0r27aaxIgUiwow0qW3h4CQHVEQxdPVweWFb+JNT4lynxejSjfjAbgI5gWza3P7SyAzyZglAJ5olVN81FpVypbwgXVnp0UpYuQ58VdWMoq5sF6ZOG4ePssG0arqrnp3yC3HRoJH81CbIRzO3ZOOvdk8z3vQE5SEw6QZ3Fvrly+oGjZkxg==",
+        "keyB64": "ISTlGCRAVsibq25re09OwSeJig==",
+        "iv": 142
+      }
+    ];
+
+    function decodeB64(s) {
+      const lookup = new Array(128).fill(-1);
+      for (let i = 0; i < 64; i++) lookup[B64_CHARS_CBC.charCodeAt(i)] = i;
+      const out = [];
+      let buf = 0, bits = 0;
+      for (let i = 0; i < s.length; i++) {
+        const c = s.charCodeAt(i);
+        if (c === 61) break;
+        const v = lookup[c] ?? -1;
+        if (v === -1) continue;
+        buf = buf << 6 | v;
+        bits += 6;
+        if (bits >= 8) {
+          bits -= 8;
+          out.push(buf >> bits & 255);
+        }
+      }
+      return out;
+    }
+
+    function encodeB64Url(bytes) {
+      let out = "", i = 0;
+      for (; i + 2 < bytes.length; i += 3) {
+        const n = bytes[i] << 16 | bytes[i + 1] << 8 | bytes[i + 2];
+        out += B64_CHARS_CBC[n >> 18 & 63] + B64_CHARS_CBC[n >> 12 & 63] + B64_CHARS_CBC[n >> 6 & 63] + B64_CHARS_CBC[n & 63];
+      }
+      if (i + 1 === bytes.length) {
+        const n = bytes[i] << 16;
+        out += B64_CHARS_CBC[n >> 18 & 63] + B64_CHARS_CBC[n >> 12 & 63];
+      } else if (i + 2 === bytes.length) {
+        const n = bytes[i] << 16 | bytes[i + 1] << 8;
+        out += B64_CHARS_CBC[n >> 18 & 63] + B64_CHARS_CBC[n >> 12 & 63] + B64_CHARS_CBC[n >> 6 & 63];
+      }
+      return out.replace(/\+/g, "-").replace(/\//g, "_");
+    }
+
+    function applyStage(data, stage) {
+      const table = decodeB64(stage.tableB64);
+      const key = decodeB64(stage.keyB64);
+      const out = new Array(data.length);
+      let prev = stage.iv & 255;
+      for (let i = 0; i < data.length; i++) {
+        const idx = (data[i] & 255 ^ key[i % key.length] ^ prev) & 255;
+        const next = table[idx] & 255;
+        out[i] = next;
+        prev = next;
+      }
+      return out;
+    }
+
+    const normalized = rawPath.replace(/^https?:\/\/[^\/]+/, "").replace(/^\/api\/v1/, "").split("?")[0];
+    let data = [];
+    for (let i = 0; i < normalized.length; i++) {
+      data.push(normalized.charCodeAt(i) & 255);
+    }
+    for (const stage of SBOX_CBC_STAGES) {
+      data = applyStage(data, stage);
+    }
+    return encodeB64Url(data);
   }
   async function decryptComixPayload(rawPath, payload, headers = {}) {
     return fastDecryptComixPayload(rawPath, payload, headers);
