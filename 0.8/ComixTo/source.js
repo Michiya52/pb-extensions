@@ -1730,7 +1730,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixHash.ts
   function generateHash(rawPath) {
-    return signPath(rawPath);
+    return fastGenerateHash(rawPath);
   }
   async function decryptComixPayload(rawPath, payload, headers = {}) {
     return fastDecryptComixPayload(rawPath, payload, headers);
