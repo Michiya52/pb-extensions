@@ -2,24 +2,6 @@ import { API_BASE } from "./Common";
 
 const B64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-const SBOX_CBC_STAGES = [
-    {
-      "tableB64": "TBqH6PGKZpVJtSPsw7dIF7yqx2k5VwgNRDeaEO9zhsH5d0ElVbBTP0b8kd+I0hJRrOoqLWqoTaJyMjv30YIpv9PpS3SFfUr1Yu6Orv7AKC6Na8n71P2kyIP0pZMx8Pi4wgcdnr0nUqcOtjwkek9A+sajs+F1n0Xl1h6LDFBWfF/teJIbzdUwqyCJmGE180Mr3a3kurSM2jTyWxHMyrJd45aboBwYr2j2sbkVC05vQjiQec7nVAJ7FgoABCxe18/L4H5lRyF/PlovWKZj3P86BWTmIgnrPZTEndnQhHBxXBMBZw+722zYoeK+M8WAgamZFJwGdiY2YG2P3gNuWZcfGQ==",
-      "keyB64": "rHDaYeCnpP0WKdrXiVhVCyLlx9Uq+FQMtic=",
-      "iv": 145
-    },
-    {
-      "tableB64": "JsG5oul0GpwSZLiHpv5ucFlX3ve9MJo6JcVNQaHH9uNbnhG1G/UcBikWF4GJWM2/eakOPWdsglEiMcQYCrvOP9nmM1SXHUgtYxT/OWbhyisFR9wkCUMgeBUfvNJzDP2okXatQJP7hErsKmpLep8E5cLajAgsAn7Qqic0iI0eX6uuE1X5XAE2Ay4ATuTD6utlXkVE1pTvT0ywy8BSU2ANjttrd6A7zJXf0YDYEKO38ziFUO5xYfGxhijy5wsPRkm617T66K/VnVYH9OCkf7Yh/FqK06fPdSN7j/g31BmZkpDibULIMr6ylvCbpX1oPpjdbzyLNcZirHKDXS/J7bNpfA==",
-      "keyB64": "JOnpDPMZJjt/V1Lcy/aJz4dj+2bO5ODBOqR8VQ==",
-      "iv": 111
-    },
-    {
-      "tableB64": "Cd5hNQ9D7kk7nV28BHBtDgsihk4SwOjgqf3NJHl/rfmv3x9EFdoqcXTWWTR2sqz47f/hQjompqDs/Jw/VCiigydpAkix2EBMj2XC9ef2jaHMWL9cYDE9Ixu6GL541+lfjO9qq7v3FrRSA5KR/g30Zi5jEbV+ByxBbPIM+n0r27aaxIgUiwow0qW3h4CQHVEQxdPVweWFb+JNT4lynxejSjfjAbgI5gWza3P7SyAzyZglAJ5olVN81FpVypbwgXVnp0UpYuQ58VdWMoq5sF6ZOG4ePssG0arqrnp3yC3HRoJH81CbIRzO3ZOOvdk8z3vQE5SEw6QZ3Fvrly+oGjZkxg==",
-      "keyB64": "ISTlGCRAVsibq25re09OwSeJig==",
-      "iv": 142
-    }
-];
-
 function b64Decode(s: string): number[] {
     const lookup = new Array(128).fill(-1);
     for (let i = 0; i < 64; i++) lookup[B64_CHARS.charCodeAt(i)] = i;
@@ -62,45 +44,208 @@ function b64UrlEncode(bytes: number[]): string {
     return out.replace(/\+/g, "-").replace(/\//g, "_");
 }
 
-function applySboxCbcStage(data: number[], stage: { tableB64: string, keyB64: string, iv: number }): number[] {
-    const table = b64Decode(stage.tableB64);
-    const key = b64Decode(stage.keyB64);
+const KEYS = [
+    "13YDu67uDgFczo3DnuTIURqas4lfMEPADY6Jaeqky+w=", // 0  RC4 key  round 1
+    "yEy7wBfBc+gsYPiQL/4Dfd0pIBZFzMwrtlRQGwMXy3Q=", // 1  mutKey   round 1
+    "yrP+EVA1Dw==",                                   // 2  prefKey  round 1
+    "vZ23RT7pbSlxwiygkHd1dhToIku8SNHPC6V36L4cnwM=",   // 3  RC4 key  round 2
+    "QX0sLahOByWLcWGnv6l98vQudWqdRI3DOXBdit9bxCE=",   // 4  mutKey   round 2
+    "WJwgqCmf",                                       // 5  prefKey  round 2
+    "BkWI8feqSlDZKMq6awfzWlUypl88nz65KVRmpH0RWIc=",   // 6  RC4 key  round 3
+    "v7EIpiQQjd2BGuJzMbBA0qPWDSS+wTJRQ7uGzZ6rJKs=",   // 7  mutKey   round 3
+    "1SUReYlCRA==",                                   // 8  prefKey  round 3
+    "RougjiFHkSKs20DZ6BWXiWwQUGZXtseZIyQWKz5eG34=",   // 9  RC4 key  round 4
+    "LL97cwoDoG5cw8QmhI+KSWzfW+8VehIh+inTxnVJ2ps=",   // 10 mutKey   round 4
+    "52iDqjzlqe8=",                                   // 11 prefKey  round 4
+    "U9LRYFL2zXU4TtALIYDj+lCATRk/EJtH7/y7qYYNlh8=",   // 12 RC4 key  round 5
+    "e/GtffFDTvnw7LBRixAD+iGixjqTq9kIZ1m0Hj+s6fY=",   // 13 mutKey   round 5
+    "xb2XwHNB",                                       // 14 prefKey  round 5
+];
+
+function getKeyBytes(index: number): number[] {
+    const b64 = KEYS[index];
+    if (b64 === undefined) return [];
+    try {
+        return b64Decode(b64);
+    } catch {
+        return [];
+    }
+}
+
+function rc4(key: number[], data: number[]): number[] {
+    if (key.length === 0) return [...data];
+    const s = new Array(256);
+    for (let i = 0; i < 256; i++) s[i] = i;
+    let j = 0;
+    for (let i = 0; i < 256; i++) {
+        j = (j + s[i] + key[i % key.length]) % 256;
+        const tmp = s[i];
+        s[i] = s[j];
+        s[j] = tmp;
+    }
+    let i2 = 0, j2 = 0;
     const out = new Array(data.length);
-    let prev = stage.iv & 255;
-    for (let i = 0; i < data.length; i++) {
-        const idx = ((data[i] & 255) ^ key[i % key.length] ^ prev) & 255;
-        const next = table[idx] & 255;
-        out[i] = next;
-        prev = next;
+    for (let k = 0; k < data.length; k++) {
+        i2 = (i2 + 1) % 256;
+        j2 = (j2 + s[i2]) % 256;
+        const tmp = s[i2];
+        s[i2] = s[j2];
+        s[j2] = tmp;
+        out[k] = data[k] ^ s[(s[i2] + s[j2]) % 256];
     }
     return out;
 }
 
-function normalizeSignPath(rawPath: string): string {
-    return rawPath.replace(/^https?:\/\/[^\/]+/, "").replace(/^\/api\/v1/, "").split("?")[0];
+// Mutation functions
+function mutS(e: number): number { return (e + 143) % 256; }
+function mutL(e: number): number { return ((e >>> 1) | (e << 7)) & 0xff; }
+function mutC(e: number): number { return (e + 115) % 256; }
+function mutM(e: number): number { return (e ^ 177) & 0xff; }
+function mutF(e: number): number { return (e - 188 + 256) % 256; }
+function mutG(e: number): number { return ((e << 2) | (e >>> 6)) & 0xff; }
+function mutH(e: number): number { return (e - 42 + 256) % 256; }
+function mutDollar(e: number): number { return ((e << 4) | (e >>> 4)) & 0xff; }
+function mutB(e: number): number { return (e - 12 + 256) % 256; }
+function mutUnderscore(e: number): number { return (e - 20 + 256) % 256; }
+function mutY(e: number): number { return ((e >>> 1) | (e << 7)) & 0xff; }
+function mutK(e: number): number { return (e - 241 + 256) % 256; }
+
+function getMutKey(mk: number[], idx: number): number {
+    return mk.length > 0 && (idx % 32) < mk.length ? mk[idx % 32] : 0;
+}
+
+function round1(data: number[]): number[] {
+    const enc = rc4(getKeyBytes(0), data);
+    const mutKey = getKeyBytes(1);
+    const prefKey = getKeyBytes(2);
+    const out: number[] = [];
+    for (let i = 0; i < enc.length; i++) {
+        if (i < 7 && i < prefKey.length) out.push(prefKey[i]);
+        let v = enc[i] ^ getMutKey(mutKey, i);
+        switch (i % 10) {
+            case 0: case 9: v = mutC(v); break;
+            case 1: v = mutB(v); break;
+            case 2: v = mutY(v); break;
+            case 3: v = mutDollar(v); break;
+            case 4: case 6: v = mutH(v); break;
+            case 5: v = mutS(v); break;
+            case 7: v = mutK(v); break;
+            case 8: v = mutL(v); break;
+        }
+        out.push(v & 0xff);
+    }
+    return out;
+}
+
+function round2(data: number[]): number[] {
+    const enc = rc4(getKeyBytes(3), data);
+    const mutKey = getKeyBytes(4);
+    const prefKey = getKeyBytes(5);
+    const out: number[] = [];
+    for (let i = 0; i < enc.length; i++) {
+        if (i < 6 && i < prefKey.length) out.push(prefKey[i]);
+        let v = enc[i] ^ getMutKey(mutKey, i);
+        switch (i % 10) {
+            case 0: case 8: v = mutC(v); break;
+            case 1: v = mutB(v); break;
+            case 2: case 6: v = mutDollar(v); break;
+            case 3: v = mutH(v); break;
+            case 4: case 9: v = mutS(v); break;
+            case 5: v = mutK(v); break;
+            case 7: v = mutUnderscore(v); break;
+        }
+        out.push(v & 0xff);
+    }
+    return out;
+}
+
+function round3(data: number[]): number[] {
+    const enc = rc4(getKeyBytes(6), data);
+    const mutKey = getKeyBytes(7);
+    const prefKey = getKeyBytes(8);
+    const out: number[] = [];
+    for (let i = 0; i < enc.length; i++) {
+        if (i < 7 && i < prefKey.length) out.push(prefKey[i]);
+        let v = enc[i] ^ getMutKey(mutKey, i);
+        switch (i % 10) {
+            case 0: v = mutC(v); break;
+            case 1: v = mutF(v); break;
+            case 2: case 8: v = mutS(v); break;
+            case 3: v = mutG(v); break;
+            case 4: v = mutY(v); break;
+            case 5: v = mutM(v); break;
+            case 6: v = mutDollar(v); break;
+            case 7: v = mutK(v); break;
+            case 9: v = mutB(v); break;
+        }
+        out.push(v & 0xff);
+    }
+    return out;
+}
+
+function round4(data: number[]): number[] {
+    const enc = rc4(getKeyBytes(9), data);
+    const mutKey = getKeyBytes(10);
+    const prefKey = getKeyBytes(11);
+    const out: number[] = [];
+    for (let i = 0; i < enc.length; i++) {
+        if (i < 8 && i < prefKey.length) out.push(prefKey[i]);
+        let v = enc[i] ^ getMutKey(mutKey, i);
+        switch (i % 10) {
+            case 0: v = mutB(v); break;
+            case 1: case 9: v = mutM(v); break;
+            case 2: case 7: v = mutL(v); break;
+            case 3: case 5: v = mutS(v); break;
+            case 4: case 6: v = mutUnderscore(v); break;
+            case 8: v = mutY(v); break;
+        }
+        out.push(v & 0xff);
+    }
+    return out;
+}
+
+function round5(data: number[]): number[] {
+    const enc = rc4(getKeyBytes(12), data);
+    const mutKey = getKeyBytes(13);
+    const prefKey = getKeyBytes(14);
+    const out: number[] = [];
+    for (let i = 0; i < enc.length; i++) {
+        if (i < 6 && i < prefKey.length) out.push(prefKey[i]);
+        let v = enc[i] ^ getMutKey(mutKey, i);
+        switch (i % 10) {
+            case 0: v = mutUnderscore(v); break;
+            case 1: case 7: v = mutS(v); break;
+            case 2: v = mutC(v); break;
+            case 3: case 5: v = mutM(v); break;
+            case 4: v = mutB(v); break;
+            case 6: v = mutF(v); break;
+            case 8: v = mutDollar(v); break;
+            case 9: v = mutG(v); break;
+        }
+        out.push(v & 0xff);
+    }
+    return out;
 }
 
 function generateHash(path: string): string {
-    const normalized = normalizeSignPath(path);
+    const encoded = encodeURIComponent(path).replace(
+        /[!'()*]/g,
+        (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase()
+    );
     let data: number[] = [];
-    for (let i = 0; i < normalized.length; i++) {
-        data.push(normalized.charCodeAt(i) & 255);
+    for (let i = 0; i < encoded.length; i++) {
+        data.push(encoded.charCodeAt(i) & 0xff);
     }
-    for (const stage of SBOX_CBC_STAGES) {
-        data = applySboxCbcStage(data, stage);
-    }
+    data = round1(data);
+    data = round2(data);
+    data = round3(data);
+    data = round4(data);
+    data = round5(data);
     return b64UrlEncode(data);
 }
 
-const SIGNED_PATTERNS = [
-    /^\/manga\/[^\/]+\/chapters\b/,
-    /^\/manga\/[^\/]+\/chapter-indexes\b/,
-    /^\/chapters\/[^\/]+(?:\?|$)/
-];
-
 export function signUrl(url: string): string {
     const path = url.replace(API_BASE, "").split("?")[0];
-    if (!SIGNED_PATTERNS.some((re) => re.test(path))) return url;
     const token = generateHash(path);
     const sep = url.includes("?") ? "&" : "?";
     return `${url}${sep}_=${token}`;
