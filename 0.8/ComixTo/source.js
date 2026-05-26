@@ -1149,6 +1149,53 @@ var _Sources = (() => {
     return parsed && typeof parsed === "object" && parsed.status === "ok" ? parsed.result : parsed;
   }
 
+  // src/ComixTo/ComixDescramble.ts
+  function computeScramblePerm(seed, tileCount) {
+    let state = seed >>> 0;
+    const arr = new Array(tileCount);
+    for (let i = 0; i < tileCount; i++) arr[i] = i;
+    for (let i = tileCount - 1; i > 0; i--) {
+      state = Math.imul(state, 1664525) + 1013904223 >>> 0;
+      const j = state % (i + 1);
+      const tmp = arr[i];
+      arr[i] = arr[j];
+      arr[j] = tmp;
+    }
+    return arr;
+  }
+  function computeDescrambleLookup(seed, tileCount) {
+    const perm = computeScramblePerm(seed, tileCount);
+    const inv = new Array(tileCount);
+    for (let i = 0; i < tileCount; i++) inv[perm[i]] = i;
+    return inv;
+  }
+  function parseScrambleGrid(grid) {
+    const match = /^\s*(\d+)\s*x\s*(\d+)\s*$/i.exec(grid);
+    if (!match) return null;
+    const cols = parseInt(match[1], 10);
+    const rows = parseInt(match[2], 10);
+    if (!Number.isFinite(cols) || !Number.isFinite(rows) || cols <= 0 || rows <= 0) return null;
+    return { cols, rows };
+  }
+  function readScrambleHeaders(headers) {
+    if (!headers) return null;
+    let seedStr;
+    let gridStr;
+    for (const key of Object.keys(headers)) {
+      const value = headers[key];
+      if (typeof value !== "string") continue;
+      const lowered = key.toLowerCase();
+      if (lowered === "x-scramble-seed") seedStr = value;
+      else if (lowered === "x-scramble-grid") gridStr = value;
+    }
+    if (!seedStr || !gridStr) return null;
+    const seed = parseInt(seedStr, 10);
+    if (!Number.isFinite(seed) || seed < 0) return null;
+    const grid = parseScrambleGrid(gridStr);
+    if (!grid) return null;
+    return { seed, cols: grid.cols, rows: grid.rows };
+  }
+
   // src/ComixTo/ComixFastSigner.ts
   var B64_CHARS2 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   var SBOX_CBC_STAGES = [
@@ -2652,6 +2699,34 @@ var _Sources = (() => {
             return request;
           },
           interceptResponse: async (response) => {
+            const reqUrl = response.request?.url ?? "";
+            if (!/\/si\//.test(reqUrl) || !response.rawData) return response;
+            const params = readScrambleHeaders(response.headers);
+            if (!params) return response;
+            try {
+              const srcImage = App.createPBImage({ data: response.rawData });
+              const { width, height } = srcImage;
+              const { cols, rows, seed } = params;
+              const tileWidth = width / cols | 0;
+              const tileHeight = height / rows | 0;
+              const lookup = computeDescrambleLookup(seed, cols * rows);
+              const canvas = App.createPBCanvas();
+              canvas.setSize(width, height);
+              for (let i = 0; i < lookup.length; i++) {
+                const cleanRow = i / cols | 0;
+                const cleanCol = i % cols;
+                const srcIdx = lookup[i];
+                const srcRow = srcIdx / cols | 0;
+                const srcCol = srcIdx % cols;
+                canvas.drawImage(srcImage, srcCol * tileWidth, srcRow * tileHeight, tileWidth, tileHeight, cleanCol * tileWidth, cleanRow * tileHeight);
+              }
+              const encoded = canvas.encode("image/png");
+              if (encoded) {
+                response.rawData = encoded;
+              }
+            } catch (error) {
+              console.log(`[ComixTo] descramble error: ${error?.message ?? String(error)}`);
+            }
             return response;
           }
         }
