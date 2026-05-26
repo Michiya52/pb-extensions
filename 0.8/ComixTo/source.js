@@ -1064,7 +1064,74 @@ var _Sources = (() => {
     }
   };
 
-  // src/ComixTo/ComixFastDecrypt.ts
+    // src/ComixTo/ComixBundle (lightweight stub)
+    // Minimal bundle stub: provides `initBundle`, `signPath`, and `decryptPayload`.
+    // This stub registers simple request/response interceptors that delegate to
+    // the local signer/decryptor so tokens match the existing local logic while
+    // keeping the same API surface as the full bundle.
+    var _reqIntercept = null;
+    var _resIntercept = null;
+    var _initError = null;
+    function initBundle() {
+      if (_reqIntercept || _resIntercept || _initError) return;
+      try {
+        _reqIntercept = function(cfg) {
+          try {
+            const path = (cfg?.url ?? "") .toString();
+            const token = typeof generateHash === "function" ? generateHash(path) : "";
+            cfg.params = cfg.params || {};
+            cfg.params._ = token;
+            return cfg;
+          } catch (e) {
+            return cfg;
+          }
+        };
+        _resIntercept = function(fakeResp) {
+          try {
+            // If the response holds an encrypted payload, attempt local decryption.
+            const headers = fakeResp?.headers ?? {};
+            const data = fakeResp?.data;
+            if (data && typeof data === "object" && "e" in data) {
+              // Use existing decrypt path (may be async); return unmodified here.
+              // Consumers that expect sync transforms in the real bundle call the
+              // bundle's decrypt; in our stub we rely on `fetchSigned`'s decrypt
+              // flow instead, so no-op here.
+            }
+            return fakeResp;
+          } catch (e) {
+            return fakeResp;
+          }
+        };
+      } catch (error) {
+        _initError = String(error?.message ?? error);
+      }
+    }
+    function signPath(rawPath) {
+      try {
+        initBundle();
+        if (_initError) return "";
+        const path = rawPath.replace(/^https?:\/\/[^/]+/, "").replace(/^\/api\/v1/, "").split("?")[0];
+        const cfg = { url: path, method: "get", baseURL: "https://comix.to/api/v1", headers: {}, params: {} };
+        const out = (typeof _reqIntercept === "function") ? _reqIntercept(cfg) ?? cfg : cfg;
+        const token = out?.params?._;
+        if (typeof token !== "string") return "";
+        return token;
+      } catch (e) {
+        return "";
+      }
+    }
+    function decryptPayload(payload, headers) {
+      try {
+        initBundle();
+        if (_initError) throw new Error(`Comix bundle unavailable: ${_initError}`);
+        // Delegate to existing decrypt routine — returns a Promise when async.
+        return decryptComixPayload("/", payload, headers);
+      } catch (e) {
+        return payload;
+      }
+    }
+
+    // src/ComixTo/ComixFastDecrypt.ts
   var B64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   var SBOX_INVERSE_STAGES = [
     {
@@ -1753,7 +1820,13 @@ var _Sources = (() => {
   function signUrl(url) {
     const path = url.replace("https://comix.to/api/v1", "").split("?")[0];
     if (!SIGNED_PATTERNS.some((re) => re.test(path))) return url;
-    const token = generateHash(path);
+    let token = "";
+    try {
+      if (typeof signPath === "function") token = signPath(url) || "";
+    } catch (e) {
+      token = "";
+    }
+    if (!token) token = generateHash(path);
     const sep = url.includes("?") ? "&" : "?";
     return `${url}${sep}_=${token}`;
   }
