@@ -1064,74 +1064,663 @@ var _Sources = (() => {
     }
   };
 
-    // src/ComixTo/ComixBundle (lightweight stub)
-    // Minimal bundle stub: provides `initBundle`, `signPath`, and `decryptPayload`.
-    // This stub registers simple request/response interceptors that delegate to
-    // the local signer/decryptor so tokens match the existing local logic while
-    // keeping the same API surface as the full bundle.
-    var _reqIntercept = null;
-    var _resIntercept = null;
-    var _initError = null;
-    function initBundle() {
-      if (_reqIntercept || _resIntercept || _initError) return;
+  // src/ComixTo/ComixBundle.ts
+  var BUNDLE_INFO = {
+    bundleId: "d3b92f7c458e",
+    fetchedAt: "2026-05-25T22:13:39.589Z",
+    homepage: "https://comix.to/title/xlyyj-eleceed",
+    mainUrl: "https://comix.to/assets/build/35595e3de3c99889c1aa70/dist/main-tfl4t2-DIzxSQXZ.js",
+    secureUrl: "https://comix.to/assets/build/35595e3de3c99889c1aa70/dist/secure-tfl4t2-BRlFkaym.js",
+    cfg: "ZZYdbXagjEpeaRwTE56mTpBkKVnnIBmAB3gdwWXXjEM7ZqAcLgonw0ylNjY621zM0zefn1Qg_jIQEn0oAIFnaXeGk3K4XZgY6S1Ldadwahluwgs-siIh0m-Lbw",
+    exportNames: ["a", "i", "n", "o", "r", "s", "t"]
+  };
+    "TextDecoder",
+  var BUNDLE_CODE = `Y4[254928]=function(){for(var U1O=2;9!==U1O;)switch(U1O){case 1:return globalThis;case 2:U1O="object"==typeof globalThis?1:5;break;case 5:var n1U;try{for(var F9f=2;6!==F9f;)switch(F9f){case 4:F9f="undefined"==typeof by_Cb?3:9;break;case 9:delete n1U.by_Cb,delete Object.prototype.Q26JO,F9f=6;break;case 3:throw"";case 2:Object.defineProperty(Object.prototype,"Q26JO",{get:function(){return this},configurable:!0}),(n1U=Q26JO).by_Cb=n1U,F9f=4}}catch(c46){n1U=window}return n1U}}(),Y4.D4f4vF=function(){re...`;
+  var _exports = null;
+  var _reqIntercept = null;
+  var _resIntercept = null;
+  var _initError = null;
+  function runChecks() {
+    const G = globalThis;
+    const results = {};
+    results.__platform = {
+      userAgent: (G.navigator && G.navigator.userAgent) ?? "(no navigator.userAgent)",
+      globalThisType: typeof G,
+      hasWindow: typeof G.window,
+      hasDocument: typeof G.document
+    };
+    const types = {};
+    for (const name of BUILTIN_NAMES) {
       try {
-        _reqIntercept = function(cfg) {
-          try {
-            const path = (cfg?.url ?? "") .toString();
-            const token = typeof generateHash === "function" ? generateHash(path) : "";
-            cfg.params = cfg.params || {};
-            cfg.params._ = token;
-            return cfg;
-          } catch (e) {
-            return cfg;
-          }
-        };
-        _resIntercept = function(fakeResp) {
-          try {
-            // If the response holds an encrypted payload, attempt local decryption.
-            const headers = fakeResp?.headers ?? {};
-            const data = fakeResp?.data;
-            if (data && typeof data === "object" && "e" in data) {
-              // Use existing decrypt path (may be async); return unmodified here.
-              // Consumers that expect sync transforms in the real bundle call the
-              // bundle's decrypt; in our stub we rely on `fetchSigned`'s decrypt
-              // flow instead, so no-op here.
-            }
-            return fakeResp;
-          } catch (e) {
-            return fakeResp;
-          }
-        };
-      } catch (error) {
-        _initError = String(error?.message ?? error);
-      }
-    }
-    function signPath(rawPath) {
-      try {
-        initBundle();
-        if (_initError) return "";
-        const path = rawPath.replace(/^https?:\/\/[^/]+/, "").replace(/^\/api\/v1/, "").split("?")[0];
-        const cfg = { url: path, method: "get", baseURL: "https://comix.to/api/v1", headers: {}, params: {} };
-        const out = (typeof _reqIntercept === "function") ? _reqIntercept(cfg) ?? cfg : cfg;
-        const token = out?.params?._;
-        if (typeof token !== "string") return "";
-        return token;
+        types[name] = describe(G[name]);
       } catch (e) {
-        return "";
+        types[name] = `THROW:${e?.message?.slice(0, 60)}`;
       }
     }
-    function decryptPayload(payload, headers) {
+    results.builtins = types;
+    results.spotChecks = {
+      TextEncoder_construct: typeof G.TextEncoder === "function" ? tryConstruct(G.TextEncoder, []) : "no-symbol",
+      TextDecoder_construct: typeof G.TextDecoder === "function" ? tryConstruct(G.TextDecoder, []) : "no-symbol",
+      Blob_construct: typeof G.Blob === "function" ? tryConstruct(G.Blob, [["hi"]]) : "no-symbol",
+      URL_construct: typeof G.URL === "function" ? tryConstruct(G.URL, ["https://example.com/path"]) : "no-symbol",
+      queueMicrotask_call: typeof G.queueMicrotask === "function" ? "callable" : "no-symbol",
+      Proxy_construct: typeof G.Proxy === "function" ? tryConstruct(G.Proxy, [{}, {}]) : "no-symbol",
+      Reflect_get: typeof G.Reflect === "object" ? tryCall(G.Reflect.get, [{ a: 1 }, "a"]) : "no-symbol",
+      WebAssembly_validate: typeof G.WebAssembly === "object" ? "exists" : "no-symbol",
+      crypto_getRandomValues: G.crypto && typeof G.crypto.getRandomValues === "function" ? "ok" : "missing",
+      setInterval_call: typeof G.setInterval === "function" ? tryCall(G.setInterval, [() => {
+      }, 999999]) : "no-symbol",
+      fetch_exists: typeof G.fetch === "function" ? "yes" : "no"
+    };
+    const dpResults = {};
+    try {
+      Object.defineProperty(G, "__probe_data_prop", { value: 1, writable: true, configurable: true });
+      dpResults.dataProperty = G.__probe_data_prop === 1 ? "ok" : "silent-fail";
       try {
-        initBundle();
-        if (_initError) throw new Error(`Comix bundle unavailable: ${_initError}`);
-        // Delegate to existing decrypt routine — returns a Promise when async.
-        return decryptComixPayload("/", payload, headers);
-      } catch (e) {
-        return payload;
+        delete G.__probe_data_prop;
+      } catch {
       }
+    } catch (e) {
+      dpResults.dataProperty = `throw:${e?.message?.slice(0, 80)}`;
     }
+    try {
+      let stored = 0;
+      Object.defineProperty(G, "__probe_accessor_prop", {
+        get() {
+          return stored;
+        },
+        set(v) {
+          stored = v;
+        },
+        configurable: true
+      });
+      G.__probe_accessor_prop = 42;
+      dpResults.accessorProperty = G.__probe_accessor_prop === 42 ? "ok" : "silent-fail";
+      try {
+        delete G.__probe_accessor_prop;
+      } catch {
+      }
+    } catch (e) {
+      dpResults.accessorProperty = `throw:${e?.message?.slice(0, 80)}`;
+    }
+    try {
+      G.__probe_direct_assign = "hello";
+      dpResults.directAssignment = G.__probe_direct_assign === "hello" ? "ok" : "silent-fail";
+      try {
+        delete G.__probe_direct_assign;
+      } catch {
+      }
+    } catch (e) {
+      dpResults.directAssignment = `throw:${e?.message?.slice(0, 80)}`;
+    }
+    results.globalThisMutation = dpResults;
+    try {
+      const sloppyImplicit = new Function("__probe_sloppy_var = 7; return typeof __probe_sloppy_var;");
+      results.implicitGlobalsAllowed = sloppyImplicit();
+      try {
+        delete G.__probe_sloppy_var;
+      } catch {
+      }
+    } catch (e) {
+      results.implicitGlobalsAllowed = `fail:${e?.message?.slice(0, 80)}`;
+    }
+    try {
+      const isStrict = new Function("return (function(){ return this === undefined ? 'strict' : 'sloppy'; })()");
+      results.newFunctionBodyMode = isStrict();
+    } catch (e) {
+      results.newFunctionBodyMode = `fail:${e?.message?.slice(0, 80)}`;
+    }
+    try {
+      const withTest = new Function("sb", "with(sb){ return typeof someVar; }");
+      results.withStatement = withTest({ someVar: "x" });
+    } catch (e) {
+      results.withStatement = `fail:${e?.message?.slice(0, 80)}`;
+    }
+    try {
+      const hoistTest = new Function("Y4[1] = 'set'; return Y4[1]; function Y4(){}");
+      results.functionDeclHoisting = hoistTest();
+    } catch (e) {
+      results.functionDeclHoisting = `fail:${e?.message?.slice(0, 80)}`;
+    }
+    return results;
+  }
+  var _reported = false;
+  function reportProbeOnce(label) {
+    if (_reported) return;
+    _reported = true;
+    if (!PROBE_LOG_URL) return;
+    let payload = { label };
+    try {
+      payload = { label, runtime: runChecks() };
+    } catch (e) {
+      payload.probeError = e?.message ?? String(e);
+    }
+    try {
+      const rm = App.createRequestManager({ requestsPerSecond: 5, requestTimeout: 5e3 });
+      const req = App.createRequest({
+        url: PROBE_LOG_URL,
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        data: JSON.stringify(payload, null, 2)
+      });
+      rm.schedule(req, 1).catch(() => {
+      });
+    } catch {
+    }
+    try {
+      console.log("[ComixProbe] " + JSON.stringify(payload).slice(0, 4e3));
+    } catch {
+    }
+  }
 
-    // src/ComixTo/ComixFastDecrypt.ts
+  // src/ComixTo/ComixPolyfills.ts
+  var TextEncoderShim = class {
+    get encoding() {
+      return "utf-8";
+    }
+    encode(input) {
+      const str = input == null ? "" : String(input);
+      const out = new Uint8Array(str.length * 4);
+      let pos = 0;
+      for (let i = 0; i < str.length; i++) {
+        let cp = str.charCodeAt(i);
+        if (cp >= 55296 && cp <= 56319 && i + 1 < str.length) {
+          const low = str.charCodeAt(i + 1);
+          if (low >= 56320 && low <= 57343) {
+            cp = 65536 + (cp - 55296 << 10) + (low - 56320);
+            i++;
+          }
+        }
+        if (cp < 128) {
+          out[pos++] = cp;
+        } else if (cp < 2048) {
+          out[pos++] = 192 | cp >> 6;
+          out[pos++] = 128 | cp & 63;
+        } else if (cp < 65536) {
+          out[pos++] = 224 | cp >> 12;
+          out[pos++] = 128 | cp >> 6 & 63;
+          out[pos++] = 128 | cp & 63;
+        } else {
+          out[pos++] = 240 | cp >> 18;
+          out[pos++] = 128 | cp >> 12 & 63;
+          out[pos++] = 128 | cp >> 6 & 63;
+          out[pos++] = 128 | cp & 63;
+        }
+      }
+      return out.slice(0, pos);
+    }
+    encodeInto(input, dest) {
+      const enc = this.encode(input);
+      const written = Math.min(enc.length, dest.length);
+      for (let i = 0; i < written; i++) dest[i] = enc[i];
+      return { read: input.length, written };
+    }
+  };
+  var TextDecoderShim = class {
+    constructor(encoding = "utf-8", options = {}) {
+      const enc = (encoding || "utf-8").toLowerCase();
+      if (enc !== "utf-8" && enc !== "utf8" && enc !== "unicode-1-1-utf-8") {
+        throw new RangeError(`TextDecoderShim: only utf-8 is supported (got ${encoding})`);
+      }
+      this.encoding = "utf-8";
+      this.fatal = !!options.fatal;
+      this.ignoreBOM = !!options.ignoreBOM;
+    }
+    decode(input) {
+      if (input == null) return "";
+      let bytes;
+      if (input instanceof Uint8Array) bytes = input;
+      else if (input instanceof ArrayBuffer) bytes = new Uint8Array(input);
+      else if (input.buffer instanceof ArrayBuffer) {
+        const view = input;
+        bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+      } else {
+        bytes = new Uint8Array(input);
+      }
+      let i = 0;
+      if (!this.ignoreBOM && bytes.length >= 3 && bytes[0] === 239 && bytes[1] === 187 && bytes[2] === 191) {
+        i = 3;
+      }
+      let out = "";
+      while (i < bytes.length) {
+        const b0 = bytes[i++];
+        if (b0 < 128) {
+          out += String.fromCharCode(b0);
+        } else if (b0 < 192) {
+          if (this.fatal) throw new TypeError("invalid utf-8 continuation byte");
+          out += "\uFFFD";
+        } else if (b0 < 224) {
+          const b1 = bytes[i++] ?? 0;
+          out += String.fromCharCode((b0 & 31) << 6 | b1 & 63);
+        } else if (b0 < 240) {
+          const b1 = bytes[i++] ?? 0;
+          const b2 = bytes[i++] ?? 0;
+          out += String.fromCharCode((b0 & 15) << 12 | (b1 & 63) << 6 | b2 & 63);
+        } else {
+          const b1 = bytes[i++] ?? 0;
+          const b2 = bytes[i++] ?? 0;
+          const b3 = bytes[i++] ?? 0;
+          let cp = (b0 & 7) << 18 | (b1 & 63) << 12 | (b2 & 63) << 6 | b3 & 63;
+          cp -= 65536;
+          out += String.fromCharCode(55296 + (cp >> 10));
+          out += String.fromCharCode(56320 + (cp & 1023));
+        }
+      }
+      return out;
+    }
+  };
+  var BlobShim = class _BlobShim {
+    constructor(parts = [], options = {}) {
+      this._parts = parts;
+      this.type = options.type ?? "";
+      let total = 0;
+      for (const p of parts) {
+        if (typeof p === "string") total += p.length;
+        else if (p && typeof p.byteLength === "number") total += p.byteLength;
+        else if (p && typeof p.size === "number") total += p.size;
+      }
+      this.size = total;
+    }
+    slice() {
+      return new _BlobShim(this._parts, { type: this.type });
+    }
+    async arrayBuffer() {
+      return new ArrayBuffer(this.size);
+    }
+    async text() {
+      return this._parts.filter((p) => typeof p === "string").join("");
+    }
+    stream() {
+      return null;
+    }
+  };
+  var URLShim = class {
+    constructor(url, base) {
+      const resolved = resolveUrl(String(url), base ? String(base) : void 0);
+      this.href = resolved.href;
+      this.protocol = resolved.protocol;
+      this.host = resolved.host;
+      this.hostname = resolved.hostname;
+      this.port = resolved.port;
+      this.pathname = resolved.pathname;
+      this.search = resolved.search;
+      this.hash = resolved.hash;
+      this.origin = resolved.protocol && resolved.host ? `${resolved.protocol}//${resolved.host}` : "null";
+    }
+    toString() {
+      return this.href;
+    }
+  };
+  function resolveUrl(url, base) {
+    let m = /^([a-zA-Z][a-zA-Z0-9+\-.]*:)\/\/([^\/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/.exec(url);
+    if (!m && base) {
+      const bm = /^([a-zA-Z][a-zA-Z0-9+\-.]*:)\/\/([^\/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/.exec(base);
+      if (!bm) throw new TypeError(`URLShim: invalid base ${base}`);
+      const proto = bm[1], host2 = bm[2], basePath = bm[3] || "/";
+      let full;
+      if (url.startsWith("//")) full = `${proto}${url}`;
+      else if (url.startsWith("/")) full = `${proto}//${host2}${url}`;
+      else if (url.startsWith("?") || url.startsWith("#")) full = `${proto}//${host2}${basePath}${url}`;
+      else {
+        const baseDir = basePath.replace(/[^\/]*$/, "");
+        full = `${proto}//${host2}${baseDir}${url}`;
+      }
+      m = /^([a-zA-Z][a-zA-Z0-9+\-.]*:)\/\/([^\/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/.exec(full);
+    }
+    if (!m) throw new TypeError(`URLShim: invalid URL ${url}`);
+    const protocol = m[1];
+    const host = m[2];
+    const pathname = m[3] || "/";
+    const search = m[4] || "";
+    const hash = m[5] || "";
+    const portMatch = /:(\d+)$/.exec(host);
+    const hostname = portMatch ? host.slice(0, -portMatch[0].length) : host;
+    const port = portMatch ? portMatch[1] : "";
+    return {
+      href: `${protocol}//${host}${pathname}${search}${hash}`,
+      protocol,
+      host,
+      hostname,
+      port,
+      pathname,
+      search,
+      hash
+    };
+  }
+  var URLSearchParamsShim = class {
+    constructor(init) {
+      this._params = [];
+      if (typeof init === "string") {
+        const s = init.startsWith("?") ? init.slice(1) : init;
+        if (s) {
+          for (const kv of s.split("&")) {
+            const eq = kv.indexOf("=");
+            if (eq < 0) this._params.push([decodeURIComponent(kv), ""]);
+            else this._params.push([decodeURIComponent(kv.slice(0, eq)), decodeURIComponent(kv.slice(eq + 1))]);
+          }
+        }
+      } else if (init && typeof init === "object") {
+        for (const [k, v] of Object.entries(init)) this._params.push([k, String(v)]);
+      }
+    }
+    get(name) {
+      for (const [k, v] of this._params) if (k === name) return v;
+      return null;
+    }
+    has(name) {
+      return this._params.some(([k]) => k === name);
+    }
+    set(name, value) {
+      let found = false;
+      this._params = this._params.filter(([k]) => {
+        if (k === name) {
+          if (!found) {
+            found = true;
+            return true;
+          }
+          return false;
+        }
+        return true;
+      });
+      if (found) {
+        for (const p of this._params) if (p[0] === name) p[1] = String(value);
+      } else {
+        this._params.push([name, String(value)]);
+      }
+    }
+    append(name, value) {
+      this._params.push([name, String(value)]);
+    }
+    toString() {
+      return this._params.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&");
+    }
+  };
+  function btoaShim(s) {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let out = "";
+    let i = 0;
+    while (i < s.length) {
+      const a = s.charCodeAt(i++) & 255;
+      const b = i < s.length ? s.charCodeAt(i) & 255 : -1;
+      const c = i < s.length ? s.charCodeAt(i) & 255 : -1;
+      const n = a << 16 | Math.max(0, b) << 8 | Math.max(0, c);
+      out += chars[n >> 18 & 63] + chars[n >> 12 & 63] + (b < 0 ? "=" : chars[n >> 6 & 63]) + (c < 0 ? "=" : chars[n & 63]);
+    }
+    return out;
+  }
+
+  // src/ComixTo/ComixBundleRuntime.ts
+  function buildSandboxBacking() {
+    const G = globalThis;
+    const cfg = BUNDLE_INFO.cfg;
+    const metaCfg = {
+      get content() {
+        return cfg;
+      },
+      getAttribute(name) {
+        return name === "content" ? cfg : name === "name" ? "cfg" : null;
+      },
+      name: "cfg"
+    };
+    const querySelector = (selector) => {
+      if (typeof selector !== "string") return null;
+      return selector.indexOf("cfg") >= 0 ? metaCfg : null;
+    };
+    const querySelectorAll = (selector) => {
+      if (typeof selector !== "string") return [];
+      return selector.toLowerCase() === "meta" ? [metaCfg] : [];
+    };
+    try {
+      Object.defineProperty(querySelector, "toString", { value: () => "function querySelector() { [native code] }" });
+      Object.defineProperty(querySelectorAll, "toString", { value: () => "function querySelectorAll() { [native code] }" });
+    } catch {
+    }
+    const dummyCanvas = {
+      width: 300,
+      height: 150,
+      style: {},
+      getContext: () => ({
+        fillRect() {
+        },
+        clearRect() {
+        },
+        fillText() {
+        },
+        getImageData: () => ({ data: new Uint8ClampedArray([0, 0, 0, 0]), width: 1, height: 1 }),
+        putImageData() {
+        },
+        createImageData: () => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 })
+      }),
+      toDataURL: () => "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+    };
+    const doc = {
+      querySelector,
+      querySelectorAll,
+      getElementsByTagName(tag) {
+        return tag && tag.toLowerCase() === "meta" ? [metaCfg] : [];
+      },
+      createElement(tagName) {
+        if (typeof tagName !== "string") return { style: {} };
+        const tag = tagName.toLowerCase();
+        if (tag === "canvas") return dummyCanvas;
+        if (tag === "a") {
+          const anchor = { href: "", style: {} };
+          Object.defineProperty(anchor, "hostname", { get() {
+            try {
+              return new URL(anchor.href, "https://comix.to").hostname;
+            } catch {
+              return "comix.to";
+            }
+          } });
+          Object.defineProperty(anchor, "pathname", { get() {
+            try {
+              return new URL(anchor.href, "https://comix.to").pathname;
+            } catch {
+              return "/";
+            }
+          } });
+          Object.defineProperty(anchor, "protocol", { get() {
+            try {
+              return new URL(anchor.href, "https://comix.to").protocol;
+            } catch {
+              return "https:";
+            }
+          } });
+          Object.defineProperty(anchor, "host", { get() {
+            try {
+              return new URL(anchor.href, "https://comix.to").host;
+            } catch {
+              return "comix.to";
+            }
+          } });
+          return anchor;
+        }
+        return { style: {} };
+      },
+      head: { appendChild() {
+      }, removeChild() {
+      } },
+      body: { appendChild() {
+      }, removeChild() {
+      } },
+      cookie: "",
+      readyState: "complete",
+      addEventListener() {
+      },
+      removeEventListener() {
+      }
+    };
+    const loc = {
+      href: "https://comix.to/",
+      origin: "https://comix.to",
+      host: "comix.to",
+      hostname: "comix.to",
+      pathname: "/",
+      protocol: "https:",
+      search: "",
+      hash: ""
+    };
+    const nav = {
+      userAgent: typeof G.navigator?.userAgent === "string" && G.navigator.userAgent ? G.navigator.userAgent : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+      appCodeName: "Mozilla",
+      appName: "Netscape",
+      language: "en-US",
+      languages: ["en-US", "en"],
+      platform: "Win32",
+      cookieEnabled: true
+    };
+    const noop = () => 0;
+    const realSetTimeout = typeof G.setTimeout === "function" ? G.setTimeout.bind(G) : noop;
+    const realClearTimeout = typeof G.clearTimeout === "function" ? G.clearTimeout.bind(G) : () => {
+    };
+    const realSetInterval = typeof G.setInterval === "function" ? G.setInterval.bind(G) : noop;
+    const realClearInterval = typeof G.clearInterval === "function" ? G.clearInterval.bind(G) : () => {
+    };
+    return {
+      document: doc,
+      location: loc,
+      navigator: nav,
+      screen: { width: 1920, height: 1080, availWidth: 1920, availHeight: 1040, colorDepth: 24, pixelDepth: 24 },
+      getComputedStyle: () => ({ getPropertyValue: () => "" }),
+      addEventListener() {
+      },
+      removeEventListener() {
+      },
+      dispatchEvent() {
+        return true;
+      },
+      atob: typeof G.atob === "function" ? G.atob.bind(G) : atobShim,
+      btoa: typeof G.btoa === "function" ? G.btoa.bind(G) : btoaShim,
+      TextEncoder: typeof G.TextEncoder === "function" ? G.TextEncoder : TextEncoderShim,
+      TextDecoder: typeof G.TextDecoder === "function" ? G.TextDecoder : TextDecoderShim,
+      Blob: typeof G.Blob === "function" ? G.Blob : BlobShim,
+      URL: typeof G.URL === "function" ? G.URL : URLShim,
+      URLSearchParams: typeof G.URLSearchParams === "function" ? G.URLSearchParams : URLSearchParamsShim,
+      crypto: G.crypto ?? cryptoShim,
+      setTimeout: realSetTimeout,
+      clearTimeout: realClearTimeout,
+      setInterval: realSetInterval,
+      clearInterval: realClearInterval,
+      queueMicrotask: typeof G.queueMicrotask === "function" ? G.queueMicrotask.bind(G) : (cb) => Promise.resolve().then(cb),
+      localStorage: { getItem: () => null, setItem() {
+      }, removeItem() {
+      } }
+    };
+  }
+  var HAS_DENYLIST = /* @__PURE__ */ new Set([
+    // `arguments` is a per-function magic binding; if we shadow it via has(),
+    // bundle functions can't read their own arguments.
+    "arguments"
+  ]);
+  function buildSandbox() {
+    const backing = buildSandboxBacking();
+    const G = globalThis;
+    const proxy = new Proxy(backing, {
+      has(_target, key) {
+        if (typeof key === "symbol") return false;
+        if (HAS_DENYLIST.has(key)) return false;
+        return true;
+      },
+      get(target, key) {
+        if (typeof key === "symbol") return target[key];
+        if (key in target) return target[key];
+        return G[key];
+      },
+      set(target, key, value) {
+        target[key] = value;
+        return true;
+      }
+    });
+    backing.globalThis = proxy;
+    backing.window = proxy;
+    backing.self = proxy;
+    backing.global = proxy;
+    return proxy;
+  }
+  function initBundle() {
+    if (_exports || _initError) return;
+    reportProbeOnce("pre-init");
+    try {
+      const sandbox = buildSandbox();
+      const bootFn = new Function("__sb", `with(__sb){
+${BUNDLE_CODE}
+}`);
+      _exports = bootFn(sandbox);
+      if (!_exports || typeof _exports.r !== "function") {
+        throw new Error("bundle did not return expected exports (missing installer 'r')");
+      }
+      const fakeAxios = {
+        interceptors: {
+          request: { use: (h) => {
+            _reqIntercept = h;
+          } },
+          response: { use: (h) => {
+            _resIntercept = h;
+          } }
+        },
+        defaults: {
+          headers: { common: {}, get: {}, post: {}, put: {}, delete: {}, patch: {}, head: {} },
+          transformRequest: [],
+          transformResponse: []
+        },
+        get() {
+        },
+        post() {
+        },
+        put() {
+        },
+        delete() {
+        },
+        patch() {
+        },
+        head() {
+        }
+      };
+      _exports.r(fakeAxios);
+      if (!_reqIntercept) throw new Error("bundle did not register a request interceptor");
+      if (!_resIntercept) throw new Error("bundle did not register a response interceptor");
+    } catch (error) {
+      _initError = error?.message ?? String(error);
+      try {
+        console.error(`[ComixBundle] init failed: ${_initError}`);
+      } catch {
+      }
+    }
+  }
+  function signPath(rawPath) {
+    initBundle();
+    if (_initError) throw new Error(`Comix bundle unavailable: ${_initError}`);
+    const path = rawPath.replace(/^https?:\/\/[^/]+/, "").replace(/^\/api\/v1/, "").split("?")[0];
+    const cfg = {
+      url: path,
+      method: "get",
+      baseURL: "https://comix.to/api/v1",
+      headers: {},
+      params: {}
+    };
+    const out = _reqIntercept(cfg) ?? cfg;
+    const token = out?.params?._;
+    if (typeof token !== "string" || token.length === 0) return "";
+    return token;
+  }
+  function decryptPayload(payload, headers) {
+    initBundle();
+    if (_initError) throw new Error(`Comix bundle unavailable: ${_initError}`);
+    const normalizedHeaders = {};
+    for (const k of Object.keys(headers ?? {})) {
+      const v = headers[k];
+      if (typeof v === "string") normalizedHeaders[k.toLowerCase()] = v;
+    }
+    const fakeResp = {
+      data: payload,
+      status: 200,
+      statusText: "OK",
+      headers: normalizedHeaders,
+      config: { url: "/", method: "get", baseURL: "https://comix.to/api/v1" },
+    };
+    const out = _resIntercept(fakeResp) ?? fakeResp;
+    return out?.data ?? payload;
+  }
   var B64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   var SBOX_INVERSE_STAGES = [
     {
