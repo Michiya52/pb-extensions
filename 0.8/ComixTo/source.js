@@ -2361,6 +2361,58 @@ ${BUNDLE_CODE}
   var getSelectedUploaders = async (stateManager) => {
     return await stateManager.retrieve("uploaders_selected") ?? [];
   };
+  var getPriorityOrderedUploaders = async (stateManager) => {
+    const current = await stateManager.retrieve("uploaders");
+    if (Array.isArray(current) && current.length > 0) return current;
+    const legacy = await stateManager.retrieve("uploadersFiltering");
+    if (legacy && Array.isArray(legacy.list) && legacy.list.length > 0) {
+      return legacy.list;
+    }
+    return Array.isArray(current) ? current : [];
+  };
+  var getDebugMode = async (stateManager) => {
+    return await stateManager.retrieve("debug_mode") ?? false;
+  };
+  var getDeveloperMode = async (stateManager) => {
+    const dev = await stateManager.retrieve("developer_mode");
+    if (typeof dev === "boolean") return dev;
+    return await stateManager.retrieve("debug_mode") ?? false;
+  };
+  var appendDevLog = async (stateManager, message) => {
+    try {
+      if (!(await getDeveloperMode(stateManager))) return;
+      const raw = await stateManager.retrieve("dev_log");
+      let log = Array.isArray(raw) ? raw : [];
+      log.push({ ts: Date.now(), msg: message });
+      await stateManager.store("dev_log", log);
+    } catch (e) {
+    }
+  };
+  var getAutoSeedUploaders = async (stateManager) => {
+    const val = await stateManager.retrieve("auto_seed_uploaders");
+    if (typeof val === "boolean") return val;
+    return true;
+  };
+  var autoSeedUploadersFromChapters = async (stateManager, chapters) => {
+    const existing = await getUploaders(stateManager);
+    const existingSet = new Set(existing.map((g) => normalizeString(String(g)).toLowerCase()));
+    const seeded = [...existing];
+    for (const chap of chapters) {
+      const group = chap?.group?.name;
+      if (!group || typeof group !== "string") continue;
+      const normalized = normalizeString(group).toLowerCase();
+      if (!normalized || existingSet.has(normalized)) continue;
+      existingSet.add(normalized);
+      seeded.push(group);
+    }
+    if (seeded.length !== existing.length) {
+      await stateManager.store("uploaders", seeded);
+      const selected = await getSelectedUploaders(stateManager);
+      if (!Array.isArray(selected) || selected.length === 0) {
+        await stateManager.store("uploaders_selected", seeded);
+      }
+    }
+  };
   var contentSettings = (stateManager) => {
     return keepAlive(App.createDUINavigationButton({
       id: "content_settings",
