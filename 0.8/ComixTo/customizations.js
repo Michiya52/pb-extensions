@@ -4,6 +4,20 @@
 const API_BASE = "https://comix.to/api/v1";
 const DOMAIN = "https://comix.to";
 
+const CONTENT_RATINGS = [
+  { id: "safe", label: "Safe" },
+  { id: "suggestive", label: "Suggestive" },
+  { id: "erotica", label: "Erotica" },
+  { id: "pornographic", label: "Pornographic" }
+];
+
+const CONTENT_TYPES = [
+  { id: "manga", label: "Manga" },
+  { id: "manhwa", label: "Manhwa" },
+  { id: "manhua", label: "Manhua" },
+  { id: "other", label: "Other" }
+];
+
 function normalizeString(str) {
   return str.replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'").replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"');
 }
@@ -898,7 +912,7 @@ const OriginalComixToInfo = _Sources.ComixToInfo;
 
 const NewComixToInfo = {
   ...OriginalComixToInfo,
-  version: "1.7",
+  version: "1.8",
   author: "Michiya52",
   authorWebsite: "https://github.com/Michiya52",
   description: "Read manga from ComixTo with advanced filters"
