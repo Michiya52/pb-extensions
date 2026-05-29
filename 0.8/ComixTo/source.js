@@ -3062,6 +3062,54 @@ const contentSettings = (stateManager) => {
           ])
         }),
         App.createDUISection({
+          id: "chapter_display_settings",
+          header: "Chapter Display",
+          footer: "Customize how chapters are rendered in the app.",
+          isHidden: false,
+          rows: async () => keepAlive([
+            App.createDUISwitch({
+              id: "show_title",
+              label: "Show Title",
+              value: App.createDUIBinding({
+                get: async () => await getShowTitle(stateManager),
+                set: async (newValue) => await stateManager.store("show_title", newValue)
+              })
+            }),
+            App.createDUISwitch({
+              id: "show_uploader",
+              label: "Show Uploader",
+              value: App.createDUIBinding({
+                get: async () => await getShowUploader(stateManager),
+                set: async (newValue) => await stateManager.store("show_uploader", newValue)
+              })
+            })
+          ])
+        }),
+        App.createDUISection({
+          id: "chapter_filtering_settings",
+          header: "Chapter Filtering",
+          footer: "Configure rules to hide duplicate versions or duplicates of chapters.",
+          isHidden: false,
+          rows: async () => keepAlive([
+            App.createDUISwitch({
+              id: "remove_duplicates",
+              label: "Remove Duplicate Chapters",
+              value: App.createDUIBinding({
+                get: async () => await getRemoveDuplicates(stateManager),
+                set: async (newValue) => await stateManager.store("remove_duplicates", newValue)
+              })
+            }),
+            App.createDUISwitch({
+              id: "one_version_only",
+              label: "One Version Only",
+              value: App.createDUIBinding({
+                get: async () => await getOneVersionOnly(stateManager),
+                set: async (newValue) => await stateManager.store("one_version_only", newValue)
+              })
+            })
+          ])
+        }),
+        App.createDUISection({
           id: "rating_settings",
           header: "Content Filtering",
           footer: "Items with the selected rating or tamer are shown. Anything more explicit is hidden.",
@@ -3675,7 +3723,7 @@ const OriginalComixToInfo = _Sources.ComixToInfo;
 
 const NewComixToInfo = {
   ...OriginalComixToInfo,
-  version: "1.8",
+  version: "1.8.1",
   author: "Michiya52",
   authorWebsite: "https://github.com/Michiya52",
   description: "Read manga from ComixTo with advanced filters"
