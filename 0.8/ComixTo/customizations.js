@@ -896,15 +896,15 @@ function myCustomParseChapters(data, isFiltering, isWhitelist, isStrict, savedGr
 const OriginalComixTo = _Sources.ComixTo;
 const OriginalComixToInfo = _Sources.ComixToInfo;
 
-_Sources.ComixToInfo = {
+const NewComixToInfo = {
   ...OriginalComixToInfo,
-  version: "1.6",
+  version: "1.7",
   author: "Michiya52",
   authorWebsite: "https://github.com/Michiya52",
   description: "Read manga from ComixTo with advanced filters"
 };
 
-_Sources.ComixTo = class extends OriginalComixTo {
+const NewComixTo = class extends OriginalComixTo {
   constructor() {
     super(...arguments);
     
@@ -949,8 +949,14 @@ _Sources.ComixTo = class extends OriginalComixTo {
   }
 };
 
+const CustomSources = {
+  ..._Sources,
+  ComixTo: NewComixTo,
+  ComixToInfo: NewComixToInfo
+};
+
 // Re-assign the Sources object globally and to exports
-this.Sources = _Sources;
+this.Sources = CustomSources;
 if (typeof exports === 'object' && typeof module !== 'undefined') {
   module.exports.Sources = this.Sources;
 }
