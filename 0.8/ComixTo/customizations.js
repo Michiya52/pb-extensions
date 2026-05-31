@@ -960,7 +960,7 @@ const OriginalComixToInfo = _Sources.ComixToInfo;
 
 const NewComixToInfo = {
   ...OriginalComixToInfo,
-  version: "1.8.1",
+  version: "1.8.2",
   author: "Michiya52",
   authorWebsite: "https://github.com/Michiya52",
   description: "Read manga from ComixTo with advanced filters"
