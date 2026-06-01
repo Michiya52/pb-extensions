@@ -1717,7 +1717,7 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixTo.ts
   var ComixToInfo = {
-    version: "1.9.3",
+    version: "1.9.4",
     name: "ComixTo",
     icon: "icon.png",
     author: "acepilot147",
@@ -1752,7 +1752,7 @@ var _Sources = (() => {
           },
           interceptResponse: async (response) => {
             const reqUrl = response.request?.url ?? "";
-            if (!/\/si\//.test(reqUrl) || !response.rawData) return response;
+            if (!/\/sii?\//.test(reqUrl) || !response.rawData) return response;
             const params = readScrambleHeaders(response.headers);
             if (!params) return response;
             try {
@@ -3129,7 +3129,7 @@ const OriginalComixToInfo = _Sources.ComixToInfo;
 
 const NewComixToInfo = {
   ...OriginalComixToInfo,
-  version: "1.8.2",
+  version: "1.8.3",
   author: "Michiya52",
   authorWebsite: "https://github.com/Michiya52",
   description: "Read manga from ComixTo with advanced filters"
