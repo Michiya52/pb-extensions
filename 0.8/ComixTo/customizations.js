@@ -22,6 +22,11 @@ function normalizeString(str) {
   return str.replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'").replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"');
 }
 
+function cleanGroupName(str) {
+  if (!str || typeof str !== "string") return "";
+  return normalizeString(str).toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 function parseRelativeTime(s) {
   if (!s) return new Date();
   const m = /^(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago$/i.exec(s.trim());
@@ -258,14 +263,14 @@ const getAutoSeedUploaders = async (stateManager) => {
 
 const autoSeedUploadersFromChapters = async (stateManager, chapters) => {
   const existing = await getUploaders(stateManager);
-  const existingSet = new Set(existing.map((g) => normalizeString(String(g)).toLowerCase()));
+  const existingSet = new Set(existing.map((g) => cleanGroupName(String(g))));
   const seeded = [...existing];
   for (const chap of chapters) {
     const group = chap?.group?.name;
     if (!group || typeof group !== "string") continue;
-    const normalized = normalizeString(group).toLowerCase();
-    if (!normalized || existingSet.has(normalized)) continue;
-    existingSet.add(normalized);
+    const clean = cleanGroupName(group);
+    if (!clean || existingSet.has(clean)) continue;
+    existingSet.add(clean);
     seeded.push(group);
   }
   if (seeded.length !== existing.length) {
@@ -801,25 +806,34 @@ function myCustomParseChapters(data, isFiltering, isWhitelist, isStrict, savedGr
   
   const finalChapters = [];
   const uploaderList = (priorityGroups ?? []).map((u) => normalizeString(u).toLowerCase());
+  const uploaderListClean = (priorityGroups ?? []).map((u) => cleanGroupName(u));
   
   const lastReadGroupNorm = lastReadGroup ? normalizeString(lastReadGroup).toLowerCase() : null;
+  const lastReadGroupClean = lastReadGroup ? cleanGroupName(lastReadGroup) : null;
   const getPriorityIndex = (groupName) => {
     if (!groupName || typeof groupName !== "string") return 9999;
+    const cleanNorm = cleanGroupName(groupName);
     const normalized = normalizeString(groupName).toLowerCase();
-    if (followLastRead && lastReadGroupNorm) {
+    
+    if (followLastRead && lastReadGroupClean) {
       if (isStrict) {
-        if (normalized === lastReadGroupNorm) return -1;
-      } else if (normalized.includes(lastReadGroupNorm) || lastReadGroupNorm.includes(normalized)) {
-        return -1;
+        if (cleanNorm === lastReadGroupClean) return -1;
+      } else {
+        if (cleanNorm === lastReadGroupClean || cleanNorm.includes(lastReadGroupClean) || lastReadGroupClean.includes(cleanNorm) || (lastReadGroupNorm && (normalized.includes(lastReadGroupNorm) || lastReadGroupNorm.includes(normalized)))) {
+          return -1;
+        }
       }
     }
-    for (let i = 0; i < uploaderList.length; i++) {
-      const u = uploaderList[i];
+    for (let i = 0; i < uploaderListClean.length; i++) {
+      const u = uploaderListClean[i];
       if (!u) continue;
       if (isStrict) {
-        if (normalized === u) return i;
-      } else if (normalized.includes(u) || u.includes(normalized)) {
-        return i;
+        if (cleanNorm === u) return i;
+      } else {
+        const rawU = uploaderList[i];
+        if (cleanNorm === u || cleanNorm.includes(u) || u.includes(cleanNorm) || (rawU && (normalized.includes(rawU) || rawU.includes(normalized)))) {
+          return i;
+        }
       }
     }
     return 9999;
@@ -835,20 +849,32 @@ function myCustomParseChapters(data, isFiltering, isWhitelist, isStrict, savedGr
       if (isFiltering && savedGroups && savedGroups.length > 0) {
         if (!isWhitelist) {
           filtered = filtered.filter((v) => {
+            const cleanGroup = cleanGroupName(v.group || "");
             const normalizedGroup = normalizeString(v.group || "").toLowerCase();
             const isMatched = savedGroups.some((item) => {
+              const cleanItem = cleanGroupName(item);
               const normalizedItem = normalizeString(item).toLowerCase();
-              return isStrict ? normalizedGroup === normalizedItem : normalizedGroup.includes(normalizedItem);
+              if (isStrict) {
+                return cleanGroup === cleanItem;
+              } else {
+                return cleanGroup === cleanItem || cleanGroup.includes(cleanItem) || cleanItem.includes(cleanGroup) || normalizedGroup.includes(normalizedItem);
+              }
             });
             return !isMatched;
           });
         }
         if (isWhitelist && filtered.length > 0) {
           const whitelisted = filtered.filter((v) => {
+            const cleanGroup = cleanGroupName(v.group || "");
             const normalizedGroup = normalizeString(v.group || "").toLowerCase();
             return savedGroups.some((item) => {
+              const cleanItem = cleanGroupName(item);
               const normalizedItem = normalizeString(item).toLowerCase();
-              return isStrict ? normalizedGroup === normalizedItem : normalizedGroup.includes(normalizedItem);
+              if (isStrict) {
+                return cleanGroup === cleanItem;
+              } else {
+                return cleanGroup === cleanItem || cleanGroup.includes(cleanItem) || cleanItem.includes(cleanGroup) || normalizedGroup.includes(normalizedItem);
+              }
             });
           });
           if (whitelisted.length > 0) filtered = whitelisted;
@@ -865,15 +891,18 @@ function myCustomParseChapters(data, isFiltering, isWhitelist, isStrict, savedGr
       
       let chosen = null;
       if (activeGroup) {
+        const cleanActive = cleanGroupName(activeGroup);
+        const normActive = normalizeString(activeGroup).toLowerCase();
         chosen = filtered.find((v) => {
+          const cleanNorm = cleanGroupName(v.group || "");
           const norm = normalizeString(v.group || "").toLowerCase();
-          if (isStrict) return norm === activeGroup;
-          return norm.includes(activeGroup) || activeGroup.includes(norm);
+          if (isStrict) return cleanNorm === cleanActive;
+          return cleanNorm === cleanActive || cleanNorm.includes(cleanActive) || cleanActive.includes(cleanNorm) || norm.includes(normActive) || normActive.includes(norm);
         });
       }
       if (!chosen) {
         chosen = filtered[0];
-        activeGroup = normalizeString(chosen.group || "").toLowerCase();
+        activeGroup = chosen.group || "";
       }
       
       const chap = chosen;
@@ -905,20 +934,32 @@ function myCustomParseChapters(data, isFiltering, isWhitelist, isStrict, savedGr
       if (isFiltering && savedGroups && savedGroups.length > 0) {
         if (!isWhitelist) {
           filtered = filtered.filter((v) => {
+            const cleanGroup = cleanGroupName(v.group || "");
             const normalizedGroup = normalizeString(v.group || "").toLowerCase();
             const isMatched = savedGroups.some((item) => {
+              const cleanItem = cleanGroupName(item);
               const normalizedItem = normalizeString(item).toLowerCase();
-              return isStrict ? normalizedGroup === normalizedItem : normalizedGroup.includes(normalizedItem);
+              if (isStrict) {
+                return cleanGroup === cleanItem;
+              } else {
+                return cleanGroup === cleanItem || cleanGroup.includes(cleanItem) || cleanItem.includes(cleanGroup) || normalizedGroup.includes(normalizedItem);
+              }
             });
             return !isMatched;
           });
         }
         if (isWhitelist && filtered.length > 0) {
           const whitelisted = filtered.filter((v) => {
+            const cleanGroup = cleanGroupName(v.group || "");
             const normalizedGroup = normalizeString(v.group || "").toLowerCase();
             return savedGroups.some((item) => {
+              const cleanItem = cleanGroupName(item);
               const normalizedItem = normalizeString(item).toLowerCase();
-              return isStrict ? normalizedGroup === normalizedItem : normalizedGroup.includes(normalizedItem);
+              if (isStrict) {
+                return cleanGroup === cleanItem;
+              } else {
+                return cleanGroup === cleanItem || cleanGroup.includes(cleanItem) || cleanItem.includes(cleanGroup) || normalizedGroup.includes(normalizedItem);
+              }
             });
           });
           if (whitelisted.length > 0) filtered = whitelisted;
