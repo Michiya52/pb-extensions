@@ -219,6 +219,12 @@ const getShowTitle = async (stateManager) => {
   return legacy ?? true;
 };
 
+const getFollowLastReadGroup = async (stateManager) => {
+  const current = await stateManager.retrieve("follow_last_read_group");
+  if (typeof current === "boolean") return current;
+  return true;
+};
+
 const getShowUploader = async (stateManager) => {
   const current = await stateManager.retrieve("show_uploader");
   if (typeof current === "boolean") return current;
@@ -342,6 +348,14 @@ const contentSettings = (stateManager) => {
               value: App.createDUIBinding({
                 get: async () => await getOneVersionOnly(stateManager),
                 set: async (newValue) => await stateManager.store("one_version_only", newValue)
+              })
+            }),
+            App.createDUISwitch({
+              id: "follow_last_read_group",
+              label: "Follow Last Read Scanlator",
+              value: App.createDUIBinding({
+                get: async () => await getFollowLastReadGroup(stateManager),
+                set: async (newValue) => await stateManager.store("follow_last_read_group", newValue)
               })
             })
           ])
@@ -756,6 +770,7 @@ const resetSettings = (stateManager) => {
       await stateManager.store("tag_whitelist_mode", null);
       await stateManager.store("tag_and_mode", null);
       await stateManager.store("type_filter", null);
+      await stateManager.store("follow_last_read_group", null);
       await stateManager.store("comix.remoteConstants.v2", null);
       resetTagCacheWarmUp();
     }
@@ -763,7 +778,7 @@ const resetSettings = (stateManager) => {
 };
 
 // --- Custom Priority Chapters Sorting & Deduplication ---
-function myCustomParseChapters(data, isFiltering, isWhitelist, isStrict, savedGroups, showTitle = true, oneVersionOnly = false, showUploader = true, removeDuplicates = true, priorityGroups = savedGroups, debugShowPriority = false) {
+function myCustomParseChapters(data, isFiltering, isWhitelist, isStrict, savedGroups, showTitle = true, oneVersionOnly = false, showUploader = true, removeDuplicates = true, priorityGroups = savedGroups, debugShowPriority = false, followLastRead = false, lastReadGroup = null) {
   const rawChapters = [];
   for (const chap of data) {
     rawChapters.push({
@@ -787,9 +802,17 @@ function myCustomParseChapters(data, isFiltering, isWhitelist, isStrict, savedGr
   const finalChapters = [];
   const uploaderList = (priorityGroups ?? []).map((u) => normalizeString(u).toLowerCase());
   
+  const lastReadGroupNorm = lastReadGroup ? normalizeString(lastReadGroup).toLowerCase() : null;
   const getPriorityIndex = (groupName) => {
     if (!groupName || typeof groupName !== "string") return 9999;
     const normalized = normalizeString(groupName).toLowerCase();
+    if (followLastRead && lastReadGroupNorm) {
+      if (isStrict) {
+        if (normalized === lastReadGroupNorm) return -1;
+      } else if (normalized.includes(lastReadGroupNorm) || lastReadGroupNorm.includes(normalized)) {
+        return -1;
+      }
+    }
     for (let i = 0; i < uploaderList.length; i++) {
       const u = uploaderList[i];
       if (!u) continue;
@@ -960,7 +983,7 @@ const OriginalComixToInfo = _Sources.ComixToInfo;
 
 const NewComixToInfo = {
   ...OriginalComixToInfo,
-  version: "1.8.6",
+  version: "1.8.7",
   author: "Michiya52",
   authorWebsite: "https://github.com/Michiya52",
   description: "Read manga from ComixTo with advanced filters"
@@ -972,11 +995,28 @@ const NewComixTo = class extends OriginalComixTo {
     
     // Monkey-patch parseChapters on the parser instance
     this.parser.parseChapters = async (chapters) => {
+      // Cache mapping of chapterId -> groupName persistently (for ALL variants, before filtering)
+      if (this.activeMangaId) {
+        try {
+          const map = {};
+          for (const chap of chapters) {
+            const chapId = chap.id?.toString();
+            const groupName = chap.group?.name || "";
+            if (chapId && groupName) {
+              map[chapId] = groupName;
+            }
+          }
+          await this.stateManager.store(`chapter_groups_${this.activeMangaId}`, JSON.stringify(map));
+        } catch (e) {
+          console.log(`[ComixTo] Error caching chapter groups: ${e.message}`);
+        }
+      }
+
       if (await getAutoSeedUploaders(this.stateManager)) {
         await autoSeedUploadersFromChapters(this.stateManager, chapters);
       }
       
-      const [isFiltering, isWhitelist, isStrict, savedGroups, selectedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates, debugMode, priorityOrder] = await Promise.all([
+      const [isFiltering, isWhitelist, isStrict, savedGroups, selectedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates, debugMode, priorityOrder, followLastRead, lastReadGroup] = await Promise.all([
         getUploadersFiltering(this.stateManager),
         getUploadersWhitelisted(this.stateManager),
         getStrictNameMatching(this.stateManager),
@@ -987,12 +1027,38 @@ const NewComixTo = class extends OriginalComixTo {
         getShowUploader(this.stateManager),
         getRemoveDuplicates(this.stateManager),
         getDebugMode(this.stateManager),
-        getPriorityOrderedUploaders(this.stateManager)
+        getPriorityOrderedUploaders(this.stateManager),
+        getFollowLastReadGroup(this.stateManager),
+        this.activeMangaId ? this.stateManager.retrieve("last_read_group_" + this.activeMangaId) : Promise.resolve(null)
       ]);
       
       const preferredGroups = Array.isArray(priorityOrder) && priorityOrder.length > 0 ? priorityOrder : savedGroups;
-      return myCustomParseChapters(chapters, isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates, preferredGroups, debugMode);
+      return myCustomParseChapters(chapters, isFiltering, isWhitelist, isStrict, savedGroups, showTitle, oneVersionOnly, showUploader, removeDuplicates, preferredGroups, debugMode, followLastRead, lastReadGroup);
     };
+  }
+
+  async getChapters(mangaId) {
+    this.activeMangaId = mangaId;
+    return await super.getChapters(mangaId);
+  }
+
+  async getChapterDetails(mangaId, chapterId) {
+    const details = await super.getChapterDetails(mangaId, chapterId);
+    
+    try {
+      const rawMap = await this.stateManager.retrieve(`chapter_groups_${mangaId}`);
+      if (rawMap) {
+        const map = JSON.parse(rawMap);
+        const groupName = map[chapterId];
+        if (groupName) {
+          await this.stateManager.store(`last_read_group_${mangaId}`, groupName);
+        }
+      }
+    } catch (e) {
+      console.log(`[ComixTo] Error setting last read group: ${e.message}`);
+    }
+    
+    return details;
   }
 
   // Override settings menu dynamically
