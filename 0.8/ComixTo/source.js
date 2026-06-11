@@ -1704,7 +1704,7 @@ var _Sources = (() => {
     return /\.(webp|png|jpe?g|avif)(\?|#|$)/i.test(url) || /wowpic\d*\.|\/s?i+\d*\//i.test(url);
   }
   var ComixToInfo = {
-    version: "1.9.6",
+    version: "1.9.7",
     name: "ComixTo",
     icon: "icon.png",
     author: "acepilot147",
@@ -3169,7 +3169,7 @@ const OriginalComixToInfo = _Sources.ComixToInfo;
 
 const NewComixToInfo = {
   ...OriginalComixToInfo,
-  version: "1.8.7",
+  version: "1.8.8",
   author: "Michiya52",
   authorWebsite: "https://github.com/Michiya52",
   description: "Read manga from ComixTo with advanced filters"
