@@ -940,19 +940,19 @@ var _Sources = (() => {
   }
   var SIGN_STAGES = [
     {
-      "sboxB64": "ptLjLUx2s8gj2zX6EQfcSD3eAZMLwnGN+3KfPoYdZd93P9aSIonXWwAhOKxpFOcq77zhRid9vh57ltSkpXDGbY5Ph/N4/jcDCqLR7JpAFjTqshBaxF1564L8oBqBqiS0uAnLSymcPPTtV2qwzZSjkMq/zhhcOhxv4mfkvQ5/2adkJrZ8G5lzqSDDR5d19djp/9NDLg/xRNUCX2ChbFV+0FJoLGFeNqgxmxXouoOxxZW1rpgz2gw7WR/uyRKAryvyuzINa/gGY4WLwHpRBflBZq2r/VMTjCgwTVblOcxCz/BiGQRJ94oI4Pa5RRd0hI9YwS/mSp5QiCXdkZ23VMdObg==",
-      "keyB64": "Q2LYjoyQGS35dmFB+qG6rpSsb7yImmHI471z",
-      "iv": 195
+      "sboxB64": "9B40/GuUkfsnsl9KYcKsFQZuAAMq+kyIKyaFlexTNwo2GZtvF2BEMzmnhhJB61fJk/50cyNQzLvULPCrYxjqmnxCsE4aYjhb6bp6T/Fnlx97GxGtoln/xSLO4uMEXaPXFEmKyAGEWkNoDUe4cam1E9F48p3bFn7dpVGoZcH4PTHSVefkRVTGCy71kkjz1XZNCeg8LflsaXVm9h2eJOAvzzvmBdOuMonEKZ95ze6/P1IovhAC2bSZudChx1zfs0ZWfweH2MqAwCGPDzo1gbZq4Q6kbQggcqravZhejPdAt40+HJDvsXevMEuLDMOCpmSc/ZbLg1gl7eXW3qBwvNyOfQ==",
+      "keyB64": "fVmQlqjCTcUKxUv07hMRWu3nANZQ3A==",
+      "iv": 253
     },
     {
-      "sboxB64": "B9Z7BhJiMvetrsFIWelxVylPOfjhWvvLlyrfLn1wefmfK+/6nPQb0HQD4hrXAOAIb5ql/EeU2BP/0WBTO4A3lQsOQHZFHlyYgVWZ7I4gKIhRCmxrJhdKMQQ6GMS1tHOjcoK+YbqHst7cam4lLMheu+23p2MUNZKGqtKP8miRS9XmVqwPls1mz0bdk0wttiMNjX+ioCGeirx6QhE/Z064Np2Jyus4WxUv6sV4HDDo4ySwwxCk7jND8aGp1Mzkg4y55wxkfDzHi6hp9jRShBmFTdu9Sf6zkP2/VKYJmx8CHdrA5ckB8F91Fj4iztOrUPV3r0HCxrFtfgVYJ11l2T1E8w==",
-      "keyB64": "qzqvvUW18oKCdY2vHbYnYe5fzQ==",
-      "iv": 77
+      "sboxB64": "deT9YwpC6OHybKgqjpSXioNTFq1gguXPZQzHuw909Vpk1EbsLOC8xe7IkUQYK16e/PGEW1RiE1BoMHmqvwc9mvlZS1Vfc9qNwY8yzlZrktGbTbBvvQirMzyfMdx6gAQ6pK9RJvQR+ABDnHanL/coHSAFI21xUqAbBrSumClwJx/AxAmjTPuxzE/WC+sXd7c1EN6yoYnLP9+MFAKLah7nQRWpToG5h/q2DdmViDkO052F8CUBLkB+7SRmSRw05tA74u//0me4bqLXtS0ZRd18R5a+WNhhpckae82shgNcaco4mRJ480qQISLbNle6wrOTfelIN8P21aZd/nLGPuN/6g==",
+      "keyB64": "hgEbN+jfedgmU34ZYtl607eO7o7l",
+      "iv": 176
     },
     {
-      "sboxB64": "xkjkuW7/2qxtPcSyMHYF77EizElx/mM4TjFsuhXo26eQDQB9Nfv1NirrKGF8ziDzaRkfVYottsmo/F07WVxyQd8+mkKlWLiYe/pTFwf2Ub4KRNimEgn9EEbXXyWJOsgmL64T7r+iZHpLKYufVyRqjVrQhOfAHuqRefFDvPeDR17NlBGzm/kMhj9zlsv4b6QOaDOTlbCvJzTHveAEiPAsw1Ce7a2XOZLsBg+FZt4h0p0duzdMgU3mSrdgcFLKHI7iATJUz6qHnLTTwqAjKxqZ1mdFqeWrgALddHdWPOPyFnX0f6GjT7VlQGJr1HjVGIzRj+l+3IIIxRThC9kuwQNbGw==",
-      "keyB64": "Qafs81vMm8Pq2qA4RJq5Cw==",
-      "iv": 107
+      "sboxB64": "C6w2gNnL9/1PqjMKxUGUbg+Jd/Hl42vUNGc5Exld71n4OtgpHlHae1BA4UOmFNCbK56dshBz0f9OnMiWaAN8ZkR2Bkm4MVNiTBqrmgEmmaJF9bOCxDXdAsqEfdcngZBjwh2nR2AOQtVwKA15jnVtXOn7YewWIAURUniuaUhGTZ8ySrt0hgn6kyLBtvKDV37wEnowxt6v4H/nl6g8JNzOvXLHKubP/iNbjd8fcTe3WqWKkhuwPy1Y7lRLaiEX6pGImIug08llLsA9PvnoBL7DtQiF8wwsjDsHJaOhtMzSHNbiqZVfrYe6Vblsb/yP2/brOPQv5LFeZM0AFRjtVr+kvA==",
+      "keyB64": "a8Ch/pkYkJY0IMDnhyeFLa8=",
+      "iv": 51
     }
   ];
   function signRound(data, sboxB64, keyB64, iv) {
@@ -983,22 +983,88 @@ var _Sources = (() => {
     }
     return out.replace(/\+/g, "-").replace(/\//g, "_");
   }
-  function normalizeSignPath(rawPath) {
-    return rawPath.replace(/^https?:\/\/[^/]+/, "").replace(/^\/api\/v1/, "").split("?")[0];
-  }
-  function bytesFromString(s) {
-    const out = new Array(s.length);
-    for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i) & 255;
+  function utf8Encode(s) {
+    const out = [];
+    for (let i = 0; i < s.length; i++) {
+      let cp = s.charCodeAt(i);
+      if (cp >= 55296 && cp <= 56319 && i + 1 < s.length) {
+        const lo = s.charCodeAt(i + 1);
+        if (lo >= 56320 && lo <= 57343) {
+          cp = 65536 + (cp - 55296 << 10) + (lo - 56320);
+          i++;
+        }
+      }
+      if (cp < 128) {
+        out.push(cp);
+      } else if (cp < 2048) {
+        out.push(192 | cp >> 6, 128 | cp & 63);
+      } else if (cp < 65536) {
+        out.push(224 | cp >> 12, 128 | cp >> 6 & 63, 128 | cp & 63);
+      } else {
+        out.push(240 | cp >> 18, 128 | cp >> 12 & 63, 128 | cp >> 6 & 63, 128 | cp & 63);
+      }
+    }
     return out;
   }
-  function fastGenerateHash(rawPath) {
-    const path = normalizeSignPath(rawPath);
-    let data = bytesFromString(path);
+  function decodeComponent(s) {
+    try {
+      return decodeURIComponent(s.replace(/\+/g, " "));
+    } catch (e) {
+      return s;
+    }
+  }
+  function canonicalizeQuery(rawQuery) {
+    if (!rawQuery) {
+      return "";
+    }
+    const groups = {};
+    const arrayCounts = {};
+    const parts = rawQuery.split("&");
+    for (let p = 0; p < parts.length; p++) {
+      const part = parts[p];
+      if (!part) {
+        continue;
+      }
+      const eq = part.indexOf("=");
+      const key = decodeComponent(eq >= 0 ? part.slice(0, eq) : part);
+      const value = decodeComponent(eq >= 0 ? part.slice(eq + 1) : "");
+      let base;
+      let rendered;
+      if (key.slice(-2) === "[]") {
+        base = key.slice(0, -2);
+        const i = arrayCounts[base] ?? 0;
+        arrayCounts[base] = i + 1;
+        rendered = base + "[" + i + "]=" + value;
+      } else {
+        const bracket = key.indexOf("[");
+        base = bracket >= 0 ? key.slice(0, bracket) : key;
+        rendered = key + "=" + value;
+      }
+      if (groups[base]) {
+        groups[base].push(rendered);
+      } else {
+        groups[base] = [rendered];
+      }
+    }
+    return Object.keys(groups).sort().map((b) => groups[b].join("&")).join("&");
+  }
+  function signString(s) {
+    let data = utf8Encode(s);
     for (let r = SIGN_STAGES.length - 1; r >= 0; r--) {
-      const s = SIGN_STAGES[r];
-      data = signRound(data, s.sboxB64, s.keyB64, s.iv);
+      const st = SIGN_STAGES[r];
+      data = signRound(data, st.sboxB64, st.keyB64, st.iv);
     }
     return b64UrlEncode(data);
+  }
+  function fastGenerateHash(rawPath) {
+    const stripped = rawPath.replace(/^https?:\/\/[^/]+/, "").replace(/^\/api\/v1/, "");
+    const qIdx = stripped.indexOf("?");
+    if (qIdx < 0) {
+      return signString(stripped);
+    }
+    const path = stripped.slice(0, qIdx);
+    const canonical = canonicalizeQuery(stripped.slice(qIdx + 1));
+    return signString(canonical ? path + "?" + canonical : path);
   }
 
   // src/ComixTo/ComixFastDecrypt.ts
@@ -1043,19 +1109,19 @@ var _Sources = (() => {
   }
   var DECRYPT_STAGES = [
     {
-      "sboxB64": "ptLjLUx2s8gj2zX6EQfcSD3eAZMLwnGN+3KfPoYdZd93P9aSIonXWwAhOKxpFOcq77zhRid9vh57ltSkpXDGbY5Ph/N4/jcDCqLR7JpAFjTqshBaxF1564L8oBqBqiS0uAnLSymcPPTtV2qwzZSjkMq/zhhcOhxv4mfkvQ5/2adkJrZ8G5lzqSDDR5d19djp/9NDLg/xRNUCX2ChbFV+0FJoLGFeNqgxmxXouoOxxZW1rpgz2gw7WR/uyRKAryvyuzINa/gGY4WLwHpRBflBZq2r/VMTjCgwTVblOcxCz/BiGQRJ94oI4Pa5RRd0hI9YwS/mSp5QiCXdkZ23VMdObg==",
-      "keyB64": "Q2LYjoyQGS35dmFB+qG6rpSsb7yImmHI471z",
-      "iv": 195
+      "sboxB64": "9B40/GuUkfsnsl9KYcKsFQZuAAMq+kyIKyaFlexTNwo2GZtvF2BEMzmnhhJB61fJk/50cyNQzLvULPCrYxjqmnxCsE4aYjhb6bp6T/Fnlx97GxGtoln/xSLO4uMEXaPXFEmKyAGEWkNoDUe4cam1E9F48p3bFn7dpVGoZcH4PTHSVefkRVTGCy71kkjz1XZNCeg8LflsaXVm9h2eJOAvzzvmBdOuMonEKZ95ze6/P1IovhAC2bSZudChx1zfs0ZWfweH2MqAwCGPDzo1gbZq4Q6kbQggcqravZhejPdAt40+HJDvsXevMEuLDMOCpmSc/ZbLg1gl7eXW3qBwvNyOfQ==",
+      "keyB64": "fVmQlqjCTcUKxUv07hMRWu3nANZQ3A==",
+      "iv": 253
     },
     {
-      "sboxB64": "B9Z7BhJiMvetrsFIWelxVylPOfjhWvvLlyrfLn1wefmfK+/6nPQb0HQD4hrXAOAIb5ql/EeU2BP/0WBTO4A3lQsOQHZFHlyYgVWZ7I4gKIhRCmxrJhdKMQQ6GMS1tHOjcoK+YbqHst7cam4lLMheu+23p2MUNZKGqtKP8miRS9XmVqwPls1mz0bdk0wttiMNjX+ioCGeirx6QhE/Z064Np2Jyus4WxUv6sV4HDDo4ySwwxCk7jND8aGp1Mzkg4y55wxkfDzHi6hp9jRShBmFTdu9Sf6zkP2/VKYJmx8CHdrA5ckB8F91Fj4iztOrUPV3r0HCxrFtfgVYJ11l2T1E8w==",
-      "keyB64": "qzqvvUW18oKCdY2vHbYnYe5fzQ==",
-      "iv": 77
+      "sboxB64": "deT9YwpC6OHybKgqjpSXioNTFq1gguXPZQzHuw909Vpk1EbsLOC8xe7IkUQYK16e/PGEW1RiE1BoMHmqvwc9mvlZS1Vfc9qNwY8yzlZrktGbTbBvvQirMzyfMdx6gAQ6pK9RJvQR+ABDnHanL/coHSAFI21xUqAbBrSumClwJx/AxAmjTPuxzE/WC+sXd7c1EN6yoYnLP9+MFAKLah7nQRWpToG5h/q2DdmViDkO052F8CUBLkB+7SRmSRw05tA74u//0me4bqLXtS0ZRd18R5a+WNhhpckae82shgNcaco4mRJ480qQISLbNle6wrOTfelIN8P21aZd/nLGPuN/6g==",
+      "keyB64": "hgEbN+jfedgmU34ZYtl607eO7o7l",
+      "iv": 176
     },
     {
-      "sboxB64": "xkjkuW7/2qxtPcSyMHYF77EizElx/mM4TjFsuhXo26eQDQB9Nfv1NirrKGF8ziDzaRkfVYottsmo/F07WVxyQd8+mkKlWLiYe/pTFwf2Ub4KRNimEgn9EEbXXyWJOsgmL64T7r+iZHpLKYufVyRqjVrQhOfAHuqRefFDvPeDR17NlBGzm/kMhj9zlsv4b6QOaDOTlbCvJzTHveAEiPAsw1Ce7a2XOZLsBg+FZt4h0p0duzdMgU3mSrdgcFLKHI7iATJUz6qHnLTTwqAjKxqZ1mdFqeWrgALddHdWPOPyFnX0f6GjT7VlQGJr1HjVGIzRj+l+3IIIxRThC9kuwQNbGw==",
-      "keyB64": "Qafs81vMm8Pq2qA4RJq5Cw==",
-      "iv": 107
+      "sboxB64": "C6w2gNnL9/1PqjMKxUGUbg+Jd/Hl42vUNGc5Exld71n4OtgpHlHae1BA4UOmFNCbK56dshBz0f9OnMiWaAN8ZkR2Bkm4MVNiTBqrmgEmmaJF9bOCxDXdAsqEfdcngZBjwh2nR2AOQtVwKA15jnVtXOn7YewWIAURUniuaUhGTZ8ySrt0hgn6kyLBtvKDV37wEnowxt6v4H/nl6g8JNzOvXLHKubP/iNbjd8fcTe3WqWKkhuwPy1Y7lRLaiEX6pGImIug08llLsA9PvnoBL7DtQiF8wwsjDsHJaOhtMzSHNbiqZVfrYe6Vblsb/yP2/brOPQv5LFeZM0AFRjtVr+kvA==",
+      "keyB64": "a8Ch/pkYkJY0IMDnhyeFLa8=",
+      "iv": 51
     }
   ];
   function decryptRound(data, sboxB64, keyB64, iv) {
@@ -1171,9 +1237,8 @@ var _Sources = (() => {
 
   // src/ComixTo/ComixHash.ts
   var SIGNED_PATTERNS = [
-    /^\/manga\/[^/]+\/chapters\b/,
-    /^\/manga\/[^/]+\/chapter-indexes\b/,
-    /^\/chapters\/[^/]+(?:\?|$)/
+    /^\/manga(?:\/|$)/,
+    /^\/chapters\/[^/]+/
   ];
   function isSignedPath(path) {
     return SIGNED_PATTERNS.some((re) => re.test(path));
@@ -1184,7 +1249,7 @@ var _Sources = (() => {
   function signUrl(url) {
     const path = url.replace("https://comix.to/api/v1", "").split("?")[0];
     if (!isSignedPath(path)) return url;
-    const token = generateHash(path);
+    const token = generateHash(url);
     if (!token) return url;
     const sep = url.includes("?") ? "&" : "?";
     return `${url}${sep}_=${token}`;
@@ -1704,7 +1769,7 @@ var _Sources = (() => {
     return /\.(webp|png|jpe?g|avif)(\?|#|$)/i.test(url) || /wowpic\d*\.|\/s?i+\d*\//i.test(url);
   }
   var ComixToInfo = {
-    version: "1.9.7",
+    version: "1.9.9",
     name: "ComixTo",
     icon: "icon.png",
     author: "acepilot147",
