@@ -2257,6 +2257,38 @@ function cleanGroupName(str) {
   return normalizeString(str).toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+const LCG_MUL_CUST = 1000005;
+const LCG_INC_CUST = 1234567891;
+
+function readEncHeadersCust(headers) {
+  if (!headers) return null;
+  let seedStr;
+  let lenStr;
+  for (const key of Object.keys(headers)) {
+    const rawV = headers[key];
+    const v = Array.isArray(rawV) ? rawV[0] : rawV;
+    if (typeof v !== "string") continue;
+    const lk = key.toLowerCase();
+    if (lk === "x-enc-seed") seedStr = v;
+    else if (lk === "x-enc-len") lenStr = v;
+  }
+  if (!seedStr || !lenStr) return null;
+  const seed = parseInt(seedStr, 10);
+  const len = parseInt(lenStr, 10);
+  if (!Number.isFinite(seed) || seed <= 0) return null;
+  if (!Number.isFinite(len) || len <= 0) return null;
+  return { seed: seed >>> 0, len };
+}
+
+function decryptComixImageCust(bytes, seed, len) {
+  let x = seed >>> 0;
+  const n = Math.min(len, bytes.length);
+  for (let i = 0; i < n; i++) {
+    x = Math.imul(x, LCG_MUL_CUST) + LCG_INC_CUST >>> 0;
+    bytes[i] = (bytes[i] ^ x >>> 24 & 255) & 255;
+  }
+}
+
 function parseRelativeTime(s) {
   if (!s) return new Date();
   const m = /^(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago$/i.exec(s.trim());
@@ -3333,7 +3365,7 @@ const OriginalComixToInfo = _Sources.ComixToInfo;
 
 const NewComixToInfo = {
   ...OriginalComixToInfo,
-  version: "1.8.11",
+  version: "1.8.12",
   author: "Michiya52",
   authorWebsite: "https://github.com/Michiya52",
   description: "Read manga from ComixTo with advanced filters"
@@ -3342,6 +3374,23 @@ const NewComixToInfo = {
 const NewComixTo = class extends OriginalComixTo {
   constructor() {
     super(...arguments);
+    
+    // Overwrite requestManager interceptResponse to guarantee that decrypted bytes are written back
+    if (this.requestManager?.interceptor) {
+      this.requestManager.interceptor.interceptResponse = async (response) => {
+        if (!response || !response.rawData) return response;
+        const enc = readEncHeadersCust(response.headers);
+        if (!enc) return response;
+        try {
+          const bytes = App.createByteArray(response.rawData);
+          decryptComixImageCust(bytes, enc.seed, enc.len);
+          response.rawData = bytes; // FORCE ASSIGN BACK!
+        } catch (error) {
+          console.log(`[ComixTo] image decrypt override error: ${error?.message ?? String(error)}`);
+        }
+        return response;
+      };
+    }
     
     // Monkey-patch parseChapters on the parser instance
     this.parser.parseChapters = async (chapters) => {
