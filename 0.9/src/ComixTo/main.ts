@@ -317,8 +317,19 @@ export class ComixExtension implements ExtensionImpl<typeof ComixConfig> {
   }
 
   async getChapters(sourceManga: SourceManga): Promise<Chapter[]> {
+    const shareUrl = sourceManga.mangaInfo.shareUrl ?? "";
+    let slugPath = `/title/${sourceManga.mangaId}`;
+    if (shareUrl) {
+      try {
+        const urlObj = new URL(shareUrl);
+        slugPath = urlObj.pathname;
+      } catch (e) {
+        // ignore
+      }
+    }
     const items = await this.api.getJsonChapterApi(
       sourceManga.mangaId,
+      slugPath,
       this.cookieStorageInterceptor,
     );
     return this.parser.parseChapters(sourceManga, items);

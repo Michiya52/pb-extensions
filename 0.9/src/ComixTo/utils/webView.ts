@@ -42,6 +42,7 @@ async function runProxiedWebView<T>(
 // a per-request `_=` signature, so changing limit/params returns 403.
 export async function chapterListViaWebView(
   mangaId: string,
+  slugPath: string,
   cookieInterceptor: CookieStorageInterceptor,
 ): Promise<ChapterItem[]> {
   const bootstrap = `
@@ -62,7 +63,7 @@ export async function chapterListViaWebView(
       var idleTimer;
       function armIdle() {
         if (idleTimer) clearTimeout(idleTimer);
-        idleTimer = setTimeout(submit, 20000);
+        idleTimer = setTimeout(submit, 15000);
       }
       armIdle();
       function gotoNext() {
@@ -72,11 +73,11 @@ export async function chapterListViaWebView(
           if (btn && !btn.disabled) {
             btn.click();
             clearInterval(iv);
-          } else if (++tries > 50) {
+          } else if (++tries > 150) {
             clearInterval(iv);
             submit();
           }
-        }, 100);
+        }, 20);
       }
       var orig = JSON.parse;
       JSON.parse = new Proxy(orig, {
@@ -112,7 +113,7 @@ export async function chapterListViaWebView(
     })();
   `;
   return runProxiedWebView<ChapterItem[]>(
-    `${DOMAIN}/title/${mangaId}`,
+    `${DOMAIN}${slugPath}`,
     bootstrap,
     cookieInterceptor,
   );
