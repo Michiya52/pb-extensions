@@ -354,4 +354,4 @@ export class ComixExtension implements ExtensionImpl<typeof ComixConfig> {
   }
 }
 
-export const ComixTo = new ComixExtension();
+export const Comix = new ComixExtension();
