@@ -126,43 +126,64 @@ export class ComixFilter {
   }
 
   getShowTitleSettings(): boolean {
-    return (Application.getState("show_title") as boolean | undefined) ?? true;
+    const val = Application.getState("show_title");
+    return val === false ? false : true;
   }
 
   getShowUploaderSettings(): boolean {
-    return (Application.getState("show_uploader") as boolean | undefined) ?? true;
+    const val = Application.getState("show_uploader");
+    return val === false ? false : true;
   }
 
   getRemoveDuplicatesSettings(): boolean {
-    return (Application.getState("remove_duplicates") as boolean | undefined) ?? true;
+    const val = Application.getState("remove_duplicates");
+    return val === false ? false : true;
   }
 
   getOneVersionOnlySettings(): boolean {
-    return (Application.getState("one_version_only") as boolean | undefined) ?? false;
+    const val = Application.getState("one_version_only");
+    return val === true ? true : false;
   }
 
   getFollowLastReadGroupSettings(): boolean {
-    return (Application.getState("follow_last_read_group") as boolean | undefined) ?? false;
+    const val = Application.getState("follow_last_read_group");
+    return val === true ? true : false;
   }
 
   getUploadersFilteringSettings(): boolean {
-    return (Application.getState("uploaders_toggled") as boolean | undefined) ?? false;
+    const val = Application.getState("uploaders_toggled");
+    return val === true ? true : false;
   }
 
   getUploadersWhitelistedSettings(): boolean {
-    return (Application.getState("uploaders_whitelisted") as boolean | undefined) ?? false;
+    const val = Application.getState("uploaders_whitelisted");
+    return val === true ? true : false;
   }
 
   getStrictNameMatchingSettings(): boolean {
-    return (Application.getState("strict_name_matching") as boolean | undefined) ?? false;
+    const val = Application.getState("strict_name_matching");
+    return val === true ? true : false;
   }
 
   getAutoSeedUploadersSettings(): boolean {
-    return (Application.getState("auto_seed_uploaders") as boolean | undefined) ?? true;
+    const val = Application.getState("auto_seed_uploaders");
+    return val === false ? false : true;
   }
 
   getUploadersSettings(): string[] {
-    return (Application.getState("uploaders") as string[] | undefined) ?? [];
+    const val = Application.getState("uploaders");
+    if (!val) return [];
+    if (typeof val === "string") {
+      try {
+        return JSON.parse(val) as string[];
+      } catch {
+        return [val];
+      }
+    }
+    if (Array.isArray(val)) {
+      return val as string[];
+    }
+    return [];
   }
 
   setUploadersSettings(value: string[]): void {

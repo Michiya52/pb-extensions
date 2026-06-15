@@ -613,13 +613,13 @@ class ScanlationGroupSettings extends BaseSettings {
 
     return [
       Section("filtering_settings", [
-        ToggleRow("toggle_uploaders_filtering", {
+        ToggleRow("uploaders_toggled", {
           title: "Enable Group Filtering",
           subtitle: "Filter chapters using the list below.",
           value: this.filter.getUploadersFilteringSettings(),
           onValueChange: Application.Selector(this as ScanlationGroupSettings, "handleFilteringToggle"),
         }),
-        ToggleRow("uploaders_switch", {
+        ToggleRow("uploaders_whitelisted", {
           title: "Enable Whitelist Mode",
           subtitle: "Only show chapters from groups in the list.",
           value: this.filter.getUploadersWhitelistedSettings(),

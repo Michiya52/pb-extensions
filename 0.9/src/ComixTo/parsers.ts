@@ -203,16 +203,17 @@ export class ComixParser {
       const displayName = showTitle && chap.name ? `${chap.name}${groupTag}` : `Chapter ${chap.number}${groupTag}`;
 
       return {
-        chapterId: chap.id.toString(),
+        chapterId: (chap.id ?? "").toString(),
         sourceManga: manga,
         langCode: chap.language || "en",
-        chapNum: chap.number,
+        chapNum: Number(chap.number) || 0,
         title: displayName,
         volume: chap.volume,
         version: rawGroup,
-        sortingIndex: chap.number,
+        sortingIndex: Number(chap.number) || 0,
         publishDate: parseRelativeDate(chap.createdAtFormatted),
-        additionalInfo: { vote: chap.votes.toString(), url: chap.url },
+        votes: chap.votes ?? 0,
+        additionalInfo: { vote: (chap.votes ?? 0).toString(), url: chap.url },
       };
     });
 
@@ -266,6 +267,19 @@ export class ComixParser {
       return 9999;
     };
 
+    const comparePriorityStable = (a: any, b: any) => {
+      const pA = getPriorityIndex(a.version);
+      const pB = getPriorityIndex(b.version);
+      if (pA !== pB) return pA - pB;
+      const isOfficialA = a.version === "⭐Official" ? 0 : 1;
+      const isOfficialB = b.version === "⭐Official" ? 0 : 1;
+      if (isOfficialA !== isOfficialB) return isOfficialA - isOfficialB;
+      const votesA = a.votes ?? 0;
+      const votesB = b.votes ?? 0;
+      if (votesB !== votesA) return votesB - votesA;
+      return a.version.localeCompare(b.version);
+    };
+
     const removeDuplicates = filter.getRemoveDuplicatesSettings();
     const oneVersionOnly = filter.getOneVersionOnlySettings();
     const finalChapters: typeof rawChapters = [];
@@ -314,8 +328,8 @@ export class ComixParser {
 
         if (filtered.length === 0) continue;
 
-        // Sort by priority index
-        filtered.sort((a, b) => getPriorityIndex(a.version) - getPriorityIndex(b.version));
+        // Sort by priority stably
+        filtered.sort(comparePriorityStable);
 
         let chosen = null;
         if (activeGroup) {
@@ -374,8 +388,8 @@ export class ComixParser {
           }
         }
 
-        // Sort by priority index
-        filtered.sort((a, b) => getPriorityIndex(a.version) - getPriorityIndex(b.version));
+        // Sort by priority stably
+        filtered.sort(comparePriorityStable);
 
         // Remove duplicates if enabled
         if (removeDuplicates && filtered.length > 1) {
@@ -398,7 +412,7 @@ export class ComixParser {
     // Finally sort all resulting chapters by sortingIndex descending, and then by priority within the same index
     finalChapters.sort((a, b) => {
       if (b.sortingIndex !== a.sortingIndex) return b.sortingIndex - a.sortingIndex;
-      return getPriorityIndex(a.version) - getPriorityIndex(b.version);
+      return comparePriorityStable(a, b);
     });
 
     return finalChapters;
