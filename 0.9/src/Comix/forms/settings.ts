@@ -20,6 +20,14 @@ import {
 import type { ComixFilter } from "../utils/filter";
 import { discoverySections } from "../utils/filter";
 
+function toHexId(str: string): string {
+  let hex = "";
+  for (let i = 0; i < str.length; i++) {
+    hex += str.charCodeAt(i).toString(16).padStart(2, "0");
+  }
+  return hex;
+}
+
 function getDeletedDiscoverySections() {
   return (
     (Application.getState("deleted_sections") as { id: string; title: string }[] | undefined) ?? []
@@ -646,7 +654,7 @@ class ScanlationGroupSettings extends BaseSettings {
           id: "priority_list",
           header: "Scanlator priority order / filters list",
           footer: "Long press to reorder priorities, swipe to delete groups",
-          items: uploaderList.map((item) => LabelRow(item, { title: item })),
+          items: uploaderList.map((item) => LabelRow(toHexId(item), { title: item })),
         }),
         allowDeletion: true,
         allowReorder: true,
