@@ -54,39 +54,37 @@ export class ComixInterceptor extends PaperbackInterceptor {
       });
     }
 
-    // Page images are tile-shuffled (X-Scramble-*) or byte-XOR'd (X-Enc-*) — the
-    // site mixes both. Key off headers (a scrambled prefix defeats mime-sniffing).
-    const scrambleParams = readScrambleHeaders(response.headers);
-    if (scrambleParams) {
-      try {
-        const result = await descrambleImage(data, scrambleParams, response.mimeType ?? "image/webp");
-        return result;
-      } catch (error) {
-        console.log(
-          `[Comix] descramble failed for ${request.url}: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
-        return data;
-      }
-    }
+    let currentData = data;
 
+    // XOR decryption MUST happen before tile descrambling, as encrypted bytes
+    // cannot be loaded into a Canvas.
     const encParams = readEncHeaders(response.headers);
     if (encParams) {
       try {
-        const result = decryptImage(data, encParams);
-        return result;
+        currentData = decryptImage(currentData, encParams);
       } catch (error) {
         console.log(
           `[Comix] image decrypt failed for ${request.url}: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );
-        return data;
       }
     }
 
-    return data;
+    const scrambleParams = readScrambleHeaders(response.headers);
+    if (scrambleParams) {
+      try {
+        currentData = await descrambleImage(currentData, scrambleParams, response.mimeType ?? "image/webp");
+      } catch (error) {
+        console.log(
+          `[Comix] descramble failed for ${request.url}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }
+
+    return currentData;
   }
 }
 
