@@ -1,7 +1,7 @@
 {
-  "name": "MichiyaExtensions (0.9)",
+  "name": "General Extensions (0.9)",
   "private": true,
-  "description": "Michiya52's extensions for Paperback 0.9.",
+  "description": "Paperback extensions for websites with unique, non-generic themes. Maintained by Inkdex.",
   "type": "module",
   "scripts": {
     "tsc": "tsc",

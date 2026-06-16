@@ -217,10 +217,9 @@ export class ComixApi {
 
   async getJsonChapterApi(
     mangaId: string,
-    slugPath: string,
     cookieStorageInterceptor: CookieStorageInterceptor,
   ): Promise<ChapterItem[]> {
-    return chapterListViaWebView(mangaId, slugPath, cookieStorageInterceptor);
+    return chapterListViaWebView(mangaId, cookieStorageInterceptor);
   }
 
   async getJsonSearchApi(

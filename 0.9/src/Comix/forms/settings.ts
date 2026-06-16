@@ -6,7 +6,6 @@ import {
   EditSection,
   Form,
   FormConfirmationError,
-  InputRow,
   LabelRow,
   NavigationRow,
   Section,
@@ -19,14 +18,6 @@ import {
 
 import type { ComixFilter } from "../utils/filter";
 import { discoverySections } from "../utils/filter";
-
-function toHexId(str: string): string {
-  let hex = "";
-  for (let i = 0; i < str.length; i++) {
-    hex += str.charCodeAt(i).toString(16).padStart(2, "0");
-  }
-  return hex;
-}
 
 function getDeletedDiscoverySections() {
   return (
@@ -189,11 +180,6 @@ export class MainSettings extends BaseSettings {
           title: "Contents",
           subtitle: "Contents Tags Settings",
           form: new FilterSettings(this.filter),
-        }),
-        NavigationRow("Uploaders", {
-          title: "Scanlators Settings",
-          subtitle: "Configure groups filtering & ordering",
-          form: new ScanlationGroupSettings(this.filter),
         }),
         ButtonRow("reload_genres", {
           title: "Reload all Filters",
@@ -410,49 +396,6 @@ class FilterSettings extends BaseSettings {
     return [
       Section(
         {
-          id: "chapter_display_settings",
-          header: "Chapter Display",
-          footer: "Customize how chapters are rendered in the app.",
-        },
-        [
-          ToggleRow("show_title", {
-            title: "Show Title",
-            value: this.filter.getShowTitleSettings(),
-            onValueChange: Application.Selector(this as FilterSettings, "handleShowTitleChange"),
-          }),
-          ToggleRow("show_uploader", {
-            title: "Show Uploader",
-            value: this.filter.getShowUploaderSettings(),
-            onValueChange: Application.Selector(this as FilterSettings, "handleShowUploaderChange"),
-          }),
-        ],
-      ),
-      Section(
-        {
-          id: "chapter_filtering_settings",
-          header: "Chapter Filtering",
-          footer: "Configure rules to hide duplicate versions or duplicates of chapters.",
-        },
-        [
-          ToggleRow("remove_duplicates", {
-            title: "Remove Duplicate Chapters",
-            value: this.filter.getRemoveDuplicatesSettings(),
-            onValueChange: Application.Selector(this as FilterSettings, "handleRemoveDuplicatesChange"),
-          }),
-          ToggleRow("one_version_only", {
-            title: "One Version Only",
-            value: this.filter.getOneVersionOnlySettings(),
-            onValueChange: Application.Selector(this as FilterSettings, "handleOneVersionOnlyChange"),
-          }),
-          ToggleRow("follow_last_read_group", {
-            title: "Follow Last Read Scanlator",
-            value: this.filter.getFollowLastReadGroupSettings(),
-            onValueChange: Application.Selector(this as FilterSettings, "handleFollowLastReadChange"),
-          }),
-        ],
-      ),
-      Section(
-        {
           id: "update_settings",
           footer: "Tags Settings",
         },
@@ -541,22 +484,6 @@ class FilterSettings extends BaseSettings {
     ];
   }
 
-  async handleShowTitleChange(value: boolean) {
-    await this.updateValue(value, "show_title");
-  }
-  async handleShowUploaderChange(value: boolean) {
-    await this.updateValue(value, "show_uploader");
-  }
-  async handleRemoveDuplicatesChange(value: boolean) {
-    await this.updateValue(value, "remove_duplicates");
-  }
-  async handleOneVersionOnlyChange(value: boolean) {
-    await this.updateValue(value, "one_version_only");
-  }
-  async handleFollowLastReadChange(value: boolean) {
-    await this.updateValue(value, "follow_last_read_group");
-  }
-
   async handleHideGenresStatusChange(id: string[]) {
     Application.invalidateDiscoverSections();
     await this.updateValue(id, "hide_genres");
@@ -586,131 +513,5 @@ class FilterSettings extends BaseSettings {
     await this.updateValue([], "hide_genres");
     await this.updateValue([], "show_only");
     await this.updateValue([], "hide_demog");
-    await this.updateValue(true, "show_title");
-    await this.updateValue(true, "show_uploader");
-    await this.updateValue(true, "remove_duplicates");
-    await this.updateValue(false, "one_version_only");
-    await this.updateValue(false, "follow_last_read_group");
-    await this.updateValue(false, "uploaders_toggled");
-    await this.updateValue(false, "uploaders_whitelisted");
-    await this.updateValue(false, "strict_name_matching");
-    await this.updateValue(true, "auto_seed_uploaders");
-    await this.updateValue([], "uploaders");
-  }
-}
-
-class ScanlationGroupSettings extends BaseSettings {
-  constructor(private filter: ComixFilter) {
-    super();
-  }
-
-  override getSections() {
-    const onReorderSelectorId = Application.Selector(this as ScanlationGroupSettings, "rowDidReorder");
-    const onDeletionSelectorId = Application.Selector(this as ScanlationGroupSettings, "rowDidDelete");
-
-    const uploaderList = this.filter.getUploadersSettings();
-    const currentInput = (Application.getState("uploader_input") as string | undefined) ?? "";
-
-    return [
-      Section("filtering_settings", [
-        ToggleRow("uploaders_toggled", {
-          title: "Enable Group Filtering",
-          subtitle: "Filter chapters using the list below.",
-          value: this.filter.getUploadersFilteringSettings(),
-          onValueChange: Application.Selector(this as ScanlationGroupSettings, "handleFilteringToggle"),
-        }),
-        ToggleRow("uploaders_whitelisted", {
-          title: "Enable Whitelist Mode",
-          subtitle: "Only show chapters from groups in the list.",
-          value: this.filter.getUploadersWhitelistedSettings(),
-          onValueChange: Application.Selector(this as ScanlationGroupSettings, "handleWhitelistToggle"),
-        }),
-        ToggleRow("strict_name_matching", {
-          title: "Strict Group Name Matching",
-          subtitle: "Turn off to match partial or containing names.",
-          value: this.filter.getStrictNameMatchingSettings(),
-          onValueChange: Application.Selector(this as ScanlationGroupSettings, "handleStrictMatchingToggle"),
-        }),
-        ToggleRow("auto_seed_uploaders", {
-          title: "Auto-Collect Scanlators",
-          subtitle: "Automatically add scanlators seen in manga to the list.",
-          value: this.filter.getAutoSeedUploadersSettings(),
-          onValueChange: Application.Selector(this as ScanlationGroupSettings, "handleAutoSeedToggle"),
-        }),
-      ]),
-      Section("add_group_section", [
-        InputRow("add_group_input", {
-          title: "Group Name",
-          value: currentInput,
-          onValueChange: Application.Selector(this as ScanlationGroupSettings, "handleInputChange"),
-        }),
-        ButtonRow("add_group_btn", {
-          title: "Add Scanlator Group",
-          onSelect: Application.Selector(this as ScanlationGroupSettings, "handleAddGroup"),
-        }),
-      ]),
-      {
-        ...EditSection("priority_list", {
-          id: "priority_list",
-          header: "Scanlator priority order / filters list",
-          footer: "Long press to reorder priorities, swipe to delete groups",
-          items: uploaderList.map((item) => LabelRow(toHexId(item), { title: item })),
-        }),
-        allowDeletion: true,
-        allowReorder: true,
-        onReorder: onReorderSelectorId,
-        onDeletion: onDeletionSelectorId,
-      } as unknown as FormSectionElement<unknown>,
-    ];
-  }
-
-  async handleFilteringToggle(value: boolean) {
-    await this.updateValue(value, "uploaders_toggled");
-  }
-
-  async handleWhitelistToggle(value: boolean) {
-    await this.updateValue(value, "uploaders_whitelisted");
-  }
-
-  async handleStrictMatchingToggle(value: boolean) {
-    await this.updateValue(value, "strict_name_matching");
-  }
-
-  async handleAutoSeedToggle(value: boolean) {
-    await this.updateValue(value, "auto_seed_uploaders");
-  }
-
-  async handleInputChange(value: string) {
-    Application.setState(value, "uploader_input");
-    this.reloadForm();
-  }
-
-  async handleAddGroup() {
-    const input = ((Application.getState("uploader_input") as string | undefined) ?? "").trim();
-    if (!input) return;
-    const current = this.filter.getUploadersSettings();
-    if (!current.includes(input)) {
-      current.push(input);
-      this.filter.setUploadersSettings(current);
-    }
-    Application.setState("", "uploader_input");
-    this.reloadForm();
-  }
-
-  async rowDidDelete(index: number) {
-    const current = this.filter.getUploadersSettings();
-    current.splice(index, 1);
-    this.filter.setUploadersSettings(current);
-    this.reloadForm();
-  }
-
-  async rowDidReorder(sourceIndex: number, destinationIndex: number) {
-    const current = this.filter.getUploadersSettings();
-    const [item] = current.splice(sourceIndex, 1);
-    if (item) {
-      current.splice(destinationIndex, 0, item);
-    }
-    this.filter.setUploadersSettings(current);
-    this.reloadForm();
   }
 }
