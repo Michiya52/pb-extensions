@@ -420,13 +420,14 @@ export class ComixParser {
 
   parseChapterDetails(chapterId: string, pages: ApiResponse<ChapterPages>): ChapterDetails {
     const { baseUrl, items } = pages.result.pages;
-    const base = baseUrl.replace(/\/$/, "");
+    const base = baseUrl.replace(/\/$/, "").replace(/\/sii?\//, "/i/");
     return {
       id: chapterId,
       mangaId: pages.result.mangaId.toString(),
-      pages: items.map((img) =>
-        img.url.startsWith("http") ? img.url : `${base}/${img.url.replace(/^\//, "")}`,
-      ),
+      pages: items.map((img) => {
+        const url = img.url.startsWith("http") ? img.url : `${base}/${img.url.replace(/^\//, "")}`;
+        return url.replace(/\/sii?\//, "/i/");
+      }),
     };
   }
 
