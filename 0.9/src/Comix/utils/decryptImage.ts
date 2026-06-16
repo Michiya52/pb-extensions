@@ -52,5 +52,6 @@ export function decryptImage(data: ArrayBuffer, params: EncParams): ArrayBuffer 
     x = (Math.imul(x, 1000005) + 0x499602d3) >>> 0;
     bytes[i]! ^= (x >>> 24) & 0xff;
   }
-  return bytes.buffer;
+  // Return a copy so the iOS JS bridge serializes it correctly
+  return data.slice(0);
 }

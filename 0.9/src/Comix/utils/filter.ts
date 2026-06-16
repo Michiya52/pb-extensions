@@ -114,6 +114,81 @@ export class ComixFilter {
     );
     Application.setState(JSON.stringify(newValue), "format");
   }
+
+  // --- Customizations ---
+  cleanGroupName(str: string): string {
+    if (!str || typeof str !== "string") return "";
+    return this.normalizeString(str).toLowerCase().replace(/[^a-z0-9]/g, "");
+  }
+
+  normalizeString(str: string): string {
+    return str.replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'").replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"');
+  }
+
+  getShowTitleSettings(): boolean {
+    const val = Application.getState("show_title");
+    return val === false ? false : true;
+  }
+
+  getShowUploaderSettings(): boolean {
+    const val = Application.getState("show_uploader");
+    return val === false ? false : true;
+  }
+
+  getRemoveDuplicatesSettings(): boolean {
+    const val = Application.getState("remove_duplicates");
+    return val === false ? false : true;
+  }
+
+  getOneVersionOnlySettings(): boolean {
+    const val = Application.getState("one_version_only");
+    return val === true ? true : false;
+  }
+
+  getFollowLastReadGroupSettings(): boolean {
+    const val = Application.getState("follow_last_read_group");
+    return val === true ? true : false;
+  }
+
+  getUploadersFilteringSettings(): boolean {
+    const val = Application.getState("uploaders_toggled");
+    return val === true ? true : false;
+  }
+
+  getUploadersWhitelistedSettings(): boolean {
+    const val = Application.getState("uploaders_whitelisted");
+    return val === true ? true : false;
+  }
+
+  getStrictNameMatchingSettings(): boolean {
+    const val = Application.getState("strict_name_matching");
+    return val === true ? true : false;
+  }
+
+  getAutoSeedUploadersSettings(): boolean {
+    const val = Application.getState("auto_seed_uploaders");
+    return val === false ? false : true;
+  }
+
+  getUploadersSettings(): string[] {
+    const val = Application.getState("uploaders");
+    if (!val) return [];
+    if (typeof val === "string") {
+      try {
+        return JSON.parse(val) as string[];
+      } catch {
+        return [val];
+      }
+    }
+    if (Array.isArray(val)) {
+      return val as string[];
+    }
+    return [];
+  }
+
+  setUploadersSettings(value: string[]): void {
+    Application.setState(value, "uploaders");
+  }
 }
 
 export const discoverySections = [

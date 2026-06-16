@@ -317,14 +317,38 @@ export class ComixExtension implements ExtensionImpl<typeof ComixConfig> {
   }
 
   async getChapters(sourceManga: SourceManga): Promise<Chapter[]> {
+    const shareUrl = sourceManga.mangaInfo.shareUrl ?? "";
+    let slugPath = `/title/${sourceManga.mangaId}`;
+    if (shareUrl) {
+      try {
+        const urlObj = new URL(shareUrl);
+        slugPath = urlObj.pathname;
+      } catch (e) {
+        // ignore
+      }
+    }
     const items = await this.api.getJsonChapterApi(
       sourceManga.mangaId,
+      slugPath,
       this.cookieStorageInterceptor,
     );
     return this.parser.parseChapters(sourceManga, items);
   }
 
   async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
+    const mangaId = chapter.sourceManga.mangaId;
+    const groupMapStr = Application.getState(`chapter_groups_${mangaId}`) as string | undefined;
+    if (groupMapStr) {
+      try {
+        const groupMap = JSON.parse(groupMapStr) as Record<string, string>;
+        const groupName = groupMap[chapter.chapterId];
+        if (groupName) {
+          Application.setState(groupName, `last_read_group_${mangaId}`);
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
     const pages = await this.api.getJsonChapPagesApi(chapter, this.cookieStorageInterceptor);
     return this.parser.parseChapterDetails(chapter.chapterId, pages);
   }
