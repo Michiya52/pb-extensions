@@ -60,14 +60,14 @@ export class ComixInterceptor extends PaperbackInterceptor {
     if (scrambleParams) {
       try {
         const result = await descrambleImage(data, scrambleParams, response.mimeType ?? "image/webp");
-        return result.slice(0);
+        return result;
       } catch (error) {
         console.log(
           `[Comix] descramble failed for ${request.url}: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );
-        return data.slice(0);
+        return data;
       }
     }
 
@@ -75,18 +75,18 @@ export class ComixInterceptor extends PaperbackInterceptor {
     if (encParams) {
       try {
         const result = decryptImage(data, encParams);
-        return result.slice(0);
+        return result;
       } catch (error) {
         console.log(
           `[Comix] image decrypt failed for ${request.url}: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );
-        return data.slice(0);
+        return data;
       }
     }
 
-    return data.slice(0);
+    return data;
   }
 }
 

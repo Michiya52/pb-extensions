@@ -45,13 +45,15 @@ export function readEncHeaders(headers: Record<string, string>): EncParams | nul
 }
 
 export function decryptImage(data: ArrayBuffer, params: EncParams): ArrayBuffer {
-  const bytes = new Uint8Array(data);
-  const end = Math.min(params.len, bytes.length);
+  const inputBytes = new Uint8Array(data);
+  const outputBytes = new Uint8Array(data.byteLength);
+  outputBytes.set(inputBytes); // Copy to new buffer to guarantee clean serialization
+  
+  const end = Math.min(params.len, outputBytes.length);
   let x = params.seed >>> 0;
   for (let i = 0; i < end; i++) {
     x = (Math.imul(x, 1000005) + 0x499602d3) >>> 0;
-    bytes[i]! ^= (x >>> 24) & 0xff;
+    outputBytes[i]! ^= (x >>> 24) & 0xff;
   }
-  // Return a copy so the iOS JS bridge serializes it correctly
-  return data.slice(0);
+  return outputBytes.buffer;
 }
